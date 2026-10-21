@@ -1,3 +1,5 @@
+<p align="center"><img src="https://raw.githubusercontent.com/diggi-85/ambiframe/main/docs/logo.png" alt="Ambiframe – Home Assistant Integration" width="640"></p>
+
 # Ambiframe
 
 **Ruhige Ambient-Displays für Home Assistant.** Ambiframe verwandelt Tablets und Fernseher in einen Bilderrahmen mit
@@ -6,6 +8,23 @@ Ist die Wäsche fertig, steht es kurz da und bleibt dann als kleine Erinnerung.
 
 *Calm ambient displays for Home Assistant – photo frame, clock, weather and only what matters, with camera
 pop-ups for doorbells and motion. Configured entirely inside Home Assistant.*
+
+![Bilderrahmen: Uhr, Datum und Infozeile über einem Foto](https://raw.githubusercontent.com/diggi-85/ambiframe/main/docs/screenshots/bilderrahmen.jpg)
+
+<table>
+  <tr>
+    <td><img src="https://raw.githubusercontent.com/diggi-85/ambiframe/main/docs/screenshots/tagesvorschau.png" alt="Tagesvorschau mit Terminen, Wetter und Müll"></td>
+    <td><img src="https://raw.githubusercontent.com/diggi-85/ambiframe/main/docs/screenshots/laeuft-gerade.jpg" alt="Läuft gerade: Cover und Fortschritt"></td>
+    <td><img src="https://raw.githubusercontent.com/diggi-85/ambiframe/main/docs/screenshots/editor.jpg" alt="Editor in Home Assistant"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>Tagesvorschau</sub></td>
+    <td align="center"><sub>Läuft gerade</sub></td>
+    <td align="center"><sub>Editor in Home Assistant</sub></td>
+  </tr>
+</table>
+
+<sub>Bildschirmfotos mit Beispieldaten.</sub>
 
 ## Was Ambiframe kann
 
