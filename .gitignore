@@ -15,4 +15,4 @@ __pycache__/
 .pytest_cache/
 
 # Bildschirmfotos vom Tablet (lokal)
-screenshots/
+/screenshots/
