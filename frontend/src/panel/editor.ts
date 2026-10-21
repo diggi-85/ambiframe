@@ -743,7 +743,7 @@ class AmbiframePanel extends LitElement {
         <div class="head">
           <span>${t("Seiten")}</span>
           <span class="rel">
-            <button class="small" @click=${() => (this.menu = this.menu === "page" ? "" : "page")}>+ Neu</button>
+            <button class="small" @click=${() => (this.menu = this.menu === "page" ? "" : "page")}>${t("+ Neu")}</button>
             ${this.menu === "page"
               ? html`<div class="menu">
                   ${PAGE_TEMPLATES.map((tpl) => html`<button @click=${() => this.addPage(tpl.id)}>${t(tpl.name)}</button>`)}
@@ -812,7 +812,7 @@ class AmbiframePanel extends LitElement {
         <div class="row-head">
           <span class="seg">
             ${(["landscape", "portrait"] as const).map(
-              (o) => html`<button class="small ${this.layout === o ? "on" : ""}" @click=${() => (this.layout = o)}>${o === "landscape" ? "Quer" : "Hoch"}</button>`,
+              (o) => html`<button class="small ${this.layout === o ? "on" : ""}" @click=${() => (this.layout = o)}>${o === "landscape" ? t("Quer") : t("Hoch")}</button>`,
             )}
           </span>
           ${this.layout === "portrait"
@@ -1135,7 +1135,7 @@ class AmbiframePanel extends LitElement {
         <div class="row-head">
           <h3>${t("Ereignisse")}</h3>
           <span class="rel">
-            <button class="small" @click=${() => (this.menu = this.menu === "event" ? "" : "event")}>+ Neu</button>
+            <button class="small" @click=${() => (this.menu = this.menu === "event" ? "" : "event")}>${t("+ Neu")}</button>
             ${this.menu === "event"
               ? html`<div class="menu">
                   ${EVENT_TEMPLATES.map(
@@ -1180,7 +1180,7 @@ class AmbiframePanel extends LitElement {
                 </span>
               </div>
               ${this.form(eventFields(d), ev,(v) => this.mutate((dd) => (dd.events[idx] = { ...(v as EventConfig), id: ev.id }), `ev-${ev.id}`), `ev-${ev.id}`)}`
-          : html`<p class="hint">Noch keine Ereignisse – oben „+ Neu“.</p>`}
+          : html`<p class="hint">${t("Noch keine Ereignisse – oben „+ Neu“.")}</p>`}
       </section>
     </div>`;
   }
@@ -1339,7 +1339,7 @@ class AmbiframePanel extends LitElement {
           <h3>${t("Eigene Farben · Hell")}</h3>
           ${this.form(colorFields("light"), d, set, "design-colors-light")}
           ${d.design.colors
-            ? html`<p class="hint"><button class="small" @click=${() => this.mutate((dd) => delete dd.design.colors)}>Eigene Farben zurücksetzen</button></p>`
+            ? html`<p class="hint"><button class="small" @click=${() => this.mutate((dd) => delete dd.design.colors)}>${t("Eigene Farben zurücksetzen")}</button></p>`
             : nothing}
         </section>
         <section class="narrow">
@@ -1561,7 +1561,7 @@ class AmbiframePanel extends LitElement {
         if (this.healthOpen) void this.checkPhotos();
       }}
     >
-      ${anyIcon(serious ? "warning" : "check")}<span>${serious ? t("{n} Hinweise", { n: serious }) : t("Alles gut")}</span>
+      ${anyIcon(serious ? "warning" : "check")}<span>${serious ? (serious === 1 ? t("1 Hinweis") : t("{n} Hinweise", { n: serious })) : t("Alles gut")}</span>
     </button>`;
   }
 
@@ -1669,7 +1669,7 @@ class AmbiframePanel extends LitElement {
       ${this.renderWizard()} ${this.renderHealth()}
       <main>
         ${!this.draft
-          ? html`<p class="hint">Lädt …</p>`
+          ? html`<p class="hint">${t("Lädt …")}</p>`
           : this.tab === "seiten"
             ? this.renderPages()
             : this.tab === "wiedergabe"

@@ -8,13 +8,13 @@
 day to day it shows photos, the time, the weather and only what matters right now. When someone rings, the front door
 appears. When the laundry is done, it says so briefly and then stays as a small reminder.
 
-![Photo frame: clock, date and info line over a photo](https://raw.githubusercontent.com/diggi-85/ambiframe/main/docs/screenshots/bilderrahmen.jpg)
+![Photo frame: clock, date and info line over a photo](https://raw.githubusercontent.com/diggi-85/ambiframe/main/docs/screenshots/en/photo-frame.jpg)
 
 <table>
   <tr>
-    <td><img src="https://raw.githubusercontent.com/diggi-85/ambiframe/main/docs/screenshots/tagesvorschau.png" alt="Day preview with appointments, weather and waste collection"></td>
-    <td><img src="https://raw.githubusercontent.com/diggi-85/ambiframe/main/docs/screenshots/laeuft-gerade.jpg" alt="Now playing: cover and progress"></td>
-    <td><img src="https://raw.githubusercontent.com/diggi-85/ambiframe/main/docs/screenshots/editor.jpg" alt="Editor inside Home Assistant"></td>
+    <td><img src="https://raw.githubusercontent.com/diggi-85/ambiframe/main/docs/screenshots/en/day-preview.png" alt="Day preview with appointments, weather and waste collection"></td>
+    <td><img src="https://raw.githubusercontent.com/diggi-85/ambiframe/main/docs/screenshots/en/now-playing.jpg" alt="Now playing: cover and progress"></td>
+    <td><img src="https://raw.githubusercontent.com/diggi-85/ambiframe/main/docs/screenshots/en/editor.jpg" alt="Editor inside Home Assistant"></td>
   </tr>
   <tr>
     <td align="center"><sub>Day preview</sub></td>
@@ -23,8 +23,8 @@ appears. When the laundry is done, it says so briefly and then stays as a small 
   </tr>
 </table>
 
-<sub>Screenshots with sample data, German interface. Ambiframe follows the language of the Home Assistant user
-(English and German).</sub>
+<sub>Screenshots with sample data. Ambiframe follows the language of the Home Assistant user (English and
+German).</sub>
 
 ## Features
 
