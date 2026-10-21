@@ -1,0 +1,119 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Ambiframe",
+        "description": "Ambiframe turns tablets and TVs into calm ambient displays. After setup, open the editor from the sidebar entry “Ambiframe”."
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "Ambiframe is already set up."
+    }
+  },
+  "services": {
+    "import_config": {
+      "name": "Import configuration",
+      "description": "Replaces the complete Ambiframe configuration (displays, pages, widgets, events).",
+      "fields": {
+        "config": {
+          "name": "Configuration",
+          "description": "Configuration as an object."
+        },
+        "yaml": {
+          "name": "YAML",
+          "description": "Configuration as YAML text."
+        },
+        "file": {
+          "name": "File",
+          "description": "YAML file relative to the config folder, e.g. ambiframe/config.yaml."
+        }
+      }
+    },
+    "get_config": {
+      "name": "Get configuration",
+      "description": "Returns the current Ambiframe configuration."
+    },
+    "generate_summary": {
+      "name": "Create summary",
+      "description": "Let the AI (ai_task, e.g. Gemini) write a new daily summary now."
+    },
+    "show_on_tv": {
+      "name": "Show on TV",
+      "description": "Puts an Ambiframe display on the TV: Apple TV via AirPlay (the display's video stream must be enabled), LG TV (webOS) in its browser. The device must be on.",
+      "fields": {
+        "entity_id": {
+          "name": "TV",
+          "description": "Apple TV or LG TV (webOS)."
+        },
+        "display": {
+          "name": "Display",
+          "description": "Display ID, e.g. fernseher."
+        },
+        "resolution": {
+          "name": "Resolution",
+          "description": "Apple TV only: 1080p (default) or 4k."
+        }
+      }
+    },
+    "stop_on_tv": {
+      "name": "Stop on TV",
+      "description": "Stops Ambiframe's AirPlay playback on the Apple TV.",
+      "fields": {
+        "entity_id": {
+          "name": "Apple TV",
+          "description": "Apple TV showing Ambiframe."
+        }
+      }
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "connected": {
+        "name": "Connected"
+      }
+    },
+    "button": {
+      "next": {
+        "name": "Next page"
+      },
+      "reload": {
+        "name": "Reload"
+      },
+      "generate_summary": {
+        "name": "Create summary"
+      }
+    },
+    "select": {
+      "page": {
+        "name": "Page"
+      }
+    },
+    "sensor": {
+      "last_seen": {
+        "name": "Last seen"
+      },
+      "summary": {
+        "name": "Summary"
+      }
+    },
+    "switch": {
+      "pause": {
+        "name": "Pause"
+      },
+      "safe_mode": {
+        "name": "Safe mode"
+      },
+      "tv": {
+        "name": "On TV"
+      }
+    },
+    "camera": {
+      "stream": {
+        "name": "Video stream"
+      },
+      "stream_1080p": {
+        "name": "Video stream Full HD"
+      }
+    }
+  }
+}

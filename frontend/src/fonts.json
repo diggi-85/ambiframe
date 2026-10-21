@@ -1,0 +1,14 @@
+[
+  { "id": "fraunces", "name": "Fraunces", "kind": "serif", "pkg": "@fontsource-variable/fraunces", "file": "fraunces-latin-full-normal.woff2", "weight": "100 900" },
+  { "id": "newsreader", "name": "Newsreader", "kind": "serif", "pkg": "@fontsource-variable/newsreader", "file": "newsreader-latin-opsz-normal.woff2", "weight": "200 800" },
+  { "id": "instrument", "name": "Instrument Serif", "kind": "serif", "pkg": "@fontsource/instrument-serif", "file": "instrument-serif-latin-400-normal.woff2", "weight": "400" },
+  { "id": "playfair", "name": "Playfair Display", "kind": "serif", "pkg": "@fontsource-variable/playfair-display", "file": "playfair-display-latin-wght-normal.woff2", "weight": "400 900" },
+  { "id": "cormorant", "name": "Cormorant Garamond", "kind": "serif", "pkg": "@fontsource-variable/cormorant-garamond", "file": "cormorant-garamond-latin-wght-normal.woff2", "weight": "300 700" },
+  { "id": "inter", "name": "Inter", "kind": "sans", "pkg": "@fontsource-variable/inter", "file": "inter-latin-opsz-normal.woff2", "weight": "100 900" },
+  { "id": "geist", "name": "Geist", "kind": "sans", "pkg": "@fontsource-variable/geist", "file": "geist-latin-wght-normal.woff2", "weight": "100 900" },
+  { "id": "manrope", "name": "Manrope", "kind": "sans", "pkg": "@fontsource-variable/manrope", "file": "manrope-latin-wght-normal.woff2", "weight": "200 800" },
+  { "id": "outfit", "name": "Outfit", "kind": "sans", "pkg": "@fontsource-variable/outfit", "file": "outfit-latin-wght-normal.woff2", "weight": "100 900" },
+  { "id": "jakarta", "name": "Plus Jakarta Sans", "kind": "sans", "pkg": "@fontsource-variable/plus-jakarta-sans", "file": "plus-jakarta-sans-latin-wght-normal.woff2", "weight": "200 800" },
+  { "id": "space-grotesk", "name": "Space Grotesk", "kind": "sans", "pkg": "@fontsource-variable/space-grotesk", "file": "space-grotesk-latin-wght-normal.woff2", "weight": "300 700" },
+  { "id": "nunito", "name": "Nunito (rund)", "kind": "sans", "pkg": "@fontsource-variable/nunito", "file": "nunito-latin-wght-normal.woff2", "weight": "200 1000" }
+]

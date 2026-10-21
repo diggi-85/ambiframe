@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f6e2a8"/>
+      <stop offset="0.35" stop-color="#d4a94e"/>
+      <stop offset="0.6" stop-color="#b8862f"/>
+      <stop offset="1" stop-color="#f0d38a"/>
+    </linearGradient>
+    <linearGradient id="panel" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#25221d"/>
+      <stop offset="1" stop-color="#0d0d0d"/>
+    </linearGradient>
+    <linearGradient id="veil" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#e9cf8f" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#a87a2c" stop-opacity="0.35"/>
+    </linearGradient>
+  </defs>
+  <!-- Rahmen -->
+  <rect x="16" y="56" width="480" height="400" rx="64" fill="url(#gold)"/>
+  <rect x="40" y="80" width="432" height="352" rx="44" fill="url(#panel)"/>
+  <!-- weiche Flächen in den Ecken -->
+  <path d="M352 80h76a44 44 0 0 1 44 44v84c-40 0-64-26-76-58s-26-46-44-70z" fill="url(#veil)"/>
+  <path d="M40 300c48-10 96 4 132 40s64 70 112 92H84a44 44 0 0 1-44-44z" fill="url(#veil)"/>
+  <!-- innerer Rahmen -->
+  <rect x="104" y="128" width="304" height="256" rx="22" fill="none" stroke="url(#gold)" stroke-width="12"/>
+  <!-- Haus -->
+  <path d="M196 314v-70l60-52 60 52v70z" fill="none" stroke="url(#gold)" stroke-width="16" stroke-linejoin="round" stroke-linecap="round"/>
+  <!-- Sonne -->
+  <circle cx="148" cy="170" r="14" fill="url(#gold)"/>
+</svg>

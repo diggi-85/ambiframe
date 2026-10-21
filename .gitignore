@@ -1,0 +1,18 @@
+# Abhängigkeiten und Caches
+frontend/node_modules/
+__pycache__/
+*.pyc
+.DS_Store
+
+# Das gebaute Frontend (custom_components/ambiframe/frontend/) wird bewusst eingecheckt –
+# HACS installiert direkt aus dem Repository.
+
+# Lokale Claude-Code-Einstellungen
+.claude/settings.local.json
+
+# Python-Testumgebung
+.venv/
+.pytest_cache/
+
+# Bildschirmfotos vom Tablet (lokal)
+screenshots/

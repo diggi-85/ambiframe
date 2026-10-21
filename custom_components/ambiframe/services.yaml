@@ -1,0 +1,45 @@
+import_config:
+  fields:
+    config:
+      required: false
+      selector:
+        object:
+    yaml:
+      required: false
+      selector:
+        text:
+          multiline: true
+    file:
+      required: false
+      example: ambiframe/konfiguration.yaml
+      selector:
+        text:
+get_config:
+generate_summary:
+show_on_tv:
+  fields:
+    entity_id:
+      required: true
+      selector:
+        entity:
+          domain: media_player
+    display:
+      required: true
+      example: fernseher
+      selector:
+        text:
+    resolution:
+      required: false
+      selector:
+        select:
+          options:
+            - "1080p"
+            - "4k"
+stop_on_tv:
+  fields:
+    entity_id:
+      required: true
+      selector:
+        entity:
+          domain: media_player
+          integration: apple_tv

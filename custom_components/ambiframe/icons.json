@@ -1,0 +1,10 @@
+{
+  "services": {
+    "import_config": {
+      "service": "mdi:file-import-outline"
+    },
+    "get_config": {
+      "service": "mdi:file-export-outline"
+    }
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "domain": "ambiframe",
+  "name": "Ambiframe",
+  "after_dependencies": [
+    "apple_tv",
+    "camera",
+    "ffmpeg",
+    "media_source",
+    "stream"
+  ],
+  "codeowners": [
+    "@diggi-85"
+  ],
+  "config_flow": true,
+  "dependencies": [
+    "frontend",
+    "http",
+    "panel_custom",
+    "websocket_api"
+  ],
+  "documentation": "https://github.com/diggi-85/ambiframe",
+  "integration_type": "hub",
+  "iot_class": "local_push",
+  "issue_tracker": "https://github.com/diggi-85/ambiframe/issues",
+  "requirements": [],
+  "single_config_entry": true,
+  "version": "0.2.0"
+}
