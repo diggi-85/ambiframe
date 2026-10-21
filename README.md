@@ -1,237 +1,246 @@
 <p align="center"><img src="https://raw.githubusercontent.com/diggi-85/ambiframe/main/docs/logo.png" alt="Ambiframe – Home Assistant Integration" width="640"></p>
 
+<p align="center"><b>English</b> · <a href="README.de.md">Deutsch</a></p>
+
 # Ambiframe
 
-**Ruhige Ambient-Displays für Home Assistant.** Ambiframe verwandelt Tablets und Fernseher in einen Bilderrahmen mit
-Verstand: Im Alltag Fotos, Uhr, Wetter und nur das, was gerade wichtig ist. Klingelt es, erscheint die Haustür.
-Ist die Wäsche fertig, steht es kurz da und bleibt dann als kleine Erinnerung.
+**Calm ambient displays for Home Assistant.** Ambiframe turns tablets and TVs into a photo frame with a brain:
+day to day it shows photos, the time, the weather and only what matters right now. When someone rings, the front door
+appears. When the laundry is done, it says so briefly and then stays as a small reminder.
 
-*Calm ambient displays for Home Assistant – photo frame, clock, weather and only what matters, with camera
-pop-ups for doorbells and motion. Configured entirely inside Home Assistant.*
-
-![Bilderrahmen: Uhr, Datum und Infozeile über einem Foto](https://raw.githubusercontent.com/diggi-85/ambiframe/main/docs/screenshots/bilderrahmen.jpg)
+![Photo frame: clock, date and info line over a photo](https://raw.githubusercontent.com/diggi-85/ambiframe/main/docs/screenshots/bilderrahmen.jpg)
 
 <table>
   <tr>
-    <td><img src="https://raw.githubusercontent.com/diggi-85/ambiframe/main/docs/screenshots/tagesvorschau.png" alt="Tagesvorschau mit Terminen, Wetter und Müll"></td>
-    <td><img src="https://raw.githubusercontent.com/diggi-85/ambiframe/main/docs/screenshots/laeuft-gerade.jpg" alt="Läuft gerade: Cover und Fortschritt"></td>
-    <td><img src="https://raw.githubusercontent.com/diggi-85/ambiframe/main/docs/screenshots/editor.jpg" alt="Editor in Home Assistant"></td>
+    <td><img src="https://raw.githubusercontent.com/diggi-85/ambiframe/main/docs/screenshots/tagesvorschau.png" alt="Day preview with appointments, weather and waste collection"></td>
+    <td><img src="https://raw.githubusercontent.com/diggi-85/ambiframe/main/docs/screenshots/laeuft-gerade.jpg" alt="Now playing: cover and progress"></td>
+    <td><img src="https://raw.githubusercontent.com/diggi-85/ambiframe/main/docs/screenshots/editor.jpg" alt="Editor inside Home Assistant"></td>
   </tr>
   <tr>
-    <td align="center"><sub>Tagesvorschau</sub></td>
-    <td align="center"><sub>Läuft gerade</sub></td>
-    <td align="center"><sub>Editor in Home Assistant</sub></td>
+    <td align="center"><sub>Day preview</sub></td>
+    <td align="center"><sub>Now playing</sub></td>
+    <td align="center"><sub>Editor inside Home Assistant</sub></td>
   </tr>
 </table>
 
-<sub>Bildschirmfotos mit Beispieldaten.</sub>
+<sub>Screenshots with sample data, German interface. Ambiframe follows the language of the Home Assistant user
+(English and German).</sub>
 
-## Was Ambiframe kann
+## Features
 
-- **Seiten aus Widgets** in einem 12×8-Raster: Uhr, Datum, Text, Wetter (aktuell, Karte, Stunden, Tage, Zeile),
-  Wert, Räume, Status („Gerade“), Kalender/Müll, Infozeile, Kamera und **jede Lovelace-Karte**.
-- **Wiedergabeliste pro Display**. Seiten mit Bedingung (`show_if`) erscheinen nur, wenn sie relevant sind,
-  z. B. Müll nur am Vorabend.
-- **Ereignisse** unterbrechen die Anzeige:
-  - `alarm`: Vollbild mit Livebild, etwa für die Klingel
-  - `live`: Bild-im-Bild mit Abklingzeit, etwa für Bewegung
-  - `info`: Hinweiskarte, danach eine Erinnerung oben rechts, etwa für die Waschmaschine
-  - `page`: zeigt eine bestimmte Seite, etwa wenn ein Bewegungsmelder anschlägt – so lange er an ist,
-    mindestens `duration` s, danach `hold_after` s Nachlauf, höchstens `max` s, mit `cooldown` nach dem Ende
-  - `media`: Musik-Cover beim Liedwechsel (`entities`: Player, `style`: `card`/`fullscreen`,
-    `interval`: zwischendurch alle n Minuten); Gruppen zeigen jedes Lied nur einmal
-- **Ereignisse mit Ton und Regeln:** mitgelieferte Töne (Gong, Ding-Dong, Glocke, Alarm – wiederholt sich, bis
-  jemand tippt) oder eigener Link, auf dem Tablet über Fully; Ruhezeiten (stumm oder gar nicht), „nur wenn jemand
-  zu Hause ist“, beliebige Bedingungen und der Auslöser `to: "*"` = jede Änderung – z. B. für Tasten und
-  `event.*`-Entitäten (nur frische Ereignisse, optional nur bestimmte `event_types`).
-- **Nachtmodus** (gedimmte Uhr, wandert gegen Einbrennen) und **Abendstimmung**.
-- **Sieben Stile, jeder hell und dunkel:** Ruhig, Klar, Gold, Liquid Glass, Aurora, Editorial, Minimal.
-  Hell/Dunkel automatisch nach Sonnenstand (weich überblendet) oder fest, pro Display änderbar.
-- **Zwölf Schriften** lokal mitgeliefert (u. a. Fraunces, Instrument Serif, Playfair, Inter, Geist, Outfit),
-  getrennt für Uhr/Titel und Text, zusätzlich pro Widget.
-- **Ruhige Hintergrund-Animationen:** schwebende Partikel, fließender Verlauf, Lichtschimmer, Nebel –
-  Stärke und Tempo einstellbar, pro Seite wählbar, nachts und bei „Bewegung reduzieren“ aus.
-- **Seitenwechsel** als Überblenden, Unschärfe, Schieben oder Zoom, Dauer frei – global, pro Display, pro Seite.
-- **Bedienmodus:** Tippen holt das HA-Dashboard, nach einer Minute ohne Berührung kehrt Ambiframe zurück.
-- **Kamera nativ** über HAs eigenen Stream (WebRTC/HLS), mit MJPEG als Rückfall.
-- **Fotos** aus dem HA-Medienordner `ambiframe`, ersatzweise die Bing-Bilder des Tages.
-- **Nachrichten** aus tagesschau, n-tv, SPIEGEL oder beliebigen RSS-Feeds: Großbild mit Schlagzeile, Liste oder
-  Laufband; der Server holt die Feeds (10 min zwischengespeichert) und tauscht kleine Vorschaubilder gegen große.
-- **Webcams und Kameras als Hintergrund:** Seiten können eine HA-Kamera oder einen Webcam-Link (Bild, MJPEG,
-  `.m3u8`, YouTube live) als Hintergrund haben; der Editor schlägt öffentliche Webcams vor.
-- **Fotos aus einem geteilten iCloud-Album** (öffentlicher Link), gemischt mit dem Medienordner.
-- **Infozeile mit allen Mülltonnen** im Wechsel („Biotonne und Restmüll morgen“ → „Papier am Freitag“).
-- **KI-Zusammenfassung** (über `ai_task`, bevorzugt Gemini) zu festen Zeiten: Überschrift und 3–5 Punkte aus Wetter,
-  Terminen, Müll, Strompreis/PV, Auto und Haus – genau den Daten, die Ambiframe ohnehin zeigt. Widget, Seite
-  „Guten Morgen“, Sensor *Ambiframe Zusammenfassung* (für Ansagen), Taste und Dienst `ambiframe.generate_summary`.
-- **Bedingung „Uhrzeit“** für Seiten und Widgets (`condition: time`, `after`/`before`, auch über Mitternacht).
-- **Quer- und Hochformat:** Displays erkennen die Ausrichtung selbst (auch beim Drehen) oder fest per Einstellung.
-  Hochkant ordnet Ambiframe jede Seite automatisch an (nebeneinander → untereinander); im Editor („Quer | Hoch“)
-  lässt sich die Hochformat-Anordnung frei anpassen (`widget.portrait`). Die Bühne passt sich dem Seitenverhältnis
-  an (16:9, 4:3, Handy) – ohne Balken und ohne dass Widgets gestaucht werden.
-- **Weitere Bausteine:** Haustier (Zähler + Uhrzeiten + Wochenverlauf), Tagesbilanz aus der Langzeit-Statistik
-  (bis 18 Uhr der Vortag, danach heute; feste Preise oder Kosten-Zähler; Zeilen nur, wenn etwas lief), WLAN-QR-Code
-  für Gäste, Auftrag/3D-Druck (Fortschritt, Restzeit, Schicht, Temperaturen), Bildentitäten (z. B. Modellbild).
-- **Freie Bausteine:** *Text & Vorlage* – beliebiger Text mit Jinja (`{{ states('sensor.x') }}`, live) und
-  optional Markdown (Überschriften, Listen, **fett**, `[mdi:icon]`); *Verlauf* – Linie, Fläche oder Balken für eine
-  oder mehrere Entitäten (bis 72 h aus dem Verlauf, länger und Balken aus der Langzeit-Statistik); *Anzeige* – Ring
-  oder Halbkreis mit Farbstufen; *Bild* – Link, `/local/…`, `media-source://…`, Vorlage oder Entitätsbild.
-  Vorlagen rechnet Ambiframe selbst auf dem Server: Displays ohne Admin-Benutzer dürfen nur Vorlagen auswerten,
-  die in der gespeicherten Konfiguration stehen.
-- **Eigenes Aussehen:** eigene Farben je Hell/Dunkel (Hintergrund, Schrift, Akzent, Karten, Gut/Warnung/Kühl)
-  auf jedem Stil, Eckenradius, eigenes CSS global und pro Seite; Stile speichern, als YAML exportieren und
-  importieren. Pro Widget: als Karte, Akzent- und Schriftfarbe, Größe, Deckkraft, Innenabstand (`look`).
-- **Bequem bearbeiten:** Mehrfachauswahl (⇧/⌘-Klick), Gruppe gemeinsam ziehen, Hilfslinien für bündige
-  Kanten, Kopieren/Einfügen per ⌘C/⌘V (als YAML – auch zwischen Seiten, Tabs und Geräten), eigene Vorlagen für
-  Widget-Gruppen und ganze Seiten, Seiten als YAML exportieren und importieren.
-- **Antippen:** Jedes Widget kann beim Antippen bzw. langen Drücken etwas tun – ein/aus schalten, HA-Details
-  öffnen, ein Skript/eine Aktion ausführen, eine Seite zeigen, ein Pop-up mit beliebiger Lovelace-Karte öffnen,
-  die Wiedergabe anhalten oder das HA-Dashboard holen; auf Wunsch mit Rückfrage („Tor öffnen – wirklich?“).
-- **Steuerbar aus Home Assistant:** Jedes Display ist ein Gerät mit den Entitäten *Seite* (Auswahl, springt
-  dorthin), *Pause* (endet nach `pause_minutes`, Standard 60), *Nächste Seite*, *Neu laden*, *Verbunden* und
-  *Zuletzt aktiv* – ideal für Automationen („Tesla kommt heim → Seite Energie“).
-- **Läuft von selbst weiter:** Displays melden sich alle 30 s. Hängt eines, drückt Ambiframe die eingestellte
-  Neustart-Taste (`watchdog.button`, z. B. Fully „Start-URL laden“). Nach einem Ambiframe-Update laden sich alle
-  Displays selbst neu – nie mitten in Klingel oder Kamera.
-- **Mehrere Geräte:** Ohne `?display=` fragt ein Gerät einmal, welches Display es ist, und merkt es sich.
-  Der Editor zeigt unter *Wiedergabe → Geräte*, wer gerade was anzeigt.
-- Alles wird **in Home Assistant gespeichert** (`.storage/ambiframe`) und ist damit Teil jedes Backups.
+- **Pages built from widgets** on a 12×8 grid: clock, date, text, weather (current, card, hourly, daily, line),
+  value, rooms, status ("right now"), calendar/waste, info line, camera and **any Lovelace card**.
+- **A playlist per display.** Pages with a condition (`show_if`) only appear when they are relevant, e.g. waste
+  collection only the evening before.
+- **Events** interrupt the display:
+  - `alarm`: full screen with live camera, e.g. for the doorbell
+  - `live`: picture-in-picture with a cooldown, e.g. for motion
+  - `info`: a notice card, then a small reminder in the top right, e.g. for the washing machine
+  - `page`: shows a specific page, e.g. while a motion sensor is on – at least `duration` s, then `hold_after` s,
+    at most `max` s, with `cooldown` after it ends
+  - `media`: album cover when the track changes (`entities`: players, `style`: `card`/`fullscreen`,
+    `interval`: repeat every n minutes); groups show each track only once
+- **Events with sound and rules:** bundled sounds (gong, ding-dong, bell, alarm – repeats until someone taps) or
+  your own link, played on the tablet via Fully; quiet hours (muted or not at all), "only when someone is home", any
+  conditions, and the trigger `to: "*"` = every change – e.g. for buttons and `event.*` entities (fresh events only,
+  optionally only certain `event_types`).
+- **Night mode** (dimmed clock that drifts to prevent burn-in) and **evening mood**.
+- **Seven styles, each light and dark:** Calm, Clear, Gold, Liquid Glass, Aurora, Editorial, Minimal.
+  Light/dark automatically by the sun (with a soft fade) or fixed, adjustable per display.
+- **Twelve fonts** bundled locally (including Fraunces, Instrument Serif, Playfair, Inter, Geist, Outfit), separately
+  for clock/titles and text, and per widget.
+- **Calm background animations:** floating particles, flowing gradient, light shimmer, fog – strength and speed
+  adjustable, per page, off at night and with "reduce motion".
+- **Page transitions:** fade, blur, slide or zoom with any duration – globally, per display, per page.
+- **Control mode:** a tap brings up the HA dashboard; after a minute without touch Ambiframe returns.
+- **Native camera** via Home Assistant's own stream (WebRTC/HLS), with MJPEG as a fallback.
+- **Photos** from the HA media folder `ambiframe` or a **shared iCloud album** (public link), optionally mixed with
+  Bing's pictures of the day.
+- **News** from tagesschau, n-tv, SPIEGEL or any RSS feed: large image with headline, list or ticker; the server
+  fetches the feeds (cached for 10 min) and swaps small thumbnails for large images.
+- **Webcams and cameras as background:** pages can use an HA camera or a webcam link (image, MJPEG, `.m3u8`, YouTube
+  live) as their background; the editor suggests public webcams.
+- **Info line** with weather, appointments, all waste bins in rotation, running appliances with remaining time,
+  "window open and it's raining", what's playing, the robot vacuum and the car charging.
+- **Daily content and day preview:** Wikipedia article and quote of the day; in the morning appointments, weather
+  and waste collection at a glance.
+- **AI summary** (via `ai_task`, e.g. Gemini) at set times: a headline and 3–5 points from weather, appointments,
+  waste, electricity price/PV, car and home – exactly the data Ambiframe already shows. Widget, "Good morning" page,
+  sensor *Ambiframe summary* (for announcements), button and action `ambiframe.generate_summary`.
+- **On the TV:** a display can be sent as a video stream (up to 25 fps) to an Apple TV (AirPlay) or an LG webOS TV –
+  with the switch *On the TV* or the actions `ambiframe.show_on_tv` / `ambiframe.stop_on_tv`. Requires the Puppet
+  add-on.
+- **iPad and iPhone via the HA app:** the dashboard card `custom:ambiframe-card` (`display: <id>`) in kiosk mode
+  shows Ambiframe full screen, also for users without admin rights.
+- **Landscape and portrait:** displays detect their orientation (also when rotated) or use a fixed one. In portrait,
+  Ambiframe rearranges every page automatically (side by side → stacked); the editor ("Landscape | Portrait") lets you
+  fine-tune the portrait layout (`widget.portrait`). The stage adapts to the aspect ratio (16:9, 4:3, phone) – no bars
+  and no squashed widgets.
+- **More building blocks:** pet (counter, times, weekly history), daily balance from long-term statistics, guest
+  Wi-Fi QR code, job/3D print (progress, remaining time, layer, temperatures), robot vacuum with map, image entities.
+- **Free building blocks:** *Text & template* – any text with Jinja (`{{ states('sensor.x') }}`, live) and optional
+  Markdown; *History* – line, area or bars for one or more entities; *Gauge* – ring or half circle with colour
+  steps; *Image* – link, `/local/…`, `media-source://…`, template or entity picture. Ambiframe renders templates on
+  the server: displays without an admin user may only render templates that are part of the saved configuration.
+- **Your own look:** custom colours for light and dark (background, text, accent, cards, good/warning/cool) on any
+  style, corner radius, custom CSS globally and per page; save styles, export and import them as YAML. Per widget:
+  as a card, accent and text colour, size, opacity, padding (`look`).
+- **Comfortable editing:** multi-select (⇧/⌘-click), drag groups together, guides for aligned edges, copy/paste with
+  ⌘C/⌘V (as YAML – also between pages, tabs and devices), your own templates for widget groups and whole pages,
+  pages as YAML export/import. The editor also works on a phone.
+- **Tap actions:** every widget can do something on tap or long press – toggle, open HA details, run a script/action,
+  show a page, open a pop-up with any Lovelace card, pause the playlist or bring up the HA dashboard; optionally with
+  a confirmation ("Open the gate – really?").
+- **Controllable from Home Assistant:** every display is a device with the entities *Page* (select, jumps there),
+  *Pause* (ends after `pause_minutes`, default 60), *Next page*, *Reload*, *Connected* and *Last active* – ideal for
+  automations ("car comes home → energy page").
+- **Keeps itself running:** displays report every 30 s. If one hangs, Ambiframe presses the configured restart button
+  (`watchdog.button`, e.g. Fully "Load start URL"). After an Ambiframe update all displays reload by themselves –
+  never in the middle of a doorbell or camera event.
+- **Several devices:** without `?display=`, a device asks once which display it is and remembers it. The editor shows
+  under *Playback → Devices* who is showing what.
+- Everything is **stored in Home Assistant** (`.storage/ambiframe`) and is therefore part of every backup.
 
 ## Installation
 
-### HACS (benutzerdefiniertes Repository)
+### HACS (custom repository)
 
-1. HACS → ⋮ → *Benutzerdefinierte Repositories* → `https://github.com/diggi-85/ambiframe`, Typ *Integration*.
-2. „Ambiframe“ installieren und Home Assistant neu starten.
-3. *Einstellungen → Geräte & Dienste → Integration hinzufügen → Ambiframe*.
+1. HACS → ⋮ → *Custom repositories* → `https://github.com/diggi-85/ambiframe`, type *Integration*.
+2. Install "Ambiframe" and restart Home Assistant.
+3. *Settings → Devices & services → Add integration → Ambiframe*.
 
-### Mit Claude
+### With Claude
 
-Repository herunterladen (oder klonen), Claude Code im Ordner starten und schreiben: *„Installiere und richte
-Ambiframe in meinem Home Assistant ein.“* Claude folgt dann der Anleitung in [`CLAUDE.md`](CLAUDE.md).
+Download (or clone) the repository, start Claude Code in the folder and write: *"Install and set up Ambiframe in my
+Home Assistant."* Claude then follows the guide in [`CLAUDE.md`](CLAUDE.md).
 
-### Manuell
+### Manually
 
-`custom_components/ambiframe` nach `/config/custom_components/` kopieren, neu starten, Integration hinzufügen.
+Copy `custom_components/ambiframe` to `/config/custom_components/`, restart, add the integration.
 
-## Einrichtung
+## Setup
 
-1. In der Seitenleiste **Ambiframe** öffnen. Beim ersten Start legt Ambiframe aus deinen Entitäten eine
-   Startkonfiguration an (Wetter, Räume nach Bereichen, Müllkalender).
-2. Unter **Displays** die Adresse des Displays kopieren, z. B. `http://homeassistant.local:8123/ambiframe-display?display=ambiframe`.
-3. Auf dem Tablet (empfohlen: [Fully Kiosk Browser](https://www.fully-kiosk.com)) als Start-URL eintragen und einmal anmelden.
-   Am besten nimmst du dafür einen eigenen HA-Benutzer ohne Admin-Rechte.
-4. Optional in Fully die *JavaScript-Schnittstelle* aktivieren. Dann weckt Ambiframe den Bildschirm bei Ereignissen.
+1. Open **Ambiframe** in the sidebar. On first start, Ambiframe creates a starter configuration from your entities
+   (weather, rooms by area, waste calendar) and a wizard sets up your first display.
+2. Under **Displays**, copy the display's address, e.g.
+   `http://homeassistant.local:8123/ambiframe-display?display=ambiframe`.
+3. On the tablet (recommended: [Fully Kiosk Browser](https://www.fully-kiosk.com)) set it as the start URL and log in
+   once – ideally with a separate HA user without admin rights.
+4. Optionally enable the *JavaScript interface* in Fully. Ambiframe then wakes the screen for events.
 
-## Konfiguration
+On an iPad or iPhone, create a dashboard with only the `custom:ambiframe-card` card and open it in the HA app's kiosk
+mode.
 
-Im Editor unter **YAML** (oder per Aktion `ambiframe.import_config`). Eine passende
-Startkonfiguration legt Ambiframe beim ersten Start selbst an; sie lässt sich dort als YAML ansehen und anpassen.
+## Configuration
+
+In the editor under **YAML** (or with the action `ambiframe.import_config`). Ambiframe creates a matching starter
+configuration on first start; you can view and adjust it there as YAML. A complete example is in
+[`examples/beispiel.yaml`](examples/beispiel.yaml).
 
 ```yaml
 displays:
-  - id: wohnzimmer
-    name: Wohnzimmer
-    playlist: [{ page: foto }, { page: wetter, duration: 20 }]
-    night: { entity: input_boolean.nachtruhe, page: nacht }
+  - id: living_room
+    name: Living room
+    playlist: [{ page: photo }, { page: weather, duration: 20 }]
+    night: { entity: input_boolean.night, page: night }
     control: { enabled: true, dashboard: /lovelace/0, idle: 60 }
 
 pages:
-  - id: foto
-    name: Bilderrahmen
+  - id: photo
+    name: Photo frame
     duration: 90
     background: { type: photo }
     widgets:
-      - { id: uhr, type: clock, x: 0, y: 4, w: 6, h: 2, options: { valign: end } }
-      - { id: datum, type: date, x: 0, y: 6, w: 7, h: 1 }
+      - { id: clock, type: clock, x: 0, y: 4, w: 6, h: 2, options: { valign: end } }
+      - { id: date, type: date, x: 0, y: 6, w: 7, h: 1 }
 
 events:
-  - id: klingel
-    entity: binary_sensor.haustuer_klingel
+  - id: doorbell
+    entity: binary_sensor.front_door_ring
     to: "on"
     kind: alarm                 # alarm | live | info
-    camera: camera.haustuer
-    title: Es klingelt
-    where: Haustür
-    hold_after: 30              # nach dem Klingeln noch 30 s stehen lassen
+    camera: camera.front_door
+    title: Someone is at the door
+    where: Front door
+    hold_after: 30              # keep it on screen for 30 s after the ring
 
-  - id: esstisch
-    kind: page                  # Seite zeigen statt Overlay
-    entity: binary_sensor.esstisch_praesenz
-    entities: [binary_sensor.kueche_bewegung]   # weitere Auslöser – einer genügt
+  - id: dining_table
+    kind: page                  # show a page instead of an overlay
+    entity: binary_sensor.dining_table_presence
+    entities: [binary_sensor.kitchen_motion]   # more triggers – any one is enough
     to: "on"
-    page: heute
+    page: today
     duration: 60
     hold_after: 30
     cooldown: 300
 
-  - id: musik
+  - id: music
     kind: media
-    entities: [media_player.kueche, media_player.wohnzimmer]
+    entities: [media_player.kitchen, media_player.living_room]
     style: card                 # card | fullscreen
 ```
 
 ### Widgets
 
-| Typ | Wichtige Optionen |
+| Type | Main options |
 |---|---|
 | `clock` | `size` (auto/small), `seconds`, `font`, `color` |
 | `date` | `format` (long/short), `size`, `color`, `style: card` |
-| `text` | `text` (darf Jinja enthalten), `markdown`, `style` (label/title/body/big), `size`, `color`, `icon` |
+| `text` | `text` (may contain Jinja), `markdown`, `style` (label/title/body/big), `size`, `color`, `icon` |
 | `chart` | `entities: [{entity, name, color}]`, `kind` (line/area/bar), `hours`, `period` (hour/day), `value`, `min`, `max`, `unit`, `decimals`, `label`, `style: card` |
 | `gauge` | `entity`, `attribute`, `kind` (ring/half), `min`, `max`, `unit`, `decimals`, `color`, `severity: [{from, color}]`, `name`, `icon` |
-| `image` | `url` (Link, `/local/…`, `media-source://…`, Vorlage) oder `entity`, `fit` (cover/contain), `refresh`, `caption`, `radius` |
+| `image` | `url` (link, `/local/…`, `media-source://…`, template) or `entity`, `fit` (cover/contain), `refresh`, `caption`, `radius` |
 | `weather` | `entity`, `variant` (now/card/hourly/daily/line), `hours`, `days`, `name` |
 | `value` | `entity`, `attribute`, `name`, `unit`, `decimals`, `style: card`, `label`, `icon`, `sub`, `secondary`, `cold` |
 | `rooms` | `rooms: [{name, temperature, humidity, climate, windows}]`, `cold`, `warm`, `columns` |
-| `status` | `windows` (auto/Liste), `appliances`, `lights: auto`, `waste`, `waste_days`, `extra`, `max` |
+| `status` | `windows` (auto/list), `appliances`, `lights: auto`, `waste`, `waste_days`, `extra`, `max` |
 | `calendar` | `entity`, `variant` (card/line), `waste`, `days`, `label` |
-| `infoline` | `items: [{type: weather/calendar/entity/text, …}]` |
+| `infoline` | `items: [{type: weather/calendar/entity/text/…, …}]` |
 | `camera` | `entity`, `mode` (live/snapshot), `radius` |
-| `card` | `card:` beliebige Lovelace-Karten-Konfiguration |
+| `card` | `card:` any Lovelace card configuration |
 
-Für alle Widgets gelten `align`/`valign` (start/center/end), `show_if` (Bedingungen) sowie `tap_action` und
+All widgets support `align`/`valign` (start/center/end), `show_if` (conditions) as well as `tap_action` and
 `hold_action`:
 
 ```yaml
-tap_action: { action: toggle, entity: light.kueche }
-tap_action: { action: perform, perform: script.turn_on, entity: script.gute_nacht, confirm: true }
-tap_action: { action: page, page: energie }
-tap_action: { action: popup, title: Licht, card: { type: entities, entities: [light.kueche] }, timeout: 30 }
-hold_action: { action: pause }          # außerdem: more_info (entity), dashboard
+tap_action: { action: toggle, entity: light.kitchen }
+tap_action: { action: perform, perform: script.turn_on, entity: script.good_night, confirm: true }
+tap_action: { action: page, page: energy }
+tap_action: { action: popup, title: Light, card: { type: entities, entities: [light.kitchen] }, timeout: 30 }
+hold_action: { action: pause }          # also: more_info (entity), dashboard
 look: { card: true, accent: "#4fa3e0", ink: "#fff", size: 120, opacity: 80, padding: 12 }
 ```
 
-### Bedingungen
+### Conditions
 
 ```yaml
 show_if:
-  - { condition: state, entity: binary_sensor.fenster, state: "on" }
+  - { condition: state, entity: binary_sensor.window, state: "on" }
   - { condition: numeric, entity: sensor.co2, above: 1000 }
-  - { condition: within_days, entity: calendar.muell, days: 1 }
+  - { condition: within_days, entity: calendar.waste, days: 1 }
   - { condition: time, after: "05:00", before: "11:00" }
-  - { condition: changed, entity: binary_sensor.tuer, minutes: 10 }      # kürzlich geändert (optional state)
+  - { condition: changed, entity: binary_sensor.door, minutes: 10 }      # changed recently (optional state)
   - { condition: template, value_template: "{{ is_state('person.alex', 'home') }}" }
-  - { condition: display, displays: [wohnzimmer] }                     # nur auf diesen Displays
-  - { condition: orientation, orientation: portrait }                    # nur hochkant
-  - condition: or                                                        # auch and / not, beliebig tief
+  - { condition: display, displays: [living_room] }                    # only on these displays
+  - { condition: orientation, orientation: portrait }                    # portrait only
+  - condition: or                                                        # also and / not, nested at will
     conditions:
       - { condition: state, entity: person.kim, state: home }
       - { condition: state, entity: person.alex, state: home }
 ```
 
-Bedingungen gelten für Seiten, Widgets und **einzelne Einträge der Wiedergabeliste** (`playlist[].show_if`) –
-so zeigt ein Display morgens andere Seiten als abends (Editor: *Wiedergabe → Wann?*).
+Conditions apply to pages, widgets and **individual playlist entries** (`playlist[].show_if`) – so a display can show
+different pages in the morning than in the evening (editor: *Playback → When?*).
 
-## Entwicklung
+## Development
 
 ```bash
-cd frontend && npm install && npm run build      # Bundle nach custom_components/ambiframe/frontend/
+cd frontend && npm install && npm run build      # bundle into custom_components/ambiframe/frontend/
 ```
 
-Tests: `cd frontend && npm test` (Frontend) und `python -m pytest` (Integration, Abhängigkeiten in
+Tests: `cd frontend && npm test` (frontend) and `python -m pytest` (integration, dependencies in
 `requirements_test.txt`).
 
-## Lizenz
+## License
 
-MIT. Mitgelieferte Schriften (Fraunces, Inter) stehen unter der SIL Open Font License 1.1.
+MIT. The bundled fonts are licensed under the SIL Open Font License 1.1.
