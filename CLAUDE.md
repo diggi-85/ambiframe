@@ -70,7 +70,7 @@ herunterladen. Weiter mit Schritt 2.
   (AirPlay) oder LG-webOS-TV schicken. Dafür braucht es das Add-on **Puppet** (Repository von balloob) mit einem
   eigenen Zugangstoken, das der Nutzer selbst im Add-on einträgt. Im Editor beim Display unter *Stream* den
   Fernseher wählen; danach gibt es den Schalter *Auf dem Fernseher* und die Aktionen `ambiframe.show_on_tv` /
-  `ambiframe.stop_on_tv`.
+  `ambiframe.stop_on_tv`. Die ausführliche Anleitung dafür steht in `docs/airplay-apple-tv.md`.
 
 ## 5. Optionale Extras
 

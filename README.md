@@ -69,7 +69,7 @@ German).</sub>
   sensor *Ambiframe summary* (for announcements), button and action `ambiframe.generate_summary`.
 - **On the TV:** a display can be sent as a video stream (up to 25 fps) to an Apple TV (AirPlay) or an LG webOS TV –
   with the switch *On the TV* or the actions `ambiframe.show_on_tv` / `ambiframe.stop_on_tv`. Requires the Puppet
-  add-on.
+  add-on. Step-by-step guide (German, also to paste into Claude): [`docs/airplay-apple-tv.md`](docs/airplay-apple-tv.md).
 - **iPad and iPhone via the HA app:** the dashboard card `custom:ambiframe-card` (`display: <id>`) in kiosk mode
   shows Ambiframe full screen, also for users without admin rights.
 - **Landscape and portrait:** displays detect their orientation (also when rotated) or use a fixed one. In portrait,

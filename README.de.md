@@ -96,7 +96,8 @@ Ist die Wäsche fertig, steht es kurz da und bleibt dann als kleine Erinnerung.
   Der Editor zeigt unter *Wiedergabe → Geräte*, wer gerade was anzeigt.
 - **Auf den Fernseher:** Ein Display lässt sich als Videostream (bis 25 fps) an einen Apple TV (AirPlay) oder
   LG-webOS-TV schicken – per Schalter *Auf dem Fernseher* oder Aktion `ambiframe.show_on_tv` /
-  `ambiframe.stop_on_tv`. Braucht das Add-on Puppet.
+  `ambiframe.stop_on_tv`. Braucht das Add-on Puppet. Schritt für Schritt (auch zum Einfügen in Claude):
+  [`docs/airplay-apple-tv.md`](docs/airplay-apple-tv.md).
 - **iPad und iPhone über die HA-App:** Dashboard-Karte `custom:ambiframe-card` (`display: <id>`) im Kiosk-Modus
   zeigt Ambiframe im Vollbild, auch für Benutzer ohne Admin-Rechte.
 - **Tagesinhalt und Tagesvorschau:** Wikipedia-Artikel und Zitat des Tages; morgens Termine, Wetter und Müll auf
