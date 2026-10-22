@@ -598,17 +598,18 @@ class AfRadar extends AfWidget {
         position: absolute;
         inset: 0;
       }
-      .map img {
+      .map img,
+      .rain img {
         position: absolute;
-        width: 256px;
-        height: 256px;
+        /* 1 px Überlappung: keine feinen Linien zwischen den Kacheln */
+        width: 257px;
+        height: 257px;
         user-select: none;
         pointer-events: none;
       }
-      .rain img {
-        opacity: 0.8;
-      }
       .rain {
+        /* Deckkraft auf der Ebene, nicht je Kachel – sonst wären die Überlappungen dunkler */
+        opacity: 0.8;
         position: absolute;
         inset: 0;
       }
@@ -743,7 +744,7 @@ class AfRadar extends AfWidget {
     const hw = (this.clientWidth || 512) / 512;
     const hh = (this.clientHeight || 512) / 512;
     for (let tx = Math.floor(c.x - hw); tx <= Math.floor(c.x + hw); tx++)
-      for (let ty = Math.floor(c.y - hh); ty <= Math.floor(c.y + hh); ty++) tiles.push({ x: tx, y: ty, dx: (tx - c.x) * 256, dy: (ty - c.y) * 256 });
+      for (let ty = Math.floor(c.y - hh); ty <= Math.floor(c.y + hh); ty++) tiles.push({ x: tx, y: ty, dx: Math.round((tx - c.x) * 256), dy: Math.round((ty - c.y) * 256) });
     const pos = (d: { dx: number; dy: number }) => `left:calc(50% + ${d.dx}px);top:calc(50% + ${d.dy}px)`;
     const map = this.map();
     const shown = this.shown;

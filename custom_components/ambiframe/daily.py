@@ -25,7 +25,7 @@ from homeassistant.util import dt as dt_util
 _LOGGER = logging.getLogger(__name__)
 
 # Wikimedia bittet um eine erkennbare Kennung
-HEADERS = {"User-Agent": "Ambiframe/0.4.0 (Home Assistant integration; https://github.com/diggi-85/ambiframe)"}
+HEADERS = {"User-Agent": "Ambiframe/0.4.1 (Home Assistant integration; https://github.com/diggi-85/ambiframe)"}
 TIMEOUT = aiohttp.ClientTimeout(total=20)
 
 
