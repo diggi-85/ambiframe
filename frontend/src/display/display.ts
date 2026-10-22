@@ -15,6 +15,7 @@ import { define } from "../widgets/base";
 import "../widgets/media";
 import { BASE, gridFor, type Grid, type Orientation } from "./grid";
 import "./page";
+import { leaveToDashboard } from "./leave";
 
 interface Layer {
   key: number;
@@ -979,6 +980,11 @@ export class AfDisplay extends LitElement {
   private openControl(): void {
     const control = this.display?.control;
     if (this.preview || !control?.enabled) return;
+    // HA-App: eingebettete Dashboards meldet die App nicht an – dort zum Dashboard wechseln und zurückkehren
+    if (this.hasAttribute("app")) {
+      leaveToDashboard(control.dashboard ?? "/lovelace/0", control.idle ?? 60);
+      return;
+    }
     this.closeMedia();
     this.controlOpen = true;
     this.touchControl();
