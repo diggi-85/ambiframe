@@ -39,6 +39,7 @@ import { anyIcon } from "../icons";
 import { THEMES } from "../styles";
 import type { DisplayConfig, EventConfig, Hass, PageConfig, AmbiframeConfig, Theme, WidgetConfig } from "../types";
 import { define } from "../widgets/base";
+import { playSound } from "../sound";
 
 interface DisplayStatus {
   online: boolean;
@@ -97,6 +98,7 @@ class AmbiframePanel extends LitElement {
     yaml: { state: true },
     menu: { state: true },
     summaryBusy: { state: true },
+    mediaSounds: { state: true },
     summaryNote: { state: true },
     devices: { state: true },
     layout: { state: true },
@@ -170,6 +172,9 @@ class AmbiframePanel extends LitElement {
   /** Seiten-Editor: Anordnung quer oder hoch bearbeiten */
   private layout: Orientation = "landscape";
   private summaryBusy = false;
+  /** Audiodateien aus HA → Medien → Lokale Medien (Vorschläge für eigene Töne) */
+  private mediaSounds: [string, string][] = [];
+  private mediaSoundsLoading = false;
   private summaryNote = "";
   private history: string[] = [];
   private future: string[] = [];
@@ -1165,6 +1170,7 @@ class AmbiframePanel extends LitElement {
             >
           </button>`;
         })}
+        ${this.renderSoundLibrary()}
         <h4>${t("Testen")}</h4>
         <div class="preview small"><af-display preview .hass=${this.hass} .config=${d} display-id=${this.displayId}></af-display></div>
       </section>
@@ -1181,6 +1187,70 @@ class AmbiframePanel extends LitElement {
           : html`<p class="hint">${t("Noch keine Ereignisse – oben „+ Neu“.")}</p>`}
       </section>
     </div>`;
+  }
+
+  /** Audiodateien unter „Lokale Medien“ suchen (zwei Ordnerebenen, höchstens 200) */
+  private async loadMediaSounds(): Promise<void> {
+    if (!this.hass || this.mediaSoundsLoading) return;
+    this.mediaSoundsLoading = true;
+    type Item = { media_content_id: string; title: string; media_class?: string; media_content_type?: string; can_expand?: boolean; children?: Item[] };
+    const found: [string, string][] = [];
+    const walk = async (id: string, depth: number, path: string): Promise<void> => {
+      if (found.length >= 200) return;
+      let item: Item;
+      try {
+        item = await this.hass!.callWS<Item>({ type: "media_source/browse_media", media_content_id: id });
+      } catch {
+        return;
+      }
+      for (const child of item.children ?? []) {
+        const name = path ? `${path}/${child.title}` : child.title;
+        if (child.can_expand) {
+          if (depth < 2) await walk(child.media_content_id, depth + 1, name);
+        } else if (child.media_class === "music" || child.media_content_type?.startsWith("audio/")) {
+          found.push([child.media_content_id, name]);
+        }
+      }
+    };
+    await walk("media-source://media_source/local", 0, "");
+    this.mediaSounds = found;
+  }
+
+  /** Eigene Töne: Name und Quelle (Link, /local/… oder Datei aus HA-Medien), mit Probehören */
+  private renderSoundLibrary() {
+    const d = this.draft!;
+    const list = d.sounds ?? [];
+    if (!this.mediaSoundsLoading) void this.loadMediaSounds();
+    const set = (i: number, key: "name" | "url", value: string) =>
+      this.mutate((dd) => {
+        dd.sounds![i][key] = value;
+      }, `sound-${list[i].id}-${key}`);
+    return html`<h4>${t("Eigene Töne")}</h4>
+      <p class="hint">${t("Audiodatei in HA unter Medien → Lokale Medien hochladen und hier auswählen – oder einen Link eintragen. Danach steht der Ton bei jedem Ereignis zur Wahl.")}</p>
+      ${list.map(
+        (s, i) => html`<div class="sound-row">
+          <input .value=${s.name} placeholder=${t("Name")} @input=${(e: Event) => set(i, "name", (e.target as HTMLInputElement).value)} />
+          <input
+            .value=${s.url}
+            list="af-media-sounds"
+            placeholder="media-source://…, /local/… ${t("oder")} https://…"
+            @input=${(e: Event) => set(i, "url", (e.target as HTMLInputElement).value.trim())}
+          />
+          <button class="small" title=${t("Anhören")} ?disabled=${!s.url} @click=${() => void playSound(s.id, 70, { hass: this.hass, library: list })}>▶</button>
+          <button class="small danger" title=${t("Löschen")} @click=${() => this.mutate((dd) => void dd.sounds!.splice(i, 1))}>✕</button>
+        </div>`,
+      )}
+      <datalist id="af-media-sounds">${this.mediaSounds.map(([value, label]) => html`<option value=${value}>${label}</option>`)}</datalist>
+      <button
+        class="small"
+        @click=${() =>
+          this.mutate((dd) => {
+            const sounds = (dd.sounds ??= []);
+            sounds.push({ id: uniqueId("ton", sounds.map((x) => x.id)), name: t("Mein Ton"), url: "" });
+          })}
+      >
+        ${t("+ Ton hinzufügen")}
+      </button>`;
   }
 
   private renderDesign() {
@@ -2070,6 +2140,15 @@ class AmbiframePanel extends LitElement {
       margin-top: 2px;
       /* lange Entitäten (binary_sensor.…) umbrechen statt über den Rand zu laufen */
       overflow-wrap: anywhere;
+    }
+    .sound-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) auto auto;
+      gap: 6px;
+      margin: 6px 0;
+    }
+    .sound-row input {
+      min-width: 0;
     }
     .entry.off {
       opacity: 0.55;

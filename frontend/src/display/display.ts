@@ -1,5 +1,5 @@
 // Die Anzeige: Wiedergabeliste, Ereignisse (Vollbild, Bild-im-Bild, Hinweis), Nacht und Bedienmodus
-import { resolveLang, setLang, t } from "../i18n";
+import { locale, resolveLang, setLang, t } from "../i18n";
 import { LitElement, css, html, nothing, type PropertyValues } from "lit";
 import { keyed } from "lit/directives/keyed.js";
 import { repeat } from "lit/directives/repeat.js";
@@ -46,6 +46,17 @@ interface Chip {
   icon?: string;
   text: string;
   at: Date;
+  /** Zeitpunkt (ms), ab dem die Erinnerung verschwindet; fehlt = bis angetippt */
+  until?: number;
+}
+/** Eintrag der Mitteilungszentrale (was auf diesem Display erschienen ist) */
+interface HistoryEntry {
+  id: string;
+  kind: string;
+  icon?: string;
+  title: string;
+  where?: string;
+  at: number;
 }
 /** Ein Ereignis zeigt eine Seite anstelle der Wiedergabeliste. */
 interface Takeover {
@@ -163,6 +174,8 @@ export class AfDisplay extends LitElement {
     notice: { state: true },
     media: { state: true },
     chips: { state: true },
+    chipsOpen: { state: true },
+    historyOpen: { state: true },
     controlOpen: { state: true },
     controlLeft: { state: true },
     popup: { state: true },
@@ -224,6 +237,8 @@ export class AfDisplay extends LitElement {
   private toast?: { text: string; seq: number; bad?: boolean };
   private toastTimer?: number;
   private ringTimer?: number;
+  /** Ereignis, dessen Ton gerade (wiederholt) spielt */
+  private ringFor = "";
   private pausedPage?: string;
 
   private layers: Layer[] = [];
@@ -232,6 +247,17 @@ export class AfDisplay extends LitElement {
   private notice?: NoticeOverlay;
   private media?: MediaOverlay;
   private chips: Chip[] = [];
+  private chipsOpen = false;
+  /** Mitteilungszentrale: Einträge, für welches Display geladen, offen, Timer zum Schließen */
+  private history: HistoryEntry[] = [];
+  private historyLoaded = "";
+  private historyOpen = false;
+  private historyTimer?: number;
+  private chipsTimer?: number;
+  /** Mini-Karte: aktueller Titel (Ereignis|Titel) und seit wann er gezeigt wird; ob sie gerade zu sehen ist */
+  private miniKey = "";
+  private miniSince = 0;
+  private miniShown = false;
   private controlOpen = false;
   /** Schnellmenü (lang auf eine freie Stelle drücken) */
   private menu = false;
@@ -290,7 +316,8 @@ export class AfDisplay extends LitElement {
     this.mediaPoll = window.setInterval(() => this.mediaTick(), 15e3);
     // Mini-Karte: Fortschritt nachführen und nach der Pause wieder ausblenden
     this.miniTicker = window.setInterval(() => {
-      if (this.nowPlaying()) this.requestUpdate();
+      if (this.nowPlaying() || this.miniShown) this.requestUpdate();
+      this.pruneChips();
     }, 5e3);
     if (this.started) this.restart();
   }
@@ -584,8 +611,8 @@ export class AfDisplay extends LitElement {
         }
         // „Jede Änderung“ ist ein Moment, kein Zustand – Ende nur über Dauer oder Antippen
         if (ev.to === "*") continue;
-        // Gerät läuft wieder → Erinnerung erledigt
-        if (ev.kind === "info" && ev.from && n.state === ev.from) this.removeChip(ev.id);
+        // Gerät läuft wieder → Erinnerung erledigt (abschaltbar)
+        if (ev.kind === "info" && ev.from && n.state === ev.from && ev.reminder_clear !== false) this.removeChip(ev.id);
         // Klingel vorbei → noch kurz stehen lassen
         if (this.alarm?.ev.id === ev.id && n.state !== ev.to) this.holdAlarm();
         // Melder wieder aus → Ende der Ereignis-Seite neu berechnen
@@ -608,9 +635,13 @@ export class AfDisplay extends LitElement {
     if (quiet && ev.quiet_action === "skip") return;
     const allowedAtNight = ev.at_night ?? ev.kind === "alarm";
     if (this.night && !allowedAtNight) {
-      if (ev.kind === "info") this.addChip(ev, new Date());
+      if (ev.kind === "info") {
+        this.addChip(ev, new Date());
+        this.remember(ev);
+      }
       return;
     }
+    if (ev.kind !== "media") this.remember(ev);
     if (ev.sound && ev.kind !== "media" && !quiet && !this.displayMuted()) this.ring(ev);
     if (ev.kind === "media") {
       // Liedwechsel weckt den Bildschirm nicht; die Mini-Karte steht ohnehin, solange etwas läuft
@@ -663,19 +694,35 @@ export class AfDisplay extends LitElement {
     return ((ev.volume ?? 70) * (this.display?.sound?.volume ?? 100)) / 100;
   }
 
-  /** Ton zum Ereignis; „alarm“ wiederholt sich alle 4 s, solange der Alarm offen ist (höchstens 2 min) */
+  /** Ist die Einblendung dieses Ereignisses noch zu sehen? (Wiederholen „bis angetippt“) */
+  private showing(ev: EventConfig): boolean {
+    return [this.alarm?.ev, this.pip?.ev, this.notice?.ev, this.takeover?.ev].some((x) => x?.id === ev.id);
+  }
+
+  /**
+   * Ton zum Ereignis. Wiederholen (sound_repeat): einmal, n-mal oder „loop“ – solange die Einblendung offen ist,
+   * höchstens 2 min; Abstand sound_interval (4 s). Ohne Angabe wiederholt sich nur der Ton „alarm“ beim Vollbild-Alarm.
+   */
   private ring(ev: EventConfig): void {
     clearInterval(this.ringTimer);
-    playSound(ev.sound!, this.volumeFor(ev));
-    if (ev.sound !== "alarm" || ev.kind !== "alarm") return;
+    this.ringFor = ev.id;
+    const play = (): void => void playSound(ev.sound!, this.volumeFor(ev), { hass: this.hass, library: this.config?.sounds });
+    play();
+    const repeat = ev.sound_repeat ?? (ev.sound === "alarm" && ev.kind === "alarm" ? "loop" : "once");
+    if (repeat === "once") return;
+    let left = repeat === "loop" ? Infinity : Number(repeat) - 1;
     const until = Date.now() + 120e3;
-    this.ringTimer = window.setInterval(() => {
-      if (this.alarm?.ev.id !== ev.id || Date.now() > until) {
-        clearInterval(this.ringTimer);
-        return;
-      }
-      playSound(ev.sound!, this.volumeFor(ev));
-    }, 4000);
+    this.ringTimer = window.setInterval(
+      () => {
+        if (left <= 0 || Date.now() > until || (repeat === "loop" && !this.showing(ev))) {
+          clearInterval(this.ringTimer);
+          return;
+        }
+        left -= 1;
+        play();
+      },
+      (ev.sound_interval ?? 4) * 1000,
+    );
   }
 
   testEvent(id: string): void {
@@ -714,7 +761,8 @@ export class AfDisplay extends LitElement {
 
   private closeAlarm(): void {
     clearTimeout(this.alarmTimer);
-    if (this.alarm?.ev.sound === "alarm") {
+    // Wiederholter Ton gehört zu diesem Alarm: mit dem Antippen/Schließen verstummen
+    if (this.alarm && this.ringFor === this.alarm.ev.id && (this.alarm.ev.sound_repeat ?? (this.alarm.ev.sound === "alarm" ? "loop" : "once")) !== "once") {
       clearInterval(this.ringTimer);
       stopSound();
     }
@@ -863,8 +911,122 @@ export class AfDisplay extends LitElement {
     }
   }
 
+  /** Erinnerung oben rechts – abschaltbar pro Ereignis (reminder: „off“) und pro Display (reminders: false) */
   private addChip(ev: EventConfig, at: Date): void {
-    this.chips = [...this.chips.filter((c) => c.id !== ev.id), { id: ev.id, icon: ev.icon, text: ev.chip ?? ev.title, at }];
+    if (ev.reminder === "off" || this.display?.reminders === false) return;
+    const until = typeof ev.reminder === "number" ? Date.now() + ev.reminder * 60e3 * this.speed : undefined;
+    this.chips = [...this.chips.filter((c) => c.id !== ev.id), { id: ev.id, icon: ev.icon, text: ev.chip ?? ev.title, at, until }];
+  }
+
+  /**
+   * Erinnerungen oben rechts. Ab `reminders_stack` (Standard 3, 0 = nie) liegen sie als Stapel mit Zahl übereinander –
+   * wie Mitteilungen bei iOS; Antippen klappt ihn auf (nach 20 s wieder zu), dort auch „Alle entfernen“.
+   */
+  private renderChips() {
+    if (!this.chips.length || this.alarm) return nothing;
+    const chip = (c: Chip) => html`<div class="chip" data-id=${c.id}>${icon(c.icon)}<span>${c.text}</span><span class="faint num">${fmtTime(c.at)}</span></div>`;
+    const limit = this.display?.reminders_stack ?? 3;
+    const newest = [...this.chips].reverse();
+    if (!limit || this.chips.length < limit) return html`<div class="chips">${this.chips.map(chip)}</div>`;
+    if (!this.chipsOpen) {
+      return html`<div class="chips stack" data-open="1">
+        ${chip(newest[0])}
+        <span class="layer l1"></span><span class="layer l2"></span>
+        <span class="count num">${this.chips.length}</span>
+      </div>`;
+    }
+    return html`<div class="chips open">
+      ${newest.map(chip)}
+      <div class="chip clear" data-clear="1">${icon("close")}<span>${t("Alle entfernen")}</span></div>
+      ${this.display?.history === false ? nothing : html`<div class="chip clear" data-history="1">${icon("bell")}<span>${t("Verlauf")}</span></div>`}
+    </div>`;
+  }
+
+  private toggleChips(open: boolean): void {
+    clearTimeout(this.chipsTimer);
+    this.chipsOpen = open;
+    if (open) this.chipsTimer = window.setTimeout(() => (this.chipsOpen = false), 20e3);
+  }
+
+  /* ───────── Mitteilungszentrale ───────── */
+
+  private get historyKey(): string {
+    return `ambiframe-history-${this.display?.id ?? ""}`;
+  }
+
+  /** Bisherige Mitteilungen dieses Displays (überlebt ein Neuladen), nur innerhalb von history_hours */
+  private loadHistory(): HistoryEntry[] {
+    if (this.historyLoaded === this.historyKey) return this.history;
+    this.historyLoaded = this.historyKey;
+    try {
+      this.history = JSON.parse(readLocal(this.historyKey) ?? "[]") as HistoryEntry[];
+    } catch {
+      this.history = [];
+    }
+    return this.pruneHistory();
+  }
+
+  private pruneHistory(): HistoryEntry[] {
+    const since = Date.now() - (this.display?.history_hours ?? 24) * 3600e3;
+    this.history = this.history.filter((h) => h.at >= since).slice(-100);
+    return this.history;
+  }
+
+  /** Ereignis in den Verlauf schreiben (nicht in Vorschauen, nicht bei abgeschaltetem Verlauf) */
+  private remember(ev: EventConfig): void {
+    if (this.preview || this.display?.history === false) return;
+    this.loadHistory();
+    const title = ev.title || ev.name || ev.chip || ev.id;
+    this.history = [...this.history, { id: ev.id, kind: ev.kind, icon: ev.icon, title, where: ev.where || undefined, at: Date.now() }];
+    this.pruneHistory();
+    writeLocal(this.historyKey, JSON.stringify(this.history));
+  }
+
+  private openHistory(open: boolean): void {
+    clearTimeout(this.historyTimer);
+    this.historyOpen = open;
+    this.toggleChips(false);
+    if (open) this.historyTimer = window.setTimeout(() => (this.historyOpen = false), 60e3);
+  }
+
+  /** Liste wie die Mitteilungszentrale bei iOS: neueste oben, nach Tagen gruppiert */
+  private renderHistory() {
+    if (!this.historyOpen) return nothing;
+    const list = [...this.loadHistory()].reverse();
+    const day = (at: number) => {
+      const d = new Date(at);
+      const today = new Date();
+      const diff = Math.round((new Date(today.toDateString()).getTime() - new Date(d.toDateString()).getTime()) / 864e5);
+      return diff === 0 ? t("Heute") : diff === 1 ? t("Gestern") : d.toLocaleDateString(locale(), { weekday: "long", day: "numeric", month: "long" });
+    };
+    let last = "";
+    return html`<div class="hcenter" role="dialog" aria-label=${t("Mitteilungen")}>
+      <div class="qhead">
+        <span>${t("Mitteilungen")}</span>
+        <button class="qclose" data-hclose="1" aria-label=${t("Schließen")}>${icon("close")}</button>
+      </div>
+      <div class="hlist">
+        ${list.length
+          ? list.map((h) => {
+              const label = day(h.at);
+              const head = label !== last ? html`<div class="hday">${label}</div>` : nothing;
+              last = label;
+              return html`${head}<div class="hrow">
+                  ${icon(h.icon ?? (h.kind === "alarm" ? "bell" : h.kind === "live" ? "camera" : "info"))}
+                  <div class="htext"><div>${h.title}</div>${h.where ? html`<div class="faint">${h.where}</div>` : nothing}</div>
+                  <span class="faint num">${fmtTime(new Date(h.at))}</span>
+                </div>`;
+            })
+          : html`<div class="hempty">${t("Keine Mitteilungen")}</div>`}
+      </div>
+      ${list.length ? html`<button class="hclear" data-hclear="1">${t("Verlauf leeren")}</button>` : nothing}
+    </div>`;
+  }
+
+  /** Abgelaufene Erinnerungen entfernen */
+  private pruneChips(): void {
+    const now = Date.now();
+    if (this.chips.some((c) => c.until && c.until <= now)) this.chips = this.chips.filter((c) => !c.until || c.until > now);
   }
 
   private removeChip(id: string): void {
@@ -1025,8 +1187,30 @@ export class AfDisplay extends LitElement {
       return;
     }
     const hit = (cls: string) => path.some((el) => el.classList?.contains(cls));
+    // Mitteilungszentrale: schließen, leeren; Antippen daneben schließt
+    if (this.historyOpen) {
+      if (path.some((el) => el.dataset?.hclear)) {
+        this.history = [];
+        writeLocal(this.historyKey, "[]");
+        this.requestUpdate();
+        return;
+      }
+      if (path.some((el) => el.dataset?.hclose) || !path.some((el) => el.classList?.contains("hcenter"))) this.openHistory(false);
+      return;
+    }
+    if (path.some((el) => el.dataset?.history)) return this.openHistory(true);
+    // Gestapelte Erinnerungen: erst aufklappen, dann einzeln oder alle entfernen
+    if (path.some((el) => el.dataset?.open)) return this.toggleChips(true);
+    if (path.some((el) => el.dataset?.clear)) {
+      this.chips = [];
+      return this.toggleChips(false);
+    }
     const chip = path.find((el) => el.classList?.contains("chip"));
-    if (chip) return this.removeChip(chip.dataset.id ?? "");
+    if (chip) {
+      this.removeChip(chip.dataset.id ?? "");
+      if (this.chipsOpen) this.toggleChips(this.chips.length > 0);
+      return;
+    }
     if (this.ask) return;
     if (this.popup) {
       if (!hit("pbox")) this.closePopup();
@@ -1147,18 +1331,39 @@ export class AfDisplay extends LitElement {
   }
 
   /** Mini-Karte: Player, der gerade spielt (oder vor weniger als 2 min pausiert wurde), für ein Ereignis mit style „mini“ */
+  /**
+   * Mini-Karte: was gerade läuft. Pro Ereignis einstellbar: Bedingungen (show_if), Ruhezeit („nicht zeigen“),
+   * nachts, je Titel nach mini_duration s ausblenden (fehlt = dauerhaft), nach Pause noch mini_paused s (Standard 120).
+   */
   private nowPlaying(): { ev: EventConfig; s: HassEntity } | undefined {
+    const found = this.findPlaying();
+    this.miniShown = !!found;
+    return found;
+  }
+
+  private findPlaying(): { ev: EventConfig; s: HassEntity } | undefined {
     if (this.fixedPage && !this.preview) return undefined;
     for (const ev of this.eventsForDisplay()) {
       if (ev.kind !== "media" || ev.style !== "mini") continue;
       if (this.night && !ev.at_night) continue;
+      if (this.inQuiet(ev) && ev.quiet_action === "skip") continue;
+      if (!checkConditions(this.hass, ev.show_if, { display: this.display?.id, orientation: this.orient })) continue;
       const states = triggersOf(ev)
         .map((id) => this.hass?.states[id])
         .filter((x): x is HassEntity => !!x?.attributes.media_title);
+      const pausedFor = (ev.mini_paused ?? 120) * 1000;
       const playing = states.find((x) => x.state === "playing");
-      const paused = states.find((x) => x.state === "paused" && Date.now() - new Date(x.last_changed).getTime() < 120e3);
+      const paused = states.find((x) => x.state === "paused" && Date.now() - new Date(x.last_changed).getTime() < pausedFor);
       const s = playing ?? paused;
-      if (s) return { ev, s };
+      if (!s) continue;
+      // Je Titel nur eine Weile zeigen: Startzeit des aktuellen Titels merken
+      const key = `${ev.id}|${mediaKey(s)}`;
+      if (key !== this.miniKey) {
+        this.miniKey = key;
+        this.miniSince = Date.now();
+      }
+      if (ev.mini_duration && Date.now() - this.miniSince > ev.mini_duration * 1000 * this.speed) continue;
+      return { ev, s };
     }
     return undefined;
   }
@@ -1178,15 +1383,18 @@ export class AfDisplay extends LitElement {
     let pos = Number(a.media_position);
     if (s.state === "playing" && a.media_position_updated_at) pos += (Date.now() - new Date(a.media_position_updated_at).getTime()) / 1000;
     const key = `${a.media_title}|${a.media_artist ?? ""}`;
-    return html`<div class="mmini ${s.state}" data-entity=${s.entity_id}>
-      ${keyed(key, html`<div class="art" style=${pic ? `background-image:url('${pic}')` : ""}>${pic ? nothing : icon("music")}</div>`)}
+    const look = [`pos-${ev.mini_position ?? "bottom-right"}`, ev.mini_size ? `size-${ev.mini_size}` : "", ev.mini_background === "none" ? "bare" : ""].join(" ");
+    return html`<div class="mmini ${s.state} ${look}" data-entity=${s.entity_id}>
+      ${ev.mini_cover === false
+        ? nothing
+        : keyed(key, html`<div class="art" style=${pic ? `background-image:url('${pic}')` : ""}>${pic ? nothing : icon("music")}</div>`)}
       ${keyed(
         key,
         html`<div class="mtext">
           <div class="mlabel">${icon("music")}<span>${s.state === "paused" ? t("Pausiert") : t("Läuft gerade")}${where ? ` · ${where}` : ""}</span></div>
           <div class="mtitle display">${a.media_title ?? ""}</div>
           ${a.media_artist ? html`<div class="martist">${a.media_artist}</div>` : nothing}
-          ${dur > 0 && Number.isFinite(pos)
+          ${ev.mini_progress !== false && dur > 0 && Number.isFinite(pos)
             ? html`<div class="bar"><i style="transform:scaleX(${Math.min(1, Math.max(0, pos / dur))})"></i></div>`
             : nothing}
         </div>`,
@@ -1298,6 +1506,10 @@ export class AfDisplay extends LitElement {
         this.closeMenu();
         this.openControl();
         break;
+      case "history":
+        this.closeMenu();
+        this.openHistory(true);
+        break;
       case "reload":
         // Selbst ausgelöst – zählt nicht als Neustart-Schleife
         writeLocal("ambiframe-planned-reload", String(Date.now()));
@@ -1318,6 +1530,7 @@ export class AfDisplay extends LitElement {
       ["brighter", "sun", t("Heller"), !!f?.setScreenBrightness],
       ["screen", "moon", t("Bildschirm aus"), !!f?.turnScreenOff],
       ["dashboard", "home", t("Dashboard"), this.display?.control?.enabled !== false],
+      ["history", "bell", this.loadHistory().length ? t("Mitteilungen ({n})", { n: this.history.length }) : t("Mitteilungen"), this.display?.history !== false],
       ["reload", "reload", t("Neu laden"), true],
     ];
     return html`<div class="qmenu" role="dialog" aria-label=${t("Schnellmenü")}>
@@ -1395,13 +1608,9 @@ export class AfDisplay extends LitElement {
             .orientation=${this.orient}
           ></af-page>`,
       )}
-      ${this.chips.length && !this.alarm
-        ? html`<div class="chips">
-            ${this.chips.map((c) => html`<div class="chip" data-id=${c.id}>${icon(c.icon)}<span>${c.text}</span><span class="faint num">${fmtTime(c.at)}</span></div>`)}
-          </div>`
-        : nothing}
+      ${this.renderChips()}
       ${this.renderMini()} ${this.renderMedia()} ${this.renderPip()} ${this.renderPopup()} ${this.renderNotice()} ${this.renderAlarm()}
-      ${this.renderAsk()} ${this.renderToast()} ${this.renderNav()} ${this.renderMenu()}
+      ${this.renderAsk()} ${this.renderToast()} ${this.renderNav()} ${this.renderMenu()} ${this.renderHistory()}
     </div>
     ${this.renderControl()}`;
   }
@@ -1540,6 +1749,77 @@ export class AfDisplay extends LitElement {
       }
 
       /* Schnellmenü: ruhige Glaskarte unten in der Mitte, große Ziele für Finger */
+      .hcenter {
+        position: absolute;
+        top: 30px;
+        right: 40px;
+        bottom: 30px;
+        z-index: 58;
+        width: min(560px, calc(100% - 80px));
+        box-sizing: border-box;
+        display: flex;
+        flex-direction: column;
+        padding: 18px 20px 20px;
+        border-radius: 30px;
+        background: var(--af-panel);
+        border: 1px solid var(--af-line);
+        box-shadow: var(--af-shadow);
+        backdrop-filter: blur(28px) saturate(1.2);
+        -webkit-backdrop-filter: blur(28px) saturate(1.2);
+        animation: pip-in 0.5s var(--af-ease) backwards;
+      }
+      .hlist {
+        flex: 1;
+        min-height: 0;
+        overflow-y: auto;
+      }
+      .hday {
+        margin: 14px 4px 6px;
+        font-size: calc(14px * var(--af-fs, 1));
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--af-ink-3);
+      }
+      .hrow {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 12px 14px;
+        margin-bottom: 8px;
+        border-radius: 18px;
+        background: var(--af-chip);
+        border: 1px solid var(--af-line);
+        font-size: calc(18px * var(--af-fs, 1));
+      }
+      .hrow .ic {
+        font-size: 24px;
+        color: var(--af-accent);
+      }
+      .htext {
+        flex: 1;
+        min-width: 0;
+      }
+      .htext .faint {
+        font-size: 0.8em;
+      }
+      .hempty {
+        padding: 40px 0;
+        text-align: center;
+        color: var(--af-ink-3);
+      }
+      .hcenter .hclear,
+      .hcenter .qclose {
+        font: inherit;
+        color: var(--af-ink);
+        background: var(--af-surface, transparent);
+        border: 1px solid var(--af-line);
+        border-radius: 999px;
+        cursor: pointer;
+      }
+      .hcenter .hclear {
+        margin-top: 12px;
+        padding: 10px;
+      }
       .qmenu {
         position: absolute;
         left: 50%;
@@ -1673,6 +1953,62 @@ export class AfDisplay extends LitElement {
       .chip .ic {
         font-size: calc(20px * var(--af-fs, 1));
         color: var(--af-accent);
+      }
+      /* Stapel wie bei iOS: oberste Erinnerung, darunter angedeutete Karten, Zahl in der Ecke */
+      .chips.stack {
+        position: absolute;
+        cursor: pointer;
+      }
+      .chips.stack .chip {
+        position: relative;
+        z-index: 2;
+      }
+      .chips.stack .layer {
+        position: absolute;
+        left: 10px;
+        right: 10px;
+        height: 100%;
+        border-radius: 999px;
+        background: var(--af-chip);
+        border: 1px solid var(--af-line);
+        backdrop-filter: blur(14px);
+        -webkit-backdrop-filter: blur(14px);
+      }
+      .chips.stack .l1 {
+        top: 9px;
+        z-index: 1;
+        opacity: 0.85;
+        transform: scale(0.95);
+      }
+      .chips.stack .l2 {
+        top: 17px;
+        z-index: 0;
+        opacity: 0.6;
+        transform: scale(0.88);
+      }
+      .chips.stack .count {
+        position: absolute;
+        top: -9px;
+        right: -9px;
+        z-index: 3;
+        min-width: 26px;
+        height: 26px;
+        padding: 0 7px;
+        box-sizing: border-box;
+        border-radius: 999px;
+        display: grid;
+        place-items: center;
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--af-bg, #000);
+        background: var(--af-accent);
+      }
+      .chips.open {
+        flex-direction: column;
+        align-items: flex-end;
+      }
+      .chip.clear {
+        opacity: 0.8;
       }
       @keyframes chip-in {
         from {
@@ -2122,6 +2458,34 @@ export class AfDisplay extends LitElement {
       }
       .mmini.paused {
         opacity: 0.7;
+      }
+      /* Optik pro Ereignis: Ecke, Größe, ohne Hintergrund */
+      .mmini.pos-bottom-left {
+        right: auto;
+        left: 32px;
+      }
+      .mmini.pos-top-right,
+      .mmini.pos-top-left {
+        bottom: auto;
+        top: 32px;
+      }
+      .mmini.pos-top-left {
+        right: auto;
+        left: 32px;
+      }
+      .mmini.size-small {
+        zoom: 0.8;
+      }
+      .mmini.size-large {
+        zoom: 1.3;
+      }
+      .mmini.bare {
+        background: none;
+        border-color: transparent;
+        box-shadow: none;
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+        text-shadow: 0 1px 12px rgba(0, 0, 0, 0.45);
       }
       .mmini .art {
         width: 84px;

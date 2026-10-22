@@ -13,7 +13,7 @@ from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.event import TrackTemplate, TrackTemplateResult, async_track_template_result
 from homeassistant.helpers.template import Template
 
-from .const import DATA_WS_REGISTERED, DOMAIN, SIGNAL_CONFIG_UPDATED
+from .const import DATA_WS_REGISTERED, DOMAIN, LANGUAGES, SIGNAL_CONFIG_UPDATED
 from .daily import ARTICLE_LANGUAGES, QUOTE_SOURCES
 from .defaults import build_default_config
 from .lang import resolve_lang
@@ -80,7 +80,7 @@ def ws_subscribe_config(hass: HomeAssistant, connection: websocket_api.ActiveCon
 
 
 @websocket_api.websocket_command(
-    {vol.Required("type"): "ambiframe/config/save", vol.Required("config"): dict, vol.Optional("language", default="de"): vol.In(["de", "en"])}
+    {vol.Required("type"): "ambiframe/config/save", vol.Required("config"): dict, vol.Optional("language", default="de"): vol.In(LANGUAGES)}
 )
 @websocket_api.require_admin
 @websocket_api.async_response

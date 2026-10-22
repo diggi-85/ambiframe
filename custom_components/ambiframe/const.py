@@ -31,6 +31,8 @@ DATA_STREAM_VIEW: Final = f"{DOMAIN}_stream_view"
 
 BING_URL: Final = "https://www.bing.com/HPImageArchive.aspx"
 BING_CACHE_SECONDS: Final = 6 * 3600
+# Sprachen von Anzeige, Editor und Zusammenfassung (Deutsch ist der Quelltext)
+LANGUAGES: Final = ("de", "en", "nl", "fr")
 # Regionen der Bing-Bilder, die im Editor wählbar sind (photos.bing_market); ohne Wahl: nach der HA-Sprache
 BING_MARKETS: Final = ("de-DE", "de-AT", "de-CH", "en-US", "en-GB", "en-CA", "en-AU", "en-IN", "fr-FR", "es-ES", "it-IT", "nl-NL", "ja-JP", "zh-CN", "pt-BR")
 PRICE_CACHE_SECONDS: Final = 15 * 60

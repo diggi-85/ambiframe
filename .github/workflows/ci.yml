@@ -19,8 +19,6 @@ jobs:
       - uses: hacs/action@main
         with:
           category: integration
-          # Noch nicht im home-assistant/brands-Repository eingetragen
-          ignore: brands
 
   python:
     name: Python-Tests

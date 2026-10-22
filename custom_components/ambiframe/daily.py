@@ -25,7 +25,7 @@ from homeassistant.util import dt as dt_util
 _LOGGER = logging.getLogger(__name__)
 
 # Wikimedia bittet um eine erkennbare Kennung
-HEADERS = {"User-Agent": "Ambiframe/0.2.3 (Home Assistant integration; https://github.com/diggi-85/ambiframe)"}
+HEADERS = {"User-Agent": "Ambiframe/0.3.0 (Home Assistant integration; https://github.com/diggi-85/ambiframe)"}
 TIMEOUT = aiohttp.ClientTimeout(total=20)
 
 
@@ -71,6 +71,8 @@ class DailyService:
     async def async_get(self, kind: str, lang: str, source: str | None = None) -> dict[str, Any] | None:
         """kind „article“ (lang: Wikipedia-Sprache) oder „quote“ (source: wikiquote | zenquotes, sonst nach Sprache)."""
         today = dt_util.now().date()
+        if kind == "article" and lang not in ARTICLE_LANGUAGES:
+            lang = "en"
         if kind == "quote":
             source = source if source in QUOTE_SOURCES else ("wikiquote" if lang == "de" else "zenquotes")
         key = (kind, source or lang, today.isoformat())

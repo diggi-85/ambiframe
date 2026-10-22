@@ -22,6 +22,9 @@ from .lang import resolve_lang
 if TYPE_CHECKING:
     from .store import AmbiframeStore
 
+# Sprache der Antwort (für den Prompt an die KI)
+_LANGUAGE_NAMES = {"en": "Englisch (britisches Englisch)", "nl": "Niederländisch", "fr": "Französisch"}
+
 _LOGGER = logging.getLogger(__name__)
 
 SIGNAL_SUMMARY_UPDATED = f"{DOMAIN}_summary_updated"
@@ -378,11 +381,12 @@ class SummaryService:
             period = _period(now)
             data = await self.async_collect(now, period)
             style = STYLES.get(self.settings.get("style", "facts"), STYLES["facts"])
+            language = resolve_lang(self.hass, self.store.config)
             answer_in = (
                 "Antworte auf Deutsch."
-                if resolve_lang(self.hass, self.store.config) == "de"
-                else "Antworte auf Englisch (britisches Englisch) und übersetze auch Zeitangaben und Namen aus den "
-                "Daten (heute → today, morgen → tomorrow, Wochentage, Mülltonnen)."
+                if language == "de"
+                else f"Antworte auf {_LANGUAGE_NAMES.get(language, 'Englisch (britisches Englisch)')} und übersetze auch "
+                "Zeitangaben und Namen aus den Daten (heute, morgen, Wochentage, Mülltonnen)."
             )
             focus = {
                 "morning": "Schwerpunkt: der heutige Tag.",

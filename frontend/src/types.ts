@@ -175,9 +175,25 @@ export interface EventConfig {
   cooldown?: number;
   at_night?: boolean;
   displays?: string[];
-  /** Ton: gong | dingdong | glocke | alarm | Link; Lautstärke 0–100 */
+  /** Ton: mitgelieferter (gong, alarm …), eigener aus der Tonbibliothek (ID) oder Link/„media-source://…“; Lautstärke 0–100 */
   sound?: string;
   volume?: number;
+  /** Wiederholen: einmal (Standard), n-mal oder „loop“ = bis angetippt/geschlossen (höchstens 2 min); Abstand in s */
+  sound_repeat?: "once" | "loop" | number;
+  sound_interval?: number;
+  /** Erinnerung oben rechts (Hinweise): fehlt = bleibt bis angetippt, „off“ = keine, Zahl = nach so vielen Minuten weg */
+  reminder?: "off" | number;
+  /** Erinnerung verschwindet, sobald der Auslöser wieder in den Ausgangszustand wechselt (Standard: ja) */
+  reminder_clear?: boolean;
+  /** Mini-Karte (Medien): nach so vielen Sekunden je Titel ausblenden (fehlt = dauerhaft); nach Pause noch so lange zeigen */
+  mini_duration?: number;
+  mini_paused?: number;
+  /** Optik der Mini-Karte: Ecke, Größe, Cover, Fortschrittsbalken, Hintergrund */
+  mini_position?: "bottom-right" | "bottom-left" | "top-right" | "top-left";
+  mini_size?: "small" | "large";
+  mini_cover?: boolean;
+  mini_progress?: boolean;
+  mini_background?: "none";
   /** Ruhezeit „HH:MM“–„HH:MM“: stumm (mute) oder gar nicht zeigen (skip) */
   quiet?: { after?: string; before?: string };
   quiet_action?: "mute" | "skip";
@@ -220,6 +236,13 @@ export interface DisplayConfig {
   profile?: string;
   /** Nachrichten-Laufband zeigen; fehlt = an, außer beim Profil Fernseher (im Videostream immer aus) */
   ticker?: boolean;
+  /** Erinnerungen oben rechts zeigen (fehlt = an) */
+  reminders?: boolean;
+  /** Ab so vielen Erinnerungen zu einem Stapel mit Zahl zusammenfassen (fehlt = 3, 0 = nie) */
+  reminders_stack?: number;
+  /** Mitteilungszentrale: Verlauf der Ereignisse (fehlt = an) und wie weit er zurückreicht (Stunden, Standard 24) */
+  history?: boolean;
+  history_hours?: number;
   /** Dezente Pfeile unten links/rechts zum Blättern; fehlt = an, wenn das Display bedient wird */
   nav?: boolean;
   /** OLED-Schutz: Anzeige wandert alle paar Minuten um wenige Pixel */
@@ -235,6 +258,12 @@ export type DisplayDesign = Partial<
 export type TextSize = "normal" | "large" | "xlarge";
 
 export type Theme = "ruhig" | "klar" | "gold" | "glass" | "editorial" | "minimal" | "aurora";
+
+export interface SoundConfig {
+  id: string;
+  name: string;
+  url: string;
+}
 
 export interface AmbiframeConfig {
   version: number;
@@ -255,7 +284,7 @@ export interface AmbiframeConfig {
     /** Eckenradius der Karten in px */
     radius?: number;
     /** Sprache von Anzeige und Editor: auto (wie der HA-Benutzer), de oder en */
-    language?: "auto" | "de" | "en";
+    language?: "auto" | "de" | "en" | "nl" | "fr";
     /** Lesbarkeit: Größe der kleineren Texte und Kontrast der gedämpften Schrift */
     text_size?: TextSize;
     contrast?: "normal" | "high";
@@ -266,6 +295,8 @@ export interface AmbiframeConfig {
   };
   photos: { folder: string; bing: boolean; bing_mix?: boolean; bing_market?: string; credit: boolean; icloud?: string };
   /** KI-Zusammenfassung (ai_task, bevorzugt Gemini) */
+  /** Eigene Töne für Ereignisse: Name und Quelle (Link, /local/… oder media-source://…) */
+  sounds?: SoundConfig[];
   summary?: { enabled?: boolean; times?: string[]; ai_task?: string; style?: "facts" | "friendly" };
   displays: DisplayConfig[];
   pages: PageConfig[];

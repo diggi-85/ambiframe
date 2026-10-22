@@ -1,0 +1,119 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Ambiframe",
+        "description": "Ambiframe transforme tablettes et téléviseurs en affichages d'ambiance paisibles. Après l'installation, ouvrez l'éditeur via l'entrée « Ambiframe » de la barre latérale."
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "Ambiframe est déjà configuré."
+    }
+  },
+  "services": {
+    "import_config": {
+      "name": "Importer la configuration",
+      "description": "Remplace toute la configuration d'Ambiframe (affichages, pages, widgets, événements).",
+      "fields": {
+        "config": {
+          "name": "Configuration",
+          "description": "Configuration sous forme d'objet."
+        },
+        "yaml": {
+          "name": "YAML",
+          "description": "Configuration sous forme de texte YAML."
+        },
+        "file": {
+          "name": "Fichier",
+          "description": "Fichier YAML relatif au dossier de configuration, p. ex. ambiframe/config.yaml."
+        }
+      }
+    },
+    "get_config": {
+      "name": "Obtenir la configuration",
+      "description": "Renvoie la configuration actuelle d'Ambiframe."
+    },
+    "generate_summary": {
+      "name": "Créer le résumé",
+      "description": "Faire rédiger maintenant un nouveau résumé du jour par l'IA (ai_task, p. ex. Gemini)."
+    },
+    "show_on_tv": {
+      "name": "Afficher sur la télévision",
+      "description": "Affiche un écran Ambiframe sur la télévision : Apple TV via AirPlay (le flux vidéo de l'affichage doit être activé), téléviseur LG (webOS) dans son navigateur. L'appareil doit être allumé.",
+      "fields": {
+        "entity_id": {
+          "name": "Télévision",
+          "description": "Apple TV ou téléviseur LG (webOS)."
+        },
+        "display": {
+          "name": "Affichage",
+          "description": "ID de l'affichage, p. ex. tv."
+        },
+        "resolution": {
+          "name": "Résolution",
+          "description": "Apple TV uniquement : 1080p (par défaut) ou 4k."
+        }
+      }
+    },
+    "stop_on_tv": {
+      "name": "Arrêter sur la télévision",
+      "description": "Arrête la diffusion AirPlay d'Ambiframe sur l'Apple TV.",
+      "fields": {
+        "entity_id": {
+          "name": "Apple TV",
+          "description": "Apple TV qui affiche Ambiframe."
+        }
+      }
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "connected": {
+        "name": "Connecté"
+      }
+    },
+    "button": {
+      "next": {
+        "name": "Page suivante"
+      },
+      "reload": {
+        "name": "Recharger"
+      },
+      "generate_summary": {
+        "name": "Créer le résumé"
+      }
+    },
+    "select": {
+      "page": {
+        "name": "Page"
+      }
+    },
+    "sensor": {
+      "last_seen": {
+        "name": "Vu pour la dernière fois"
+      },
+      "summary": {
+        "name": "Résumé"
+      }
+    },
+    "switch": {
+      "pause": {
+        "name": "Pause"
+      },
+      "safe_mode": {
+        "name": "Mode secours"
+      },
+      "tv": {
+        "name": "Sur la télévision"
+      }
+    },
+    "camera": {
+      "stream": {
+        "name": "Flux vidéo"
+      },
+      "stream_1080p": {
+        "name": "Flux vidéo Full HD"
+      }
+    }
+  }
+}

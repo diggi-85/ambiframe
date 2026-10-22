@@ -3,7 +3,7 @@
 import { LitElement, css, html, nothing, type TemplateResult } from "lit";
 import { unsafeSVG } from "lit/directives/unsafe-svg.js";
 import qrcode from "qrcode-generator";
-import { t } from "../i18n";
+import { t, type Lang } from "../i18n";
 import { iconSvg } from "../icons";
 import { SOUNDS, playSound } from "../sound";
 import { THEMES } from "../styles";
@@ -65,7 +65,7 @@ export class AfWizard extends LitElement {
   private name = "";
   private pages = new Set<string>();
   private extras = new Set<string>();
-  private language: "auto" | "de" | "en" = "auto";
+  private language: "auto" | Lang = "auto";
   private theme: Theme = "ruhig";
   private doorbell: EventChoice = { on: false, entity: "", camera: "", sound: "klangschale" };
   private motion: EventChoice = { on: false, entity: "", camera: "", sound: "hinweis" };
@@ -309,6 +309,8 @@ export class AfWizard extends LitElement {
       ["auto", t("automatisch (wie der HA-Benutzer)")],
       ["de", "Deutsch"],
       ["en", "English"],
+      ["nl", "Nederlands"],
+      ["fr", "Français"],
     ];
     return html`<h2>${t("Ein ruhiges Bild – das nur spricht, wenn etwas ist")}</h2>
       <p class="lead">
@@ -316,7 +318,7 @@ export class AfWizard extends LitElement {
       </p>
       <label class="field"
         ><span>${t("Sprache")}</span>
-        <select @change=${(e: Event) => (this.language = (e.target as HTMLSelectElement).value as "auto" | "de" | "en")}>
+        <select @change=${(e: Event) => (this.language = (e.target as HTMLSelectElement).value as "auto" | Lang)}>
           ${langs.map(([v, l]) => html`<option value=${v} ?selected=${this.language === v}>${l}</option>`)}
         </select></label
       >

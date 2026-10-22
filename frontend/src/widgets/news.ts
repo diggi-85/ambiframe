@@ -40,10 +40,23 @@ export const NEWS_PRESETS: [string, string][] = [
   ["abc_au", "ABC News (AU)"],
   ["aljazeera", "Al Jazeera (EN)"],
   ["dw_en", "DW (EN)"],
+  ["nos", "NOS (NL)"],
+  ["nunl", "NU.nl (NL)"],
+  ["vrtnws", "VRT NWS (BE)"],
+  ["lemonde", "Le Monde (FR)"],
+  ["franceinfo", "franceinfo (FR)"],
+  ["rfi", "RFI (FR)"],
+  ["lefigaro", "Le Figaro (FR)"],
 ];
 
 /** Quellen, wenn im Widget keine gewählt sind – passend zur Sprache der Anzeige (wie DEFAULT_FEEDS in news.py) */
-export const defaultFeeds = (): string[] => (lang() === "de" ? ["tagesschau", "ntv", "spiegel"] : ["bbc", "guardian", "npr"]);
+const DEFAULT_FEEDS: Record<string, string[]> = {
+  de: ["tagesschau", "ntv", "spiegel"],
+  en: ["bbc", "guardian", "npr"],
+  nl: ["nos", "nunl", "vrtnws"],
+  fr: ["lemonde", "franceinfo", "rfi"],
+};
+export const defaultFeeds = (): string[] => DEFAULT_FEEDS[lang()] ?? DEFAULT_FEEDS.en;
 
 const REFRESH_MS = 10 * 60e3;
 

@@ -13,6 +13,7 @@ from homeassistant.helpers import config_validation as cv
 from .const import (
     AMBIENTS,
     BING_MARKETS,
+    LANGUAGES,
     CONFIG_VERSION,
     EVENT_KINDS,
     EVENT_KINDS_TITLED,
@@ -221,9 +222,24 @@ EVENT = vol.Schema(
         vol.Optional("cooldown"): _SECONDS_OR_ZERO,
         vol.Optional("at_night"): cv.boolean,
         vol.Optional("displays"): [_ID],
-        # Ton (gong, dingdong, glocke, alarm oder Link) und Lautstärke im Browser
+        # Ton: mitgelieferter, eigener aus der Tonbibliothek (ID) oder Link/media-source://; Lautstärke im Browser
         vol.Optional("sound"): cv.string,
         vol.Optional("volume"): vol.All(vol.Coerce(int), vol.Range(min=0, max=100)),
+        # Wiederholen: once | loop (bis angetippt/geschlossen) | 2–10 Mal; Abstand in s
+        vol.Optional("sound_repeat"): vol.Any(vol.In(["once", "loop"]), vol.All(vol.Coerce(int), vol.Range(min=2, max=10))),
+        vol.Optional("sound_interval"): vol.All(vol.Coerce(float), vol.Range(min=1, max=60)),
+        # Erinnerung oben rechts: „off“ oder nach n Minuten weg (fehlt = bis angetippt); verschwindet beim Neustart des Geräts
+        vol.Optional("reminder"): vol.Any("off", vol.All(vol.Coerce(int), vol.Range(min=1, max=10080))),
+        vol.Optional("reminder_clear"): cv.boolean,
+        # Mini-Karte „Läuft gerade“: je Titel nach n s ausblenden (fehlt = dauerhaft); nach Pause noch n s
+        vol.Optional("mini_duration"): _SECONDS,
+        vol.Optional("mini_paused"): _SECONDS_OR_ZERO,
+        # Optik der Mini-Karte
+        vol.Optional("mini_position"): vol.In(["bottom-right", "bottom-left", "top-right", "top-left"]),
+        vol.Optional("mini_size"): vol.In(["small", "large"]),
+        vol.Optional("mini_cover"): cv.boolean,
+        vol.Optional("mini_progress"): cv.boolean,
+        vol.Optional("mini_background"): vol.In(["none"]),
         # Ruhezeit: stumm (mute) oder gar nicht zeigen (skip)
         vol.Optional("quiet"): vol.Schema({vol.Optional("after"): _TIME, vol.Optional("before"): _TIME}),
         vol.Optional("quiet_action"): vol.In(["mute", "skip"]),
@@ -259,7 +275,7 @@ DISPLAY_DESIGN = vol.Schema(
         vol.Optional("colors"): vol.Schema({vol.Optional("dark"): _COLORS, vol.Optional("light"): _COLORS}),
         vol.Optional("radius"): vol.All(vol.Coerce(int), vol.Range(min=0, max=120)),
         vol.Optional("css"): cv.string,
-        vol.Optional("language"): vol.In(["auto", "de", "en"]),
+        vol.Optional("language"): vol.In(["auto", *LANGUAGES]),
     }
 )
 # Töne pro Display: stumm, Lautstärke (skaliert die des Ereignisses), Ruhezeit „HH:MM“–„HH:MM“
@@ -315,6 +331,13 @@ DISPLAY = vol.Schema(
         vol.Optional("oled"): cv.boolean,
         # Nachrichten-Laufband; fehlt = an, außer beim Profil „tv“ (im Videostream ohnehin aus)
         vol.Optional("ticker"): cv.boolean,
+        # Erinnerungen oben rechts (fehlt = an)
+        vol.Optional("reminders"): cv.boolean,
+        # ab so vielen Erinnerungen zu einem Stapel mit Zahl zusammenfassen (0 = nie)
+        vol.Optional("reminders_stack"): vol.All(vol.Coerce(int), vol.Range(min=0, max=20)),
+        # Mitteilungszentrale: Verlauf an/aus und wie weit zurück (Stunden)
+        vol.Optional("history"): cv.boolean,
+        vol.Optional("history_hours"): vol.All(vol.Coerce(int), vol.Range(min=1, max=168)),
         # Videostream (Kamera-Entität), gerendert vom Puppet-Add-on – nur auf Abruf
         vol.Optional("stream"): vol.Schema(
             {
@@ -370,7 +393,7 @@ CONFIG = vol.Schema(
                 vol.Optional("text_size"): vol.In(TEXT_SIZES),
                 vol.Optional("contrast"): vol.In(CONTRASTS),
                 vol.Optional("css"): cv.string,
-                vol.Optional("language"): vol.In(["auto", "de", "en"]),
+                vol.Optional("language"): vol.In(["auto", *LANGUAGES]),
                 vol.Optional("presets"): [vol.Schema({vol.Required("name"): cv.string, vol.Required("design"): dict})],
             },
             extra=vol.ALLOW_EXTRA,
@@ -406,6 +429,10 @@ CONFIG = vol.Schema(
                 }
             ),
         ),
+        # Eigene Töne (Tonbibliothek): in Ereignissen über die ID wählbar
+        vol.Optional("sounds", default=list): [
+            vol.Schema({vol.Required("id"): _ID, vol.Required("name"): cv.string, vol.Optional("url", default=""): cv.string})
+        ],
         vol.Optional("displays", default=list): [DISPLAY],
         vol.Optional("pages", default=list): [PAGE],
         vol.Optional("events", default=list): [EVENT],
@@ -510,8 +537,8 @@ _EN_PHRASES: list[tuple[str, str]] = [
 
 
 def localize_error(text: str, lang: str) -> str:
-    """Deutsche Fehlermeldung für die Editor-Sprache aufbereiten."""
-    if lang != "en":
+    """Deutsche Fehlermeldung für die Editor-Sprache aufbereiten (außer Deutsch: Englisch)."""
+    if lang == "de":
         return text
     for de, en in _EN_PHRASES:
         text = text.replace(de, en)

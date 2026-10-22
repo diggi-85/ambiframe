@@ -245,9 +245,10 @@ def test_errors_in_english() -> None:
 
 
 def test_language_setting() -> None:
-    assert validate_config(minimal_config(design={"language": "en"}))["design"]["language"] == "en"
+    for language in ("en", "nl", "fr"):
+        assert validate_config(minimal_config(design={"language": language}))["design"]["language"] == language
     with pytest.raises(vol.Invalid):
-        validate_config(minimal_config(design={"language": "fr"}))
+        validate_config(minimal_config(design={"language": "xx"}))
 
 
 def test_display_own_design_sound_and_photos() -> None:
@@ -388,3 +389,25 @@ def test_display_ticker_and_bing_market() -> None:
     raw["photos"] = {"bing_market": "xx-XX"}
     with pytest.raises(vol.Invalid):
         validate_config(raw)
+
+
+def test_sounds_reminders_and_mini_options() -> None:
+    """Eigene Töne, Wiederholen, Erinnerungen und Mini-Karte sind einstellbar; Unsinn wird abgelehnt."""
+    raw = minimal_config()
+    raw["sounds"] = [{"id": "ton", "name": "Gong", "url": "media-source://media_source/local/gong.mp3"}, {"id": "neu", "name": "Leer"}]
+    raw["events"] = [
+        {"id": "fertig", "kind": "info", "entity": "sensor.waschmaschine", "to": "finished", "title": "Fertig",
+         "sound": "ton", "sound_repeat": 3, "sound_interval": 1.5, "reminder": 60, "reminder_clear": False},
+        {"id": "musik", "kind": "media", "entities": ["media_player.x"], "style": "mini", "mini_duration": 30, "mini_paused": 0,
+         "mini_position": "top-left", "mini_size": "large", "mini_cover": False, "mini_progress": False, "mini_background": "none"},
+    ]
+    raw["displays"][0].update(reminders=True, reminders_stack=4)
+    config = validate_config(raw)
+    assert config["sounds"][1]["url"] == ""
+    assert config["events"][0]["reminder"] == 60
+    assert config["events"][1]["mini_position"] == "top-left"
+    for bad in ({"reminder": "nie"}, {"sound_repeat": 20}, {"mini_position": "mitte"}):
+        broken = copy.deepcopy(raw)
+        broken["events"][0].update(bad)
+        with pytest.raises(vol.Invalid):
+            validate_config(broken)

@@ -23,7 +23,7 @@ Ist die Wäsche fertig, steht es kurz da und bleibt dann als kleine Erinnerung.
   </tr>
 </table>
 
-<sub>Bildschirmfotos mit Beispieldaten. Ambiframe richtet sich nach der Sprache des HA-Benutzers (Deutsch und Englisch).</sub>
+<sub>Bildschirmfotos mit Beispieldaten. Ambiframe richtet sich nach der Sprache des HA-Benutzers (Deutsch, Englisch, Niederländisch und Französisch).</sub>
 
 ## Was Ambiframe kann
 
@@ -43,6 +43,14 @@ Ist die Wäsche fertig, steht es kurz da und bleibt dann als kleine Erinnerung.
   jemand tippt) oder eigener Link, auf dem Tablet über Fully; Ruhezeiten (stumm oder gar nicht), „nur wenn jemand
   zu Hause ist“, beliebige Bedingungen und der Auslöser `to: "*"` = jede Änderung – z. B. für Tasten und
   `event.*`-Entitäten (nur frische Ereignisse, optional nur bestimmte `event_types`).
+- **Eigene Töne:** Tonbibliothek im Editor – Dateien aus HA-Medien (`media-source://`), `/local/…` oder ein Link, mit ▶
+  zum Probehören. Pro Ereignis: einmal, 2–10 × oder bis angetippt/geschlossen wiederholen, Abstand einstellbar.
+- **Erinnerungen und Mitteilungszentrale:** Nach einem Hinweis bleibt oben rechts eine kleine Erinnerung – bis man sie
+  antippt, 15 min bis 1 Tag oder gar nicht. Ab mehreren Erinnerungen stapeln sie sich wie Mitteilungen bei iOS mit Zahl;
+  Antippen klappt auf oder entfernt alle. Die Mitteilungszentrale (Schnellmenü → *Mitteilungen*) zeigt, was los war,
+  nach Tagen gruppiert.
+- **Mini-Karte „Läuft gerade“:** dauerhaft oder je Titel eine Weile, wie lange nach einer Pause, Bedingungen und
+  Ruhezeiten, Ecke, Größe, Cover, Fortschritt und Hintergrund.
 - **Nachtmodus** (gedimmte Uhr, wandert gegen Einbrennen) und **Abendstimmung**.
 - **Sieben Stile, jeder hell und dunkel:** Ruhig, Klar, Gold, Liquid Glass, Aurora, Editorial, Minimal.
   Hell/Dunkel automatisch nach Sonnenstand (weich überblendet) oder fest, pro Display änderbar.
@@ -106,7 +114,8 @@ Ist die Wäsche fertig, steht es kurz da und bleibt dann als kleine Erinnerung.
 - **Tagesinhalt und Tagesvorschau:** Wikipedia-Artikel des Tages (Deutsch, Englisch oder Schwedisch) und ein Zitat
   (Wikiquote: Zitat der Woche, oder ZenQuotes: englisches Zitat des Tages); morgens Termine, Wetter und Müll auf einen
   Blick.
-- **Oberfläche auf Deutsch und Englisch** – je nach Sprache des HA-Benutzers.
+- **Oberfläche auf Deutsch, Englisch, Niederländisch und Französisch** – je nach Sprache des HA-Benutzers; auch
+  Editor, Startkonfiguration und KI-Zusammenfassung.
 - Alles wird **in Home Assistant gespeichert** (`.storage/ambiframe`) und ist damit Teil jedes Backups.
 
 ## Installation

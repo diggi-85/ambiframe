@@ -1,0 +1,119 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Ambiframe",
+        "description": "Ambiframe maakt van tablets en tv's rustige sfeerschermen. Open na de installatie de editor via het item „Ambiframe” in de zijbalk."
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "Ambiframe is al ingesteld."
+    }
+  },
+  "services": {
+    "import_config": {
+      "name": "Configuratie importeren",
+      "description": "Vervangt de volledige Ambiframe-configuratie (weergaven, pagina's, widgets, gebeurtenissen).",
+      "fields": {
+        "config": {
+          "name": "Configuratie",
+          "description": "Configuratie als object."
+        },
+        "yaml": {
+          "name": "YAML",
+          "description": "Configuratie als YAML-tekst."
+        },
+        "file": {
+          "name": "Bestand",
+          "description": "YAML-bestand relatief aan de configuratiemap, bijv. ambiframe/config.yaml."
+        }
+      }
+    },
+    "get_config": {
+      "name": "Configuratie ophalen",
+      "description": "Geeft de huidige Ambiframe-configuratie terug."
+    },
+    "generate_summary": {
+      "name": "Samenvatting maken",
+      "description": "Laat de AI (ai_task, bijv. Gemini) nu een nieuwe dagsamenvatting schrijven."
+    },
+    "show_on_tv": {
+      "name": "Op de tv tonen",
+      "description": "Zet een Ambiframe-weergave op de tv: Apple TV via AirPlay (de videostream van de weergave moet aan staan), LG-tv (webOS) in de browser. Het apparaat moet aan staan.",
+      "fields": {
+        "entity_id": {
+          "name": "Tv",
+          "description": "Apple TV of LG-tv (webOS)."
+        },
+        "display": {
+          "name": "Weergave",
+          "description": "ID van de weergave, bijv. tv."
+        },
+        "resolution": {
+          "name": "Resolutie",
+          "description": "Alleen Apple TV: 1080p (standaard) of 4k."
+        }
+      }
+    },
+    "stop_on_tv": {
+      "name": "Stoppen op de tv",
+      "description": "Stopt de AirPlay-weergave van Ambiframe op de Apple TV.",
+      "fields": {
+        "entity_id": {
+          "name": "Apple TV",
+          "description": "Apple TV die Ambiframe toont."
+        }
+      }
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "connected": {
+        "name": "Verbonden"
+      }
+    },
+    "button": {
+      "next": {
+        "name": "Volgende pagina"
+      },
+      "reload": {
+        "name": "Opnieuw laden"
+      },
+      "generate_summary": {
+        "name": "Samenvatting maken"
+      }
+    },
+    "select": {
+      "page": {
+        "name": "Pagina"
+      }
+    },
+    "sensor": {
+      "last_seen": {
+        "name": "Laatst gezien"
+      },
+      "summary": {
+        "name": "Samenvatting"
+      }
+    },
+    "switch": {
+      "pause": {
+        "name": "Pauze"
+      },
+      "safe_mode": {
+        "name": "Noodmodus"
+      },
+      "tv": {
+        "name": "Op de tv"
+      }
+    },
+    "camera": {
+      "stream": {
+        "name": "Videostream"
+      },
+      "stream_1080p": {
+        "name": "Videostream Full HD"
+      }
+    }
+  }
+}

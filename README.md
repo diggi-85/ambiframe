@@ -23,8 +23,8 @@ appears. When the laundry is done, it says so briefly and then stays as a small 
   </tr>
 </table>
 
-<sub>Screenshots with sample data. Ambiframe follows the language of the Home Assistant user (English and
-German).</sub>
+<sub>Screenshots with sample data. Ambiframe follows the language of the Home Assistant user (English, German,
+Dutch and French).</sub>
 
 ## Features
 
@@ -44,6 +44,13 @@ German).</sub>
   your own link, played on the tablet via Fully; quiet hours (muted or not at all), "only when someone is home", any
   conditions, and the trigger `to: "*"` = every change – e.g. for buttons and `event.*` entities (fresh events only,
   optionally only certain `event_types`).
+- **Your own sounds:** a sound library in the editor – files from HA media (`media-source://`), `/local/…` or any link,
+  with ▶ preview. Per event: repeat once, 2–10 times or until tapped/closed, with an adjustable interval.
+- **Reminders and notification centre:** after a notice a small reminder stays in the top right – until tapped, for
+  15 min to 1 day, or not at all. From several reminders on they stack like iOS notifications with a count; tap to
+  expand or clear all. A notification centre (quick menu → *Notifications*) lists what happened, grouped by day.
+- **Now playing mini card:** permanent or per track for a while, how long after pausing, conditions and quiet hours,
+  corner, size, cover, progress and background.
 - **Night mode** (dimmed clock that drifts to prevent burn-in) and **evening mood**.
 - **Seven styles, each light and dark:** Calm, Clear, Gold, Liquid Glass, Aurora, Editorial, Minimal.
   Light/dark automatically by the sun (with a soft fade) or fixed, adjustable per display.
@@ -74,6 +81,7 @@ German).</sub>
 - **On the TV:** a display can be sent as a video stream (up to 25 fps) to an Apple TV (AirPlay) or an LG webOS TV –
   with the switch *On the TV* or the actions `ambiframe.show_on_tv` / `ambiframe.stop_on_tv`. Requires the Puppet
   add-on. Step-by-step guide (German, also to paste into Claude): [`docs/airplay-apple-tv.md`](docs/airplay-apple-tv.md).
+- **Languages:** English, German, Dutch and French – the interface, editor, starter configuration and AI summary.
 - **iPad and iPhone via the HA app:** the dashboard card `custom:ambiframe-card` (`display: <id>`) in kiosk mode
   shows Ambiframe full screen, also for users without admin rights.
 - **Landscape and portrait:** displays detect their orientation (also when rotated) or use a fixed one. In portrait,

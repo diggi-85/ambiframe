@@ -1,7 +1,9 @@
-// Jeder Text muss eine englische Übersetzung haben – sonst erscheint Deutsch im englischen Ambiframe
+// Jeder Text muss eine englische, niederländische und französische Übersetzung haben – sonst erscheint Deutsch
 import { describe, expect, it } from "vitest";
 import { lang, locale, resolveLang, setLang, t } from "../src/i18n";
 import { EN } from "../src/i18n-en";
+import { FR } from "../src/i18n-fr";
+import { NL } from "../src/i18n-nl";
 import { collectKeys } from "./i18n-keys";
 
 describe("Übersetzung", () => {
@@ -10,18 +12,35 @@ describe("Übersetzung", () => {
     expect(missing, `Fehlende Übersetzungen:\n${missing.map((k) => JSON.stringify(k)).join(",\n")}`).toEqual([]);
   });
 
-  it("Platzhalter bleiben in der Übersetzung erhalten", () => {
-    const bad = Object.entries(EN).filter(([de, en]) => {
-      const ph = (s: string) => [...s.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort().join(",");
-      return ph(de) !== ph(en);
-    });
+  it.each([
+    ["Niederländisch", NL],
+    ["Französisch", FR],
+  ])("hat für jeden Text eine Fassung auf %s", (_name, dict) => {
+    const missing = [...collectKeys()].filter((k) => !(k in dict)).sort();
+    expect(missing, `Fehlende Übersetzungen:\n${missing.map((k) => JSON.stringify(k)).join(",\n")}`).toEqual([]);
+  });
+
+  it.each([
+    ["Englisch", EN],
+    ["Niederländisch", NL],
+    ["Französisch", FR],
+  ])("Platzhalter bleiben erhalten (%s)", (_name, dict) => {
+    const ph = (s: string) => [...s.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort().join(",");
+    const bad = Object.entries(dict).filter(([de, other]) => ph(de) !== ph(other));
     expect(bad).toEqual([]);
   });
 
-  it("wählt die Sprache: Einstellung vor HA-Benutzer, alles außer Deutsch wird Englisch", () => {
+  it("wählt die Sprache: Einstellung vor HA-Benutzer, unbekannte Sprachen werden Englisch", () => {
     expect(resolveLang("de", "en")).toBe("de");
     expect(resolveLang("auto", "de-AT")).toBe("de");
-    expect(resolveLang(undefined, "fr")).toBe("en");
+    expect(resolveLang(undefined, "fr")).toBe("fr");
+    expect(resolveLang(undefined, "nl-BE")).toBe("nl");
+    expect(resolveLang(undefined, "es")).toBe("en");
+    setLang("nl");
+    expect(locale()).toBe("nl-NL");
+    expect(t("vor {n} min", { n: 5 })).toBe("5 min geleden");
+    setLang("fr");
+    expect(t("vor {n} min", { n: 5 })).toBe("il y a 5 min");
     setLang("en");
     expect(lang()).toBe("en");
     expect(locale()).toBe("en-GB");

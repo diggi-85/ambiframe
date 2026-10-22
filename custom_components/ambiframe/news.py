@@ -44,10 +44,22 @@ PRESETS: dict[str, tuple[str, str, str]] = {
     "abc_au": ("ABC News Australia", "https://www.abc.net.au/news/feed/51120/rss.xml", "en"),
     "aljazeera": ("Al Jazeera", "https://www.aljazeera.com/xml/rss/all.xml", "en"),
     "dw_en": ("DW", "https://rss.dw.com/rdf/rss-en-all", "en"),
+    "nos": ("NOS", "https://feeds.nos.nl/nosnieuwsalgemeen", "nl"),
+    "nunl": ("NU.nl", "https://www.nu.nl/rss/Algemeen", "nl"),
+    "vrtnws": ("VRT NWS", "https://www.vrt.be/vrtnws/nl.rss.articles.xml", "nl"),
+    "lemonde": ("Le Monde", "https://www.lemonde.fr/rss/une.xml", "fr"),
+    "franceinfo": ("franceinfo", "https://www.francetvinfo.fr/titres.rss", "fr"),
+    "rfi": ("RFI", "https://www.rfi.fr/fr/rss", "fr"),
+    "lefigaro": ("Le Figaro", "https://www.lefigaro.fr/rss/figaro_actualites.xml", "fr"),
 }
 
 # Ohne eigene Auswahl: Quellen in der Sprache der Anzeige
-DEFAULT_FEEDS: dict[str, list[str]] = {"de": ["tagesschau", "ntv", "spiegel"], "en": ["bbc", "guardian", "npr"]}
+DEFAULT_FEEDS: dict[str, list[str]] = {
+    "de": ["tagesschau", "ntv", "spiegel"],
+    "en": ["bbc", "guardian", "npr"],
+    "nl": ["nos", "nunl", "vrtnws"],
+    "fr": ["lemonde", "franceinfo", "rfi"],
+}
 
 FEED_CACHE_SECONDS = 10 * 60
 IMAGE_LOOKUPS_PER_FEED = 12
