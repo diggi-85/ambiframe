@@ -2,7 +2,8 @@
 
 - Artikel: Wikimedia-Feed „featured“ (Artikel des Tages), Einleitung und Bild über die Wikipedia-API.
   Ohne Titelbild nimmt Ambiframe das größte Foto aus dem Artikel – nie ein fremdes Bild.
-- Zitat: Deutsch aus der Wikiquote-Vorlage „Zitat des Tages“, Englisch über ZenQuotes („today“).
+- Zitat: Deutsch aus der Wikiquote-Vorlage „Zitat des Tages“ (wechselt inzwischen wöchentlich), Englisch über
+  ZenQuotes („today“, täglich).
 """
 
 from __future__ import annotations
@@ -24,7 +25,7 @@ from homeassistant.util import dt as dt_util
 _LOGGER = logging.getLogger(__name__)
 
 # Wikimedia bittet um eine erkennbare Kennung
-HEADERS = {"User-Agent": "Ambiframe/0.2.1 (Home Assistant integration; https://github.com/diggi-85/ambiframe)"}
+HEADERS = {"User-Agent": "Ambiframe/0.2.2 (Home Assistant integration; https://github.com/diggi-85/ambiframe)"}
 TIMEOUT = aiohttp.ClientTimeout(total=20)
 
 
@@ -34,7 +35,11 @@ def _text(fragment: str) -> str:
 
 
 def parse_wikiquote(page_html: str) -> dict[str, str] | None:
-    """Zitat und Autor aus der gerenderten Vorlage „Zitat des Tages“ (Tabelle: Zitat, darunter Autor)."""
+    """Zitat und Autor aus der gerenderten Vorlage „Zitat des Tages“ (Tabelle: Zitat, darunter Autor).
+
+    Die Vorlage heißt noch so, Wikiquote wechselt das Zitat aber seit 2026 nur noch einmal pro Kalenderwoche
+    („period“: „week“ – die Anzeige schreibt dann „Zitat der Woche“).
+    """
     found = re.search(r'<td style="padding:\s*\.5em 1em;[^"]*">(.*?)</td>', page_html, re.S)
     if not found:
         return None
@@ -42,7 +47,13 @@ def parse_wikiquote(page_html: str) -> dict[str, str] | None:
     if not text:
         return None
     author = re.search(r'<td colspan="3"[^>]*>\s*(?:<a [^>]*>)?(.*?)(?:</a>|,|<br)', page_html, re.S)
-    return {"text": text, "author": _text(author.group(1)) if author else "", "source": "Wikiquote"}
+    return {"text": text, "author": _text(author.group(1)) if author else "", "source": "Wikiquote", "period": "week"}
+
+
+# Quellen für das Zitat: Wikiquote (Deutsch, wechselt wöchentlich) oder ZenQuotes (Englisch, täglich)
+QUOTE_SOURCES = ("wikiquote", "zenquotes")
+# Wikipedia-Sprachen mit „Artikel des Tages“ im Featured-Feed
+ARTICLE_LANGUAGES = ("de", "en", "sv")
 
 
 class DailyService:
@@ -57,14 +68,17 @@ class DailyService:
             resp.raise_for_status()
             return await resp.json(content_type=None)
 
-    async def async_get(self, kind: str, lang: str) -> dict[str, Any] | None:
+    async def async_get(self, kind: str, lang: str, source: str | None = None) -> dict[str, Any] | None:
+        """kind „article“ (lang: Wikipedia-Sprache) oder „quote“ (source: wikiquote | zenquotes, sonst nach Sprache)."""
         today = dt_util.now().date()
-        key = (kind, lang, today.isoformat())
+        if kind == "quote":
+            source = source if source in QUOTE_SOURCES else ("wikiquote" if lang == "de" else "zenquotes")
+        key = (kind, source or lang, today.isoformat())
         async with self._lock:
             if self._cache.get(key) is not None:
                 return self._cache[key]
             try:
-                result = await (self._article(lang, today) if kind == "article" else self._quote(lang))
+                result = await (self._article(lang, today) if kind == "article" else self._quote(source or "zenquotes"))
             except (aiohttp.ClientError, TimeoutError, ValueError, KeyError, IndexError) as err:
                 _LOGGER.warning("Ambiframe: %s des Tages nicht abrufbar: %s", "Artikel" if kind == "article" else "Zitat", err)
                 result = None
@@ -116,8 +130,8 @@ class DailyService:
         best = max(photos, key=lambda i: i.get("width", 0) * i.get("height", 0), default=None)
         return (best.get("thumburl") or best.get("url")) if best else None
 
-    async def _quote(self, lang: str) -> dict[str, Any] | None:
-        if lang == "de":
+    async def _quote(self, source: str) -> dict[str, Any] | None:
+        if source == "wikiquote":
             data = await self._json(
                 "https://de.wikiquote.org/w/api.php?action=parse&page=Vorlage:Zitat_des_Tages&prop=text&format=json&formatversion=2"
             )
@@ -126,4 +140,4 @@ class DailyService:
         first = data[0] if isinstance(data, list) and data else {}
         if not first.get("q"):
             return None
-        return {"text": first["q"], "author": first.get("a", ""), "source": "ZenQuotes"}
+        return {"text": first["q"], "author": first.get("a", ""), "source": "ZenQuotes", "period": "day"}

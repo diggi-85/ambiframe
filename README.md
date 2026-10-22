@@ -55,15 +55,19 @@ German).</sub>
 - **Control mode:** a tap brings up the HA dashboard; after a minute without touch Ambiframe returns.
 - **Native camera** via Home Assistant's own stream (WebRTC/HLS), with MJPEG as a fallback.
 - **Photos** from the HA media folder `ambiframe` or a **shared iCloud album** (public link), optionally mixed with
-  Bing's pictures of the day.
-- **News** from tagesschau, n-tv, SPIEGEL or any RSS feed: large image with headline, list or ticker; the server
-  fetches the feeds (cached for 10 min) and swaps small thumbnails for large images.
+  Bing's pictures of the day (region selectable).
+- **News** from any RSS, Atom or RDF feed; suggestions in English (BBC, Guardian, Sky News, NPR, New York Times, ABC,
+  CBC, Al Jazeera, DW) and German (tagesschau, n-tv, SPIEGEL, ZDFheute, Deutschlandfunk, ZEIT, FAZ, SZ, heise, ORF,
+  SRF). Without a choice, sources match the display language. Large image with headline, list or ticker; the server
+  fetches the feeds (cached for 10 min) and swaps small thumbnails for large images. The ticker can be switched per
+  display and is off on TVs and in the video stream (it would freeze or stutter there).
 - **Webcams and cameras as background:** pages can use an HA camera or a webcam link (image, MJPEG, `.m3u8`, YouTube
   live) as their background; the editor suggests public webcams.
 - **Info line** with weather, appointments, all waste bins in rotation, running appliances with remaining time,
   "window open and it's raining", what's playing, the robot vacuum and the car charging.
-- **Daily content and day preview:** Wikipedia article and quote of the day; in the morning appointments, weather
-  and waste collection at a glance.
+- **Daily content and day preview:** Wikipedia article of the day (English, German or Swedish) and a quote (ZenQuotes:
+  quote of the day, or Wikiquote: German quote of the week); in the morning appointments, weather and waste collection
+  at a glance.
 - **AI summary** (via `ai_task`, e.g. Gemini) at set times: a headline and 3–5 points from weather, appointments,
   waste, electricity price/PV, car and home – exactly the data Ambiframe already shows. Widget, "Good morning" page,
   sensor *Ambiframe summary* (for announcements), button and action `ambiframe.generate_summary`.

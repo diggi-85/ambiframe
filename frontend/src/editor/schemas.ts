@@ -3,7 +3,7 @@ import { t } from "../i18n";
 import { FONTS } from "../fonts";
 import { THEMES } from "../styles";
 import { WEBCAM_PRESETS } from "../widgets/media";
-import { NEWS_PRESETS } from "../widgets/news";
+import { NEWS_PRESETS, defaultFeeds } from "../widgets/news";
 import type { EventConfig, Hass, PageConfig, AmbiframeConfig, WidgetConfig } from "../types";
 import { SOUNDS } from "../sound";
 import { formContext, type Field } from "./form";
@@ -403,10 +403,10 @@ export const WIDGET_FIELDS: Record<string, Field[]> = {
       label: "Quellen",
       type: "list",
       addLabel: "Quelle",
-      help: "tagesschau, ntv, spiegel – oder die Adresse eines RSS-Feeds",
+      help: "Vorschlag wählen (z. B. bbc, guardian, tagesschau) oder die Adresse eines beliebigen RSS-/Atom-Feeds eintragen. Leer = Quellen in der Sprache der Anzeige.",
       itemLabel: (f) => NEWS_PRESETS.find(([id]) => id === f.value)?.[1] ?? f.value ?? "Quelle",
-      newItem: () => ({ value: "tagesschau" }),
-      fields: [{ key: "value", label: "Quelle", type: "text", suggestions: NEWS_PRESETS, placeholder: "tagesschau oder https://…" }],
+      newItem: () => ({ value: defaultFeeds()[0] }),
+      fields: [{ key: "value", label: "Quelle", type: "text", suggestions: NEWS_PRESETS, placeholder: "bbc, tagesschau … oder https://…" }],
     },
     { key: "interval", label: "Wechsel nach (s)", type: "number", min: 5, placeholder: "14", when: (v) => !v.variant },
     { key: "max", label: "Meldungen", type: "number", min: 1, max: 30, placeholder: "8" },
@@ -419,7 +419,22 @@ export const WIDGET_FIELDS: Record<string, Field[]> = {
     LABEL,
   ],
   daily: [
-    { key: "kind", label: "Inhalt", type: "select", options: [[undefined, "Wikipedia-Artikel des Tages"], ["quote", "Zitat des Tages"]] },
+    { key: "kind", label: "Inhalt", type: "select", options: [[undefined, "Wikipedia-Artikel des Tages"], ["quote", "Zitat"]] },
+    {
+      key: "language",
+      label: "Wikipedia-Sprache",
+      type: "select",
+      options: [[undefined, "wie die Anzeige"], ["de", "Deutsch"], ["en", "English"], ["sv", "Svenska"]],
+      help: "Einen „Artikel des Tages“ gibt es nur in diesen Sprachen.",
+      when: (v) => v.kind !== "quote",
+    },
+    {
+      key: "source",
+      label: "Quelle",
+      type: "select",
+      options: [[undefined, "wie die Anzeige"], ["wikiquote", "Wikiquote · Deutsch, Zitat der Woche"], ["zenquotes", "ZenQuotes · English, quote of the day"]],
+      when: (v) => v.kind === "quote",
+    },
     { key: "image", label: "Bild", type: "select", options: [[undefined, "Mit Bild"], [false, "Ohne Bild"]], when: (v) => v.kind !== "quote" },
     LABEL,
   ],
@@ -1015,6 +1030,17 @@ export const displayFields = (config: AmbiframeConfig): Field[] => [
     help: "Für OLED-Bildschirme: Die Anzeige wandert alle paar Minuten unmerklich um wenige Pixel, damit nichts einbrennt. Am besten zusammen mit „dunkel“.",
   },
   {
+    key: "ticker",
+    label: "Nachrichten-Laufband",
+    type: "select",
+    options: [
+      [undefined, "automatisch (aus beim Fernseher)"],
+      [true, "an"],
+      [false, "aus"],
+    ],
+    help: "Im Videostream (AirPlay, Kamera) ist das Laufband immer aus – dort würde es stehen bleiben oder ruckeln.",
+  },
+  {
     key: "text_size",
     label: "Textgröße",
     type: "select",
@@ -1239,6 +1265,32 @@ export const DESIGN_FIELDS: Field[] = [
   },
   { key: "photos.bing", label: "Bing-Bilder", type: "boolean", help: "Wenn Ordner und Album leer sind" },
   { key: "photos.bing_mix", label: "Bing-Bilder untermischen", type: "boolean", help: "Bing-Bilder des Tages auch zwischen die eigenen Fotos", when: (v) => v.photos?.bing !== false },
+  {
+    key: "photos.bing_market",
+    label: "Bing-Region",
+    type: "select",
+    options: [
+      [undefined, "wie die Sprache von Home Assistant"],
+      ["de-DE", "Deutschland"],
+      ["de-AT", "Österreich"],
+      ["de-CH", "Schweiz"],
+      ["en-US", "USA"],
+      ["en-GB", "United Kingdom"],
+      ["en-CA", "Canada"],
+      ["en-AU", "Australia"],
+      ["en-IN", "India"],
+      ["fr-FR", "France"],
+      ["es-ES", "España"],
+      ["it-IT", "Italia"],
+      ["nl-NL", "Nederland"],
+      ["ja-JP", "日本"],
+      ["zh-CN", "中国"],
+      ["pt-BR", "Brasil"],
+    ],
+    help: "Bilder und Bildunterschriften der Bing-Bilder des Tages",
+    when: (v) => v.photos?.bing !== false,
+    advanced: true,
+  },
   { key: "photos.credit", label: "Bildunterschrift", type: "boolean" },
 ];
 
@@ -1284,7 +1336,7 @@ export const defaultOptions = (type: string, hass?: Hass): Record<string, any> =
     case "infoline":
       return { items: [{ type: "weather", entity: firstOf(hass, "weather") }] };
     case "news":
-      return { feeds: ["tagesschau", "ntv", "spiegel"] };
+      return { feeds: defaultFeeds() };
     case "card":
       return { card: { type: "entities", entities: [] } };
     default:
@@ -1366,8 +1418,8 @@ export const PAGE_TEMPLATES: { id: string; name: string; build: (hass?: Hass) =>
       background: { type: "none" },
       palette: "normal",
       widgets: [
-        w("aufmacher", "news", 0, 0, 12, 7, { feeds: ["tagesschau", "ntv", "spiegel"], interval: 12 }),
-        w("laufband", "news", 0, 7, 12, 1, { feeds: ["tagesschau", "ntv", "spiegel"], variant: "ticker" }),
+        w("aufmacher", "news", 0, 0, 12, 7, { feeds: defaultFeeds(), interval: 12 }),
+        w("laufband", "news", 0, 7, 12, 1, { feeds: defaultFeeds(), variant: "ticker" }),
       ],
     }),
   },
@@ -1412,7 +1464,7 @@ export const PAGE_TEMPLATES: { id: string; name: string; build: (hass?: Hass) =>
   },
   {
     id: "zitat",
-    name: "Zitat des Tages",
+    name: "Zitat",
     build: () => ({
       duration: 20,
       background: { type: "none" },

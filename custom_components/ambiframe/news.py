@@ -19,12 +19,35 @@ from homeassistant.util import dt as dt_util
 
 _LOGGER = logging.getLogger(__name__)
 
-# Fertige Quellen (ID → Name, Adresse); eigene Feeds gehen per URL
-PRESETS: dict[str, tuple[str, str]] = {
-    "tagesschau": ("tagesschau", "https://www.tagesschau.de/index~rss2.xml"),
-    "ntv": ("n-tv", "https://www.n-tv.de/rss"),
-    "spiegel": ("SPIEGEL", "https://www.spiegel.de/schlagzeilen/index.rss"),
+# Fertige Quellen (ID → Name, Adresse, Sprache) – nur Vorschläge: jede RSS-, Atom- oder RDF-Adresse geht ebenso.
+# Gleiche Liste im Frontend (widgets/news.ts, NEWS_PRESETS).
+PRESETS: dict[str, tuple[str, str, str]] = {
+    "tagesschau": ("tagesschau", "https://www.tagesschau.de/index~rss2.xml", "de"),
+    "ntv": ("n-tv", "https://www.n-tv.de/rss", "de"),
+    "spiegel": ("SPIEGEL", "https://www.spiegel.de/schlagzeilen/index.rss", "de"),
+    "zdf": ("ZDFheute", "https://www.zdf.de/rss/zdf/nachrichten", "de"),
+    "dlf": ("Deutschlandfunk", "https://www.deutschlandfunk.de/nachrichten-100.rss", "de"),
+    "zeit": ("ZEIT ONLINE", "https://newsfeed.zeit.de/index", "de"),
+    "faz": ("FAZ", "https://www.faz.net/rss/aktuell/", "de"),
+    "sz": ("Süddeutsche Zeitung", "https://rss.sueddeutsche.de/rss/Topthemen", "de"),
+    "heise": ("heise online", "https://www.heise.de/rss/heise-atom.xml", "de"),
+    "orf": ("ORF", "https://rss.orf.at/news.xml", "de"),
+    "srf": ("SRF News", "https://www.srf.ch/news/bnf/rss/1646", "de"),
+    "bbc": ("BBC News", "https://feeds.bbci.co.uk/news/rss.xml", "en"),
+    "bbc_world": ("BBC World", "https://feeds.bbci.co.uk/news/world/rss.xml", "en"),
+    "guardian": ("The Guardian", "https://www.theguardian.com/world/rss", "en"),
+    "npr": ("NPR", "https://feeds.npr.org/1001/rss.xml", "en"),
+    "sky": ("Sky News", "https://feeds.skynews.com/feeds/rss/home.xml", "en"),
+    "nyt": ("New York Times", "https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml", "en"),
+    "abc_us": ("ABC News", "https://abcnews.go.com/abcnews/topstories", "en"),
+    "cbc": ("CBC News", "https://www.cbc.ca/webfeed/rss/rss-topstories", "en"),
+    "abc_au": ("ABC News Australia", "https://www.abc.net.au/news/feed/51120/rss.xml", "en"),
+    "aljazeera": ("Al Jazeera", "https://www.aljazeera.com/xml/rss/all.xml", "en"),
+    "dw_en": ("DW", "https://rss.dw.com/rdf/rss-en-all", "en"),
 }
+
+# Ohne eigene Auswahl: Quellen in der Sprache der Anzeige
+DEFAULT_FEEDS: dict[str, list[str]] = {"de": ["tagesschau", "ntv", "spiegel"], "en": ["bbc", "guardian", "npr"]}
 
 FEED_CACHE_SECONDS = 10 * 60
 IMAGE_LOOKUPS_PER_FEED = 12
@@ -34,6 +57,7 @@ _NS = {
     "media": "http://search.yahoo.com/mrss/",
     "dc": "http://purl.org/dc/elements/1.1/",
     "atom": "http://www.w3.org/2005/Atom",
+    "rss1": "http://purl.org/rss/1.0/",
 }
 _IMG = re.compile(r"<img[^>]+src=[\"']([^\"']+)[\"']", re.I)
 _TAGS = re.compile(r"<[^>]+>")
@@ -72,20 +96,25 @@ def _small(url: str) -> bool:
     return bool(match and int(match.group(1)) < 800)
 
 
+def _child(entry: ET.Element, tag: str) -> str:
+    """Text eines Unterelements – ohne Namensraum (RSS 2.0) oder im RSS-1.0-Namensraum (RDF)."""
+    return _text(entry.find(tag)) or _text(entry.find(f"rss1:{tag}", _NS))
+
+
 def parse_feed(data: bytes, source: str) -> list[dict[str, Any]]:
-    """RSS 2.0 oder Atom → Liste von Meldungen."""
+    """RSS 2.0, RSS 1.0 (RDF) oder Atom → Liste von Meldungen."""
     root = ET.fromstring(data)
     items: list[dict[str, Any]] = []
-    entries = root.findall(".//item") or root.findall(".//atom:entry", _NS)
+    entries = root.findall(".//item") or root.findall(".//rss1:item", _NS) or root.findall(".//atom:entry", _NS)
     for entry in entries:
-        title = _plain(_text(entry.find("title")) or _text(entry.find("atom:title", _NS)), 200)
+        title = _plain(_child(entry, "title") or _text(entry.find("atom:title", _NS)), 200)
         if not title:
             continue
-        link = _text(entry.find("link"))
+        link = _child(entry, "link")
         if not link and (alt := entry.find("atom:link", _NS)) is not None:
             link = alt.get("href", "")
         content = _text(entry.find("content:encoded", _NS))
-        description = _text(entry.find("description")) or _text(entry.find("atom:summary", _NS)) or content
+        description = _child(entry, "description") or _text(entry.find("atom:summary", _NS)) or content
         image = ""
         for enclosure in entry.findall("enclosure"):
             if enclosure.get("type", "image/").startswith("image/") and enclosure.get("url"):
@@ -127,7 +156,8 @@ class NewsService:
     def resolve(feed: str) -> tuple[str, str]:
         """Feed-Angabe (Preset-ID oder Adresse) → (Name, Adresse)."""
         if feed in PRESETS:
-            return PRESETS[feed]
+            name, url, _lang = PRESETS[feed]
+            return name, url
         host = re.sub(r"^https?://(www\.)?", "", feed).split("/")[0]
         return host, feed
 

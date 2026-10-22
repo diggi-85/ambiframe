@@ -53,9 +53,12 @@ Ist die Wäsche fertig, steht es kurz da und bleibt dann als kleine Erinnerung.
 - **Seitenwechsel** als Überblenden, Unschärfe, Schieben oder Zoom, Dauer frei – global, pro Display, pro Seite.
 - **Bedienmodus:** Tippen holt das HA-Dashboard, nach einer Minute ohne Berührung kehrt Ambiframe zurück.
 - **Kamera nativ** über HAs eigenen Stream (WebRTC/HLS), mit MJPEG als Rückfall.
-- **Fotos** aus dem HA-Medienordner `ambiframe`, ersatzweise die Bing-Bilder des Tages.
-- **Nachrichten** aus tagesschau, n-tv, SPIEGEL oder beliebigen RSS-Feeds: Großbild mit Schlagzeile, Liste oder
-  Laufband; der Server holt die Feeds (10 min zwischengespeichert) und tauscht kleine Vorschaubilder gegen große.
+- **Fotos** aus dem HA-Medienordner `ambiframe`, ersatzweise die Bing-Bilder des Tages (Region wählbar).
+- **Nachrichten** aus jedem RSS-, Atom- oder RDF-Feed; Vorschläge auf Deutsch (tagesschau, n-tv, SPIEGEL, ZDFheute,
+  Deutschlandfunk, ZEIT, FAZ, SZ, heise, ORF, SRF) und Englisch (BBC, Guardian, Sky News, NPR, New York Times, ABC,
+  CBC, Al Jazeera, DW). Ohne eigene Wahl passend zur Sprache. Großbild mit Schlagzeile, Liste oder Laufband; der
+  Server holt die Feeds (10 min zwischengespeichert) und tauscht kleine Vorschaubilder gegen große. Das Laufband ist
+  pro Display schaltbar und auf dem Fernseher sowie im Videostream aus (dort würde es stehen oder ruckeln).
 - **Webcams und Kameras als Hintergrund:** Seiten können eine HA-Kamera oder einen Webcam-Link (Bild, MJPEG,
   `.m3u8`, YouTube live) als Hintergrund haben; der Editor schlägt öffentliche Webcams vor.
 - **Fotos aus einem geteilten iCloud-Album** (öffentlicher Link), gemischt mit dem Medienordner.
@@ -100,8 +103,9 @@ Ist die Wäsche fertig, steht es kurz da und bleibt dann als kleine Erinnerung.
   [`docs/airplay-apple-tv.md`](docs/airplay-apple-tv.md).
 - **iPad und iPhone über die HA-App:** Dashboard-Karte `custom:ambiframe-card` (`display: <id>`) im Kiosk-Modus
   zeigt Ambiframe im Vollbild, auch für Benutzer ohne Admin-Rechte.
-- **Tagesinhalt und Tagesvorschau:** Wikipedia-Artikel und Zitat des Tages; morgens Termine, Wetter und Müll auf
-  einen Blick.
+- **Tagesinhalt und Tagesvorschau:** Wikipedia-Artikel des Tages (Deutsch, Englisch oder Schwedisch) und ein Zitat
+  (Wikiquote: Zitat der Woche, oder ZenQuotes: englisches Zitat des Tages); morgens Termine, Wetter und Müll auf einen
+  Blick.
 - **Oberfläche auf Deutsch und Englisch** – je nach Sprache des HA-Benutzers.
 - Alles wird **in Home Assistant gespeichert** (`.storage/ambiframe`) und ist damit Teil jedes Backups.
 

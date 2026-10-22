@@ -337,10 +337,12 @@ export class AfDisplay extends LitElement {
     const design = this.config?.design;
     const resolved = normalizeTheme(d?.theme ?? design?.theme);
     this.theme = resolved.theme;
-    if (changed.has("config") || changed.has("preview") || changed.has("displayId")) {
+    if (changed.has("config") || changed.has("preview") || changed.has("displayId") || changed.has("streamMode")) {
       const a = design?.ambient;
       const ambient = { type: a?.type ?? THEMES.find((t) => t.id === resolved.theme)?.ambient ?? "none", strength: a?.strength ?? 1, speed: a?.speed ?? "slow" };
-      this.ctx = this.config ? { forecasts: this.forecasts, config: this.config, preview: this.preview, ambient, displayId: d?.id } : undefined;
+      // Laufband: im Videostream steht es (Einzelbilder), auf dem Fernseher ruckelt es – dort ohne eigene Wahl aus
+      const ticker = !this.streamMode && (d?.ticker ?? d?.profile !== "tv");
+      this.ctx = this.config ? { forecasts: this.forecasts, config: this.config, preview: this.preview, ambient, displayId: d?.id, ticker } : undefined;
       if (changed.has("config")) this.photos.reload();
     }
     this.applyMode(resolved.light);

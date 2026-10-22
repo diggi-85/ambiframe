@@ -62,6 +62,7 @@ class AmbiframeStore:
         self.config: dict[str, Any] = {}
         self._bing: list[dict[str, str]] = []
         self._bing_fetched = 0.0
+        self._bing_market = ""
         self._prices: dict[str, list[dict[str, Any]]] = {}
         self._prices_fetched = 0.0
         self._prices_day = ""
@@ -104,10 +105,11 @@ class AmbiframeStore:
 
     async def async_bing_photos(self) -> list[dict[str, str]]:
         """Bilder des Tages von Bing (Liste aus URL und Bildunterschrift), 6 h zwischengespeichert."""
-        if self._bing and time.monotonic() - self._bing_fetched < BING_CACHE_SECONDS:
-            return self._bing
         language = (self.hass.config.language or "en").split("-")[0]
-        params = {"format": "js", "idx": "0", "n": "8", "mkt": _BING_MARKETS.get(language, "en-US")}
+        market = (self.config.get("photos") or {}).get("bing_market") or _BING_MARKETS.get(language, "en-US")
+        if self._bing and market == self._bing_market and time.monotonic() - self._bing_fetched < BING_CACHE_SECONDS:
+            return self._bing
+        params = {"format": "js", "idx": "0", "n": "8", "mkt": market}
         try:
             session = async_get_clientsession(self.hass)
             async with session.get(BING_URL, params=params, timeout=aiohttp.ClientTimeout(total=10)) as resp:
@@ -125,6 +127,7 @@ class AmbiframeStore:
             if image.get("urlbase")
         ]
         self._bing_fetched = time.monotonic()
+        self._bing_market = market
         return self._bing
 
     async def async_tibber_prices(self) -> dict[str, list[dict[str, Any]]]:

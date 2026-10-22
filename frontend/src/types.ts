@@ -218,6 +218,8 @@ export interface DisplayConfig {
   photos?: Partial<AmbiframeConfig["photos"]>;
   /** Mit diesem Profil angelegt (kitchen, hallway, bedroom, tv) */
   profile?: string;
+  /** Nachrichten-Laufband zeigen; fehlt = an, außer beim Profil Fernseher (im Videostream immer aus) */
+  ticker?: boolean;
   /** Dezente Pfeile unten links/rechts zum Blättern; fehlt = an, wenn das Display bedient wird */
   nav?: boolean;
   /** OLED-Schutz: Anzeige wandert alle paar Minuten um wenige Pixel */
@@ -262,7 +264,7 @@ export interface AmbiframeConfig {
     /** Gespeicherte eigene Stile (Momentaufnahme des Designs) */
     presets?: { name: string; design: Record<string, unknown> }[];
   };
-  photos: { folder: string; bing: boolean; bing_mix?: boolean; credit: boolean; icloud?: string };
+  photos: { folder: string; bing: boolean; bing_mix?: boolean; bing_market?: string; credit: boolean; icloud?: string };
   /** KI-Zusammenfassung (ai_task, bevorzugt Gemini) */
   summary?: { enabled?: boolean; times?: string[]; ai_task?: string; style?: "facts" | "friendly" };
   displays: DisplayConfig[];

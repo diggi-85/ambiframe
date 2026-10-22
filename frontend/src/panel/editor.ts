@@ -96,7 +96,6 @@ class AmbiframePanel extends LitElement {
     saving: { state: true },
     yaml: { state: true },
     menu: { state: true },
-    previewMode: { state: true },
     summaryBusy: { state: true },
     summaryNote: { state: true },
     devices: { state: true },
@@ -168,7 +167,6 @@ class AmbiframePanel extends LitElement {
   private yaml = "";
   private menu: "" | "page" | "widget" | "event" = "";
   /** Design-Reiter: Stile hell oder dunkel vorschauen */
-  private previewMode: "light" | "dark" = "light";
   /** Seiten-Editor: Anordnung quer oder hoch bearbeiten */
   private layout: Orientation = "landscape";
   private summaryBusy = false;
@@ -1207,16 +1205,31 @@ class AmbiframePanel extends LitElement {
     </div>`;
   }
 
-  private renderThemeCards(current: Theme, choose: (th: Theme) => void, preview: (th: Theme) => { cfg: AmbiframeConfig; id?: string }) {
+  /**
+   * Stil-Kärtchen mit dem Umschalter Hell/Dunkel daneben. Der Umschalter ist die echte Einstellung (wird gespeichert) –
+   * früher war er nur eine Vorschau, und Änderungen ließen sich scheinbar nicht speichern (Issue #2).
+   * `mode.inherit`: beim einzelnen Display zusätzlich „wie alle“ (leer = Einstellung aller Displays)
+   */
+  private renderThemeCards(
+    current: Theme,
+    choose: (th: Theme) => void,
+    preview: (th: Theme) => { cfg: AmbiframeConfig; id?: string },
+    mode: { value: string | undefined; set: (m: string | undefined) => void; inherit?: boolean },
+  ) {
     const d = this.draft!;
     const samplePage =
       d.displays[0]?.playlist.map((p) => d.pages.find((x) => x.id === p.page)).find((p) => p && p.background?.type !== "photo")?.id ?? d.pages[0]?.id;
     return html`<div class="row-head">
         <h3>${t("Stil")}</h3>
-        <span class="seg">
-          ${(["light", "dark"] as const).map(
-            (m) => html`<button class="small ${this.previewMode === m ? "on" : ""}" @click=${() => (this.previewMode = m)}>${m === "light" ? "Hell" : "Dunkel"}</button>`,
-          )}
+        <span class="seg" title=${t("Hell/Dunkel")}>
+          ${(
+            [
+              ...(mode.inherit ? ([[undefined, "wie alle"]] as const) : []),
+              ["auto", "Automatisch"],
+              ["light", "Hell"],
+              ["dark", "Dunkel"],
+            ] as [string | undefined, string][]
+          ).map(([m, label]) => html`<button class="small ${mode.value === m ? "on" : ""}" @click=${() => mode.set(m)}>${t(label)}</button>`)}
         </span>
       </div>
       <div class="themes">
@@ -1224,7 +1237,7 @@ class AmbiframePanel extends LitElement {
           const { cfg, id } = preview(th.id as Theme);
           return html`<button class="theme ${current === th.id ? "on" : ""}" @click=${() => choose(th.id as Theme)}>
             <div class="mini">
-              <af-display preview .hass=${this.hass} .config=${cfg} display-id=${id ?? ""} .fixedPage=${samplePage} .modeOverride=${this.previewMode}></af-display>
+              <af-display preview .hass=${this.hass} .config=${cfg} display-id=${id ?? ""} .fixedPage=${samplePage}></af-display>
             </div>
             <div class="tname">${t(th.name)}</div>
             <div class="hint">${t(th.hint)}</div>
@@ -1270,6 +1283,15 @@ class AmbiframePanel extends LitElement {
         disp.theme ?? d.design.theme,
         (th) => this.mutate((dd) => (dd.displays[idx].theme = th)),
         (th) => ({ cfg: { ...d, displays: d.displays.map((x) => (x.id === disp.id ? { ...x, theme: th } : x)) } as AmbiframeConfig, id: disp.id }),
+        {
+          value: disp.mode,
+          inherit: true,
+          set: (m) =>
+            this.mutate((dd) => {
+              if (m === undefined) delete dd.displays[idx].mode;
+              else dd.displays[idx].mode = m as DisplayConfig["mode"];
+            }),
+        },
       )}
       ${disp.theme
         ? html`<p class="hint"><button class="small" @click=${() => this.mutate((dd) => delete dd.displays[idx].theme)}>${t("Stil wie alle Displays")}</button></p>`
@@ -1324,6 +1346,7 @@ class AmbiframePanel extends LitElement {
         d.design.theme,
         (th) => this.mutate((dd) => (dd.design.theme = th)),
         (th) => ({ cfg: { ...d, design: { ...d.design, theme: th } } as AmbiframeConfig }),
+        { value: d.design.mode ?? "auto", set: (m) => this.mutate((dd) => (dd.design.mode = (m ?? "auto") as AmbiframeConfig["design"]["mode"])) },
       )}
       <div class="cols">
         <section class="narrow">

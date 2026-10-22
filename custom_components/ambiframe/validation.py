@@ -12,6 +12,7 @@ from homeassistant.helpers import config_validation as cv
 
 from .const import (
     AMBIENTS,
+    BING_MARKETS,
     CONFIG_VERSION,
     EVENT_KINDS,
     EVENT_KINDS_TITLED,
@@ -312,6 +313,8 @@ DISPLAY = vol.Schema(
         vol.Optional("nav"): cv.boolean,
         # OLED-Schutz: die Anzeige wandert alle paar Minuten um wenige Pixel
         vol.Optional("oled"): cv.boolean,
+        # Nachrichten-Laufband; fehlt = an, außer beim Profil „tv“ (im Videostream ohnehin aus)
+        vol.Optional("ticker"): cv.boolean,
         # Videostream (Kamera-Entität), gerendert vom Puppet-Add-on – nur auf Abruf
         vol.Optional("stream"): vol.Schema(
             {
@@ -378,24 +381,30 @@ CONFIG = vol.Schema(
                 vol.Optional("bing", default=True): cv.boolean,
                 # Bing-Bilder auch zwischen eigene Fotos mischen (sonst nur, wenn Ordner und Album leer sind)
                 vol.Optional("bing_mix", default=False): cv.boolean,
+                # Region der Bing-Bilder (z. B. en-GB); fehlt = nach der Sprache von Home Assistant
+                vol.Optional("bing_market"): vol.In(BING_MARKETS),
                 vol.Optional("credit", default=True): cv.boolean,
                 vol.Optional("icloud"): _ICLOUD,
             },
             extra=vol.ALLOW_EXTRA,
         ),
-        # KI-Zusammenfassung (ai_task, bevorzugt Gemini)
-        vol.Optional("summary"): vol.Schema(
-            {
-                vol.Optional("enabled", default=False): cv.boolean,
-                # Liste oder Text aus dem Editor („05:30, 12:00, 17:30“)
-                vol.Optional("times"): vol.All(
-                    vol.Any([cv.string], cv.string),
-                    lambda v: sorted({t.strip() for t in (v.split(",") if isinstance(v, str) else v) if t.strip()}),
-                    [_TIME],
-                ),
-                vol.Optional("ai_task"): cv.entity_id,
-                vol.Optional("style", default="facts"): vol.In(["facts", "friendly"]),
-            }
+        # KI-Zusammenfassung (ai_task, bevorzugt Gemini); leere Angaben (z. B. ein geleertes KI-Feld) gelten als
+        # „nicht gesetzt“, statt die ganze Konfiguration abzulehnen
+        vol.Optional("summary"): vol.All(
+            lambda v: {k: x for k, x in v.items() if x not in (None, "")} if isinstance(v, dict) else v,
+            vol.Schema(
+                {
+                    vol.Optional("enabled", default=False): cv.boolean,
+                    # Liste oder Text aus dem Editor („05:30, 12:00, 17:30“)
+                    vol.Optional("times"): vol.All(
+                        vol.Any([cv.string], cv.string),
+                        lambda v: sorted({t.strip() for t in (v.split(",") if isinstance(v, str) else v) if t.strip()}),
+                        [_TIME],
+                    ),
+                    vol.Optional("ai_task"): cv.entity_id,
+                    vol.Optional("style", default="facts"): vol.In(["facts", "friendly"]),
+                }
+            ),
         ),
         vol.Optional("displays", default=list): [DISPLAY],
         vol.Optional("pages", default=list): [PAGE],

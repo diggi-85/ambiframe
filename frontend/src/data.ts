@@ -198,4 +198,6 @@ export interface DisplayContext {
   ambient: AmbientSettings;
   /** Display, auf dem gerade angezeigt wird (für Bedingungen „nur auf Display“) */
   displayId?: string;
+  /** false: kein Nachrichten-Laufband (Videostream, Fernseher oder abgeschaltet) */
+  ticker?: boolean;
 }

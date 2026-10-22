@@ -368,3 +368,23 @@ def test_icloud_list_expires_before_links() -> None:
     # Ohne Ablaufdatum: normale Zwischenspeicherzeit; schon abgelaufen: nur kurz
     assert _valid_until([{"url": "https://example.com/a.jpg"}]) - time.monotonic() == pytest.approx(CACHE_SECONDS, abs=2)
     assert _valid_until([{"url": f"https://x/p.jpg?e={int(now) - 60}"}]) - time.monotonic() == pytest.approx(30, abs=2)
+
+
+def test_summary_ignores_empty_values() -> None:
+    """Ein geleertes Feld darf das Einschalten der Zusammenfassung nicht verhindern (Issue #1)."""
+    raw = minimal_config()
+    raw["summary"] = {"enabled": True, "ai_task": "", "times": None, "style": None}
+    assert validate_config(raw)["summary"] == {"enabled": True, "style": "facts"}
+
+
+def test_display_ticker_and_bing_market() -> None:
+    """Laufband pro Display schaltbar; Bing-Region nur aus der Liste."""
+    raw = minimal_config()
+    raw["displays"][0]["ticker"] = False
+    raw["photos"] = {"bing_market": "en-GB"}
+    config = validate_config(raw)
+    assert config["displays"][0]["ticker"] is False
+    assert config["photos"]["bing_market"] == "en-GB"
+    raw["photos"] = {"bing_market": "xx-XX"}
+    with pytest.raises(vol.Invalid):
+        validate_config(raw)

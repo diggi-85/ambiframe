@@ -1,4 +1,4 @@
-// Kurze Tagesseiten: Wikipedia-Artikel des Tages oder Zitat des Tages – der Server holt beides einmal am Tag (ambiframe/daily)
+// Kurze Tagesseiten: Wikipedia-Artikel des Tages oder ein Zitat (Wikiquote wöchentlich, ZenQuotes täglich) – der Server holt beides einmal am Tag (ambiframe/daily)
 import { t } from "../i18n";
 import { css, html, nothing, type PropertyValues } from "lit";
 import { widgetStyles } from "../styles";
@@ -12,26 +12,29 @@ interface Daily {
   url?: string;
   author?: string;
   source?: string;
+  /** Wie oft der Inhalt wechselt: Wikiquote wöchentlich, ZenQuotes täglich */
+  period?: "day" | "week";
 }
 
 const RETRY_MS = 10 * 60e3;
 
-/** Pro Art und Tag eine Anfrage für alle Widgets */
+/** Pro Art, Quelle und Tag eine Anfrage für alle Widgets */
 const cache = new Map<string, { day: string; at: number; data: Daily | null; pending?: Promise<Daily | null> }>();
 const today = (): string => new Date().toDateString();
-const loadDaily = (hass: Hass, kind: string): Promise<Daily | null> => {
-  const entry = cache.get(kind);
+const loadDaily = (hass: Hass, kind: string, extra: { language?: string; source?: string }): Promise<Daily | null> => {
+  const key = [kind, extra.language ?? "", extra.source ?? ""].join("|");
+  const entry = cache.get(key);
   if (entry?.pending) return entry.pending;
   if (entry && entry.day === today() && (entry.data || Date.now() - entry.at < RETRY_MS)) return Promise.resolve(entry.data);
   const pending = hass
-    .callWS<Daily | null>({ type: "ambiframe/daily", kind })
+    .callWS<Daily | null>({ type: "ambiframe/daily", kind, ...extra })
     .catch(() => null)
     .then((data) => {
       const fresh = data ?? entry?.data ?? null;
-      cache.set(kind, { day: data ? today() : (entry?.day ?? ""), at: Date.now(), data: fresh });
+      cache.set(key, { day: data ? today() : (entry?.day ?? ""), at: Date.now(), data: fresh });
       return fresh;
     });
-  cache.set(kind, { day: entry?.day ?? "", at: entry?.at ?? 0, data: entry?.data ?? null, pending });
+  cache.set(key, { day: entry?.day ?? "", at: entry?.at ?? 0, data: entry?.data ?? null, pending });
   return pending;
 };
 
@@ -170,7 +173,8 @@ class AfDaily extends AfWidget {
 
   private async load(): Promise<void> {
     if (!this.hass) return;
-    const data = await loadDaily(this.hass, this.kind);
+    const o = this.options;
+    const data = await loadDaily(this.hass, this.kind, this.kind === "quote" ? { source: o.source || undefined } : { language: o.language || undefined });
     if (data || !this.data) this.data = data;
     this.requestUpdate();
   }
@@ -186,7 +190,7 @@ class AfDaily extends AfWidget {
       // Lange Zitate etwas kleiner
       const size = d.text.length > 220 ? 34 : d.text.length > 120 ? 40 : 46;
       return html`<div class="quote" style="--q:${size}px">
-        ${this.label(t("Zitat des Tages"))}
+        ${this.label(d.period === "week" ? t("Zitat der Woche") : t("Zitat des Tages"))}
         <div class="mark display">“</div>
         <div class="q display">${d.text}</div>
         ${d.author ? html`<div class="who">${d.author}</div>` : nothing}

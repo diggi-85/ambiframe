@@ -14,6 +14,7 @@ from homeassistant.helpers.event import TrackTemplate, TrackTemplateResult, asyn
 from homeassistant.helpers.template import Template
 
 from .const import DATA_WS_REGISTERED, DOMAIN, SIGNAL_CONFIG_UPDATED
+from .daily import ARTICLE_LANGUAGES, QUOTE_SOURCES
 from .defaults import build_default_config
 from .lang import resolve_lang
 from .news import PRESETS
@@ -226,12 +227,21 @@ async def ws_news(hass: HomeAssistant, connection: websocket_api.ActiveConnectio
     connection.send_result(msg["id"], {"items": await store.news.async_items(feeds, msg["limit"])})
 
 
-@websocket_api.websocket_command({vol.Required("type"): "ambiframe/daily", vol.Required("kind"): vol.In(["article", "quote"])})
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): "ambiframe/daily",
+        vol.Required("kind"): vol.In(["article", "quote"]),
+        # Optional aus dem Widget: Wikipedia-Sprache bzw. Zitat-Quelle (sonst nach der Sprache der Anzeige)
+        vol.Optional("language"): vol.In(ARTICLE_LANGUAGES),
+        vol.Optional("source"): vol.In(QUOTE_SOURCES),
+    }
+)
 @websocket_api.async_response
 async def ws_daily(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
-    """Wikipedia-Artikel oder Zitat des Tages in der Sprache der Anzeige (None, wenn nicht abrufbar)."""
+    """Wikipedia-Artikel des Tages oder Zitat (None, wenn nicht abrufbar)."""
     if (store := _store(hass, connection, msg)) is not None:
-        connection.send_result(msg["id"], await store.daily.async_get(msg["kind"], resolve_lang(hass, store.config)))
+        lang = msg.get("language") or resolve_lang(hass, store.config)
+        connection.send_result(msg["id"], await store.daily.async_get(msg["kind"], lang, msg.get("source")))
 
 
 @websocket_api.websocket_command({vol.Required("type"): "ambiframe/photos/icloud", vol.Optional("url"): str})

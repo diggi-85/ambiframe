@@ -1,5 +1,5 @@
 // Nachrichten: großes Bild mit Schlagzeile, Liste oder Laufband – die Feeds holt der Server (ambiframe/news)
-import { t } from "../i18n";
+import { lang, t } from "../i18n";
 import { css, html, nothing, type PropertyValues } from "lit";
 import { keyed } from "lit/directives/keyed.js";
 import { widgetStyles } from "../styles";
@@ -16,12 +16,34 @@ export interface NewsItem {
   published: string | null;
 }
 
-/** Fertige Quellen – Kennungen wie in news.py (PRESETS) */
+/** Fertige Quellen – Kennungen wie in news.py (PRESETS); jede RSS-, Atom- oder RDF-Adresse geht ebenso */
 export const NEWS_PRESETS: [string, string][] = [
-  ["tagesschau", "tagesschau"],
-  ["ntv", "n-tv"],
-  ["spiegel", "SPIEGEL"],
+  ["tagesschau", "tagesschau (DE)"],
+  ["ntv", "n-tv (DE)"],
+  ["spiegel", "SPIEGEL (DE)"],
+  ["zdf", "ZDFheute (DE)"],
+  ["dlf", "Deutschlandfunk (DE)"],
+  ["zeit", "ZEIT ONLINE (DE)"],
+  ["faz", "FAZ (DE)"],
+  ["sz", "Süddeutsche Zeitung (DE)"],
+  ["heise", "heise online (DE)"],
+  ["orf", "ORF (AT)"],
+  ["srf", "SRF News (CH)"],
+  ["bbc", "BBC News (UK)"],
+  ["bbc_world", "BBC World (UK)"],
+  ["guardian", "The Guardian (UK)"],
+  ["sky", "Sky News (UK)"],
+  ["npr", "NPR (US)"],
+  ["nyt", "New York Times (US)"],
+  ["abc_us", "ABC News (US)"],
+  ["cbc", "CBC News (CA)"],
+  ["abc_au", "ABC News (AU)"],
+  ["aljazeera", "Al Jazeera (EN)"],
+  ["dw_en", "DW (EN)"],
 ];
+
+/** Quellen, wenn im Widget keine gewählt sind – passend zur Sprache der Anzeige (wie DEFAULT_FEEDS in news.py) */
+export const defaultFeeds = (): string[] => (lang() === "de" ? ["tagesschau", "ntv", "spiegel"] : ["bbc", "guardian", "npr"]);
 
 const REFRESH_MS = 10 * 60e3;
 
@@ -259,7 +281,7 @@ class AfNews extends AfWidget {
     const f = (Array.isArray(this.options.feeds) ? this.options.feeds : [])
       .map((x: unknown) => (typeof x === "string" ? x : (x as { value?: string })?.value))
       .filter((x: unknown): x is string => !!x);
-    return f.length ? f : ["tagesschau"];
+    return f.length ? f : defaultFeeds();
   }
 
   /** Großbild zeigt nur Meldungen mit Bild */
@@ -335,6 +357,8 @@ class AfNews extends AfWidget {
       return html`<div class="calm">${this.options.empty_text ?? t("Nachrichten werden geladen …")}</div>`;
     }
     if (variant === "ticker") {
+      // Laufband nur, wo es flüssig läuft: nicht im Videostream und (ohne eigene Einstellung) nicht auf dem Fernseher
+      if (this.ctx?.ticker === false) return nothing;
       const list = this.items.slice(0, Number(this.options.max ?? 12));
       const run = list.map((i) => html`<span><b>${i.source}</b>${i.title}</span><span class="sep">•</span>`);
       return html`<div class="tick"><div class="track">${run}${run}</div></div>`;
