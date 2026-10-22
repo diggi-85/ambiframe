@@ -26,6 +26,12 @@ const HEARTBEAT_MS = 30e3;
 const CRASH_ERRORS = 5;
 const CRASH_WINDOW_MS = 2 * 60e3;
 const LOOP_STARTS = 4;
+/**
+ * Schon für diesen Seitenaufruf gezählt? Als Karte im Dashboard (HA-App, iPad) wird die Anzeige bei jedem Zurückkehren,
+ * jedem Bildschirm-An und jedem Dashboard-Wechsel neu eingehängt – das ist kein Neustart. Gezählt wird nur ein echtes
+ * Neuladen der Seite (das Modul wird dann frisch geladen).
+ */
+let startCounted = false;
 const LOOP_WINDOW_MS = 10 * 60e3;
 /** Danach wird die normale Anzeige wieder versucht */
 const SAFE_RETRY_MS = 15 * 60e3;
@@ -278,6 +284,8 @@ class AmbiframeDisplayPanel extends LitElement {
 
   /** Startet die Seite immer wieder neu (Update, Watchdog …)? Dann erst einmal ruhig im Notfallmodus bleiben. */
   private checkStartLoop(): void {
+    if (startCounted) return;
+    startCounted = true;
     const now = Date.now();
     // Selbst ausgelöstes Neuladen (neue Version, Befehl aus HA) ist kein Absturz – nicht mitzählen
     const planned = Number(local.get("ambiframe-planned-reload") ?? 0);

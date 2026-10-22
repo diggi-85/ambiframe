@@ -1287,8 +1287,26 @@ class AmbiframePanel extends LitElement {
     mode: { value: string | undefined; set: (m: string | undefined) => void; inherit?: boolean },
   ) {
     const d = this.draft!;
-    const samplePage =
-      d.displays[0]?.playlist.map((p) => d.pages.find((x) => x.id === p.page)).find((p) => p && p.background?.type !== "photo")?.id ?? d.pages[0]?.id;
+    // Eigene Beispielseite (Uhr, Datum, Wetter) statt einer Seite aus der Wiedergabeliste – die könnte z. B. das
+    // Gäste-WLAN zeigen und sagt wenig über den Stil
+    const weather = Object.keys(this.hass?.states ?? {}).find((id) => id.startsWith("weather."));
+    const sample: PageConfig = {
+      id: "__stilvorschau",
+      name: "",
+      duration: 60,
+      background: { type: "none" },
+      palette: "normal",
+      show_if: [],
+      widgets: [
+        { id: "uhr", type: "clock", x: 0, y: 1, w: 7, h: 3, options: { valign: "end" }, show_if: [] },
+        { id: "datum", type: "date", x: 0, y: 4, w: 7, h: 1, options: {}, show_if: [] },
+        ...(weather ? [{ id: "wetter", type: "weather", x: 8, y: 1, w: 4, h: 6, options: { entity: weather, variant: "card" }, show_if: [] }] : []),
+      ] as WidgetConfig[],
+    };
+    // Vorschau im gewählten Modus – sonst gewinnt die eigene Einstellung des Displays und nichts ändert sich sichtbar
+    const wanted = mode.value ?? d.design.mode ?? "auto";
+    const sunDown = this.hass?.states["sun.sun"]?.state === "below_horizon";
+    const previewMode: "light" | "dark" = wanted === "dark" || (wanted === "auto" && sunDown) ? "dark" : "light";
     return html`<div class="row-head">
         <h3>${t("Stil")}</h3>
         <span class="seg" title=${t("Hell/Dunkel")}>
@@ -1302,18 +1320,50 @@ class AmbiframePanel extends LitElement {
           ).map(([m, label]) => html`<button class="small ${mode.value === m ? "on" : ""}" @click=${() => mode.set(m)}>${t(label)}</button>`)}
         </span>
       </div>
+      ${this.renderModeOverrides(mode)}
       <div class="themes">
         ${THEMES.map((th) => {
           const { cfg, id } = preview(th.id as Theme);
+          const withSample = { ...cfg, pages: [...cfg.pages, sample] } as AmbiframeConfig;
           return html`<button class="theme ${current === th.id ? "on" : ""}" @click=${() => choose(th.id as Theme)}>
             <div class="mini">
-              <af-display preview .hass=${this.hass} .config=${cfg} display-id=${id ?? ""} .fixedPage=${samplePage}></af-display>
+              <af-display
+                preview
+                .hass=${this.hass}
+                .config=${withSample}
+                display-id=${id ?? ""}
+                .fixedPage=${sample.id}
+                .modeOverride=${previewMode}
+              ></af-display>
             </div>
             <div class="tname">${t(th.name)}</div>
             <div class="hint">${t(th.hint)}</div>
           </button>`;
         })}
       </div>`;
+  }
+
+  /**
+   * Für alle Displays gewählt, aber einzelne haben eine eigene Hell/Dunkel-Einstellung – sonst sieht man dort keine
+   * Änderung und wundert sich. Mit Taste, die Abweichungen zu entfernen.
+   */
+  private renderModeOverrides(mode: { inherit?: boolean }) {
+    if (mode.inherit) return nothing;
+    const d = this.draft!;
+    const own = d.displays.filter((x) => x.mode && x.mode !== (d.design.mode ?? "auto"));
+    if (!own.length) return nothing;
+    return html`<p class="hint mode-note">
+      ${t("{names}: eigene Einstellung für Hell/Dunkel – dort gilt diese.", { names: own.map((x) => x.name).join(", ") })}
+      <button
+        class="small"
+        @click=${() =>
+          this.mutate((dd) => {
+            for (const x of dd.displays) delete x.mode;
+          })}
+      >
+        ${t("Für alle übernehmen")}
+      </button>
+    </p>`;
   }
 
   /** Design für ein einzelnes Display: dieselben Felder, gespeichert als Abweichung am Display (leer = wie alle) */

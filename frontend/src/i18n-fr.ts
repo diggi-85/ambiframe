@@ -1193,4 +1193,6 @@ export const FR: Record<string, string> = {
   "RFI (FR)": "RFI (FR)",
   "VRT NWS (BE)": "VRT NWS (BE)",
   "franceinfo (FR)": "franceinfo (FR)",
+  "{names}: eigene Einstellung für Hell/Dunkel – dort gilt diese.": "{names} : réglage clair/sombre propre – il s'applique là.",
+  "Für alle übernehmen": "Appliquer à tous",
 };
