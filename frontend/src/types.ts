@@ -123,6 +123,8 @@ export interface PageConfig {
     name?: string;
     /** Mehrere Webcams: bei jedem Erscheinen der Seite die nächste */
     sources?: { url: string; name?: string; refresh?: number }[];
+    /** Abdunkeln für lesbaren Text: fehlt = normal, „light“, „strong“ oder „none“ (Originalbild) */
+    shade?: "none" | "light" | "strong";
   };
   palette: "normal" | "night";
   /** Übergang beim Erscheinen dieser Seite; fehlt = wie Display/Design */
@@ -220,7 +222,7 @@ export interface DisplayConfig {
   control: { enabled: boolean; mode?: "embedded" | "screensaver"; dashboard: string; idle: number };
   events: "all" | string[];
   /** Diese Taste drücken, wenn sich das Display `after` Sekunden nicht meldet (z. B. Fully „Start-URL laden“) */
-  watchdog?: { button?: string; after?: number };
+  watchdog?: { button?: string; after?: number; notify?: number };
   /** Pause endet nach so vielen Minuten (0 = nie, Standard 60) */
   pause_minutes?: number;
   /** Lesbarkeit für dieses Display; fehlt = wie Design */

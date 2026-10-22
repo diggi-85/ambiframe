@@ -1,6 +1,6 @@
 // Reine Logik ohne Browser: Raster, Bedingungen, Auslöser, Vorlagen-Wahrheitswerte
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { autoPortrait, gridFor, layoutOf } from "../src/display/grid";
+import { autoPortrait, cellRect, gridFor, layoutOf, snap } from "../src/display/grid";
 import { triggered } from "../src/events";
 import { templateText, templateTruthy } from "../src/template";
 import type { AmbiframeConfig, Condition, EventConfig, Hass, HassEntity, WidgetConfig } from "../src/types";
@@ -271,5 +271,18 @@ describe("Gesundheitscheck", () => {
       kueche: { online: true, last_seen: new Date().toISOString(), clients: [{ name: "Tablet", version: "v1" }] },
     }, { folder: 12, icloud: null }, "v1");
     expect(ok.filter((i) => i.level !== "info")).toEqual([]);
+  });
+});
+
+describe("Feines Raster", () => {
+  it("rastet auf halbe Zellen ein", () => {
+    expect([snap(0.2), snap(0.3), snap(1.74), snap(-0.6)]).toEqual([0, 0.5, 1.5, -0.5]);
+  });
+
+  it("halbe Zellen liegen genau zwischen den ganzen", () => {
+    const g = gridFor("landscape");
+    const a = cellRect(g, { x: 1, y: 0, w: 1, h: 1 }).left;
+    const b = cellRect(g, { x: 2, y: 0, w: 1, h: 1 }).left;
+    expect(cellRect(g, { x: 1.5, y: 0, w: 1, h: 1 }).left).toBeCloseTo((a + b) / 2);
   });
 });

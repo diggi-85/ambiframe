@@ -9,6 +9,7 @@ import "./media";
 import "./more";
 import "./extras";
 import "./news";
+import "./plus";
 import "./summary";
 import "./today";
 import "./weather";
@@ -57,5 +58,12 @@ export const WIDGETS: Record<string, WidgetType> = {
   news: { tag: "af-news", name: "Nachrichten", icon: "mdi:newspaper-variant-outline", size: [12, 7] },
   daily: { tag: "af-daily", name: "Tagesinhalt (Wikipedia, Zitat)", icon: "mdi:book-open-page-variant-outline", size: [12, 8] },
   today: { tag: "af-today", name: "Tagesvorschau", icon: "mdi:calendar-today-outline", size: [12, 7] },
+  timer: { tag: "af-timer", name: "Timer", icon: "mdi:timer-outline", size: [5, 4] },
+  board: { tag: "af-board", name: "Pinnwand", icon: "mdi:pin-outline", size: [5, 4] },
+  countdown: { tag: "af-countdown", name: "Countdown", icon: "mdi:calendar-clock", size: [4, 4] },
+  departures: { tag: "af-departures", name: "Abfahrten", icon: "mdi:train", size: [6, 5] },
+  radar: { tag: "af-radar", name: "Regenradar", icon: "mdi:radar", size: [6, 6] },
+  sky: { tag: "af-sky", name: "Sonne & Mond", icon: "mdi:weather-sunset", size: [8, 2] },
+  air: { tag: "af-air", name: "Pollen & Luft", icon: "mdi:flower-pollen", size: [4, 5] },
   card: { tag: "af-card", name: "HA-Karte", icon: "mdi:card-outline", size: [4, 4] },
 };

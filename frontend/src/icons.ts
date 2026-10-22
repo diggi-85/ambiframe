@@ -70,6 +70,9 @@ export const PATHS: Record<string, string> = {
   cat: '<path d="M5 9.5V4l4 3h6l4-3v5.5c0 5-3.1 9.5-7 9.5s-7-4.5-7-9.5z"/><path d="M9.5 12h.01M14.5 12h.01" stroke-width="2.2"/><path d="M10.8 15c.7.5 1.7.5 2.4 0"/>',
   printer: '<rect x="4" y="3.5" width="16" height="17" rx="2"/><path d="M4 8h16M8 13.5h8M10 16.5h4M12 8v3.5"/>',
   wifi: '<path d="M3 9.5a13 13 0 0 1 18 0M6 13a8.5 8.5 0 0 1 12 0M9 16.5a4 4 0 0 1 6 0"/><path d="M12 19.5h.01" stroke-width="2.4"/>',
+  timer: '<circle cx="12" cy="13.5" r="7.5"/><path d="M12 13.5V9.5M9.5 3h5M12 3v2.5M18.5 6.5l1.5-1.5"/>',
+  train: '<rect x="5.5" y="3" width="13" height="14" rx="3"/><path d="M5.5 10.5h13M9 14h.01M15 14h.01M8.5 17l-2 3.5M15.5 17l2 3.5"/>',
+  flower: '<circle cx="12" cy="9" r="2.2"/><path d="M12 6.8c0-2.4 1.2-3.8 2.4-3.8s1.6 1.6.6 3.4M14.2 9c2.4 0 3.8 1.2 3.8 2.4s-1.6 1.6-3.4.6M12 11.2c0 2.4-1.2 3.8-2.4 3.8S8 13.4 9 11.6M9.8 9C7.4 9 6 7.8 6 6.6s1.6-1.6 3.4-.6M12 11.5V21M12 17c1.5-2 3.5-2.5 5-2"/>',
 };
 
 export const iconSvg = (name: string | undefined, cls = ""): SVGTemplateResult =>
@@ -102,6 +105,16 @@ export const MDI_MAP: Record<string, string> = {
   "mdi:washing-machine": "washer",
   "mdi:tumble-dryer": "dryer",
   "mdi:bell": "bell",
+  "mdi:timer-outline": "timer",
+  "mdi:timer-sand": "timer",
+  "mdi:train": "train",
+  "mdi:bus": "train",
+  "mdi:flower-pollen": "flower",
+  "mdi:flower": "flower",
+  "mdi:pin-outline": "pin",
+  "mdi:calendar-clock": "calendar",
+  "mdi:radar": "rain",
+  "mdi:weather-sunset": "sun",
   "mdi:doorbell": "bell",
   "mdi:window-open": "window",
   "mdi:door-open": "door",

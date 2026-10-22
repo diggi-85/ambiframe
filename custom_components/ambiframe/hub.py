@@ -10,12 +10,14 @@ import logging
 import time
 from typing import TYPE_CHECKING, Any
 
+from homeassistant.components import persistent_notification
 from homeassistant.core import CALLBACK_TYPE, HomeAssistant, callback
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.event import async_call_later, async_track_time_interval
 from homeassistant.util import dt as dt_util
 
 from .const import DOMAIN, FRONTEND_DIR
+from .lang import resolve_lang
 
 if TYPE_CHECKING:
     from .store import AmbiframeStore
@@ -67,6 +69,8 @@ class DisplayRuntime:
     asleep: bool = False
     # Notfallmodus aus HA erzwungen (Schalter)
     safe: bool = False
+    # Benachrichtigung „Display offline“ steht gerade in HA
+    offline_notified: bool = False
 
 
 class DisplayHub:
@@ -273,6 +277,7 @@ class DisplayHub:
             rt = self.runtime(display_id)
             # „Verbunden“ hängt von der Zeit ab – Entitäten regelmäßig auffrischen
             self._notify(display_id)
+            self._check_offline(display, rt, now)
             watchdog = display.get("watchdog") or {}
             button = watchdog.get("button")
             if not button:
@@ -297,3 +302,40 @@ class DisplayHub:
                 button,
             )
             await self.hass.services.async_call(button.split(".")[0], "press", {"entity_id": button}, blocking=False)
+
+    # ───────── Benachrichtigung, wenn ein Display offline ist ─────────
+
+    @callback
+    def _check_offline(self, display: dict[str, Any], rt: DisplayRuntime, now: datetime) -> None:
+        """Nach „notify“ Minuten ohne Meldung eine Benachrichtigung in HA – verschwindet, sobald es wieder da ist.
+
+        Ein schlafendes Display (Bildschirm aus) gilt nicht als offline.
+        """
+        display_id = display["id"]
+        notification_id = f"{DOMAIN}_offline_{display_id}"
+        minutes = (display.get("watchdog") or {}).get("notify") or 0
+        online = self.online(display_id)
+        if online or not minutes:
+            if rt.offline_notified:
+                persistent_notification.async_dismiss(self.hass, notification_id)
+                rt.offline_notified = False
+            return
+        sleeping = (rt.clients and all(c.hidden for c in rt.clients.values())) or (not rt.clients and rt.asleep)
+        last = rt.last_seen or self.started
+        if rt.offline_notified or sleeping or (now - last).total_seconds() < minutes * 60:
+            return
+        rt.offline_notified = True
+        name = display.get("name", display_id)
+        since = dt_util.as_local(last).strftime("%H:%M")
+        de = resolve_lang(self.hass, self.store.config) == "de"
+        persistent_notification.async_create(
+            self.hass,
+            (
+                f"Das Display „{name}“ meldet sich seit {since} Uhr nicht mehr. Ist das Gerät aus, ohne WLAN oder hängt der Browser?"
+                if de
+                else f"The display “{name}” hasn’t checked in since {since}. Is the device off, offline or is the browser stuck?"
+            ),
+            title=f"Ambiframe: {name} offline",
+            notification_id=notification_id,
+        )
+        _LOGGER.info("Ambiframe: Display „%s“ offline seit %s – Benachrichtigung erstellt", name, since)

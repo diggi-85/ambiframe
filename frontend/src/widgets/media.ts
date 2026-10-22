@@ -84,6 +84,9 @@ export const WEBCAM_PRESETS: [string, string][] = [
  * Livebild einer Kamera. Eigenschaften: hass, entity, mode (live | snapshot), osd (Text für den Demo-Platzhalter),
  * url (Webcam-Link statt HA-Kamera), refresh (Standbild neu laden, Sekunden).
  * Reihenfolge: HA-Stream (WebRTC/HLS) → MJPEG über camera_proxy_stream → Platzhalter.
+ * Live wird nie „vorab“ per MJPEG geöffnet: Jede MJPEG-Verbindung startet bei vielen Kameras (z. B. Tapo) eine eigene
+ * Verbindung zur Kamera, und die schaffen oft nur 2 gleichzeitig – bei mehreren Displays kam dann der Platzhalter.
+ * HAs Stream teilt sich dagegen eine Verbindung unter allen Betrachtern. MJPEG nur, wenn HAs Player fehlt.
  */
 export class AfCameraView extends LitElement {
   static properties = {
@@ -176,6 +179,8 @@ export class AfCameraView extends LitElement {
   refresh = 0;
   private refreshTimer?: number;
   private native = false;
+  /** HAs Videoplayer (ha-camera-stream) ließ sich nicht laden – dann MJPEG als Rückfall */
+  private nativeFailed = false;
   private src?: string;
   /** Bild ließ sich nicht laden (Kamera weg, Schlüssel abgelaufen) – Platzhalter statt Safaris „zerrissenem Blatt“ */
   private broken = false;
@@ -212,10 +217,15 @@ export class AfCameraView extends LitElement {
         }, every * 1000);
       }
     }
-    if (this.hass && this.entity && !this.url && this.mode === "live" && !this.native) {
-      void ensureCameraStream(this.hass, this.entity).then((ok) => {
-        if (ok && !this.native) this.native = true;
-      });
+    if (this.hass && this.entity && !this.url && this.mode === "live" && !this.native && !this.nativeFailed) {
+      // Schon geladen: sofort nutzen (sonst stünde für einen Moment doch ein MJPEG-Bild)
+      if (customElements.get("ha-camera-stream")) this.native = true;
+      else
+        void ensureCameraStream(this.hass, this.entity).then((ok) => {
+          if (ok) this.native = true;
+          else this.nativeFailed = true;
+          this.requestUpdate();
+        });
     }
   }
 
@@ -274,6 +284,8 @@ export class AfCameraView extends LitElement {
     if (this.mode === "live" && this.native) {
       return html`<ha-camera-stream .hass=${this.hass} .stateObj=${s} .muted=${true} .controls=${false} .fitMode=${"cover"} allow-exoplayer></ha-camera-stream>`;
     }
+    // Live: auf HAs Player warten statt eine eigene MJPEG-Verbindung zur Kamera zu öffnen
+    if (this.mode === "live" && !this.nativeFailed) return html`<div class="ph"><span>${this.osd || t("Kamera wird verbunden …")}</span></div>`;
     // Token nur einmal übernehmen, sonst baut sich der Stream bei jedem Token-Wechsel neu auf
     const token = s.attributes.access_token as string | undefined;
     if (!this.src && token) {

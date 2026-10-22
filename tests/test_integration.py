@@ -196,3 +196,54 @@ async def test_fresh_install_starts_wizard(hass: HomeAssistant, setup_ambiframe:
     await client.send_json_auto_id({"type": "ambiframe/config/save", "config": config})
     assert (await client.receive_json())["success"]
     assert hass.data[DOMAIN].config["setup_complete"] is True
+
+
+async def test_offline_notification(hass: HomeAssistant, setup_ambiframe: MockConfigEntry, hass_ws_client: Any) -> None:
+    """Meldet sich ein Display „notify“ Minuten nicht, erscheint eine Benachrichtigung – und verschwindet, wenn es zurück ist."""
+    from datetime import timedelta
+
+    from homeassistant.components.persistent_notification import _async_get_or_create_notifications
+
+    config = minimal_config()
+    config["displays"][0]["watchdog"] = {"notify": 5}
+    client = await hass_ws_client(hass)
+    await client.send_json_auto_id({"type": "ambiframe/config/save", "config": config})
+    assert (await client.receive_json())["success"]
+    await hass.async_block_till_done()
+
+    hub = setup_ambiframe.runtime_data.hub
+    display = hub.display_config("kueche")
+    rt = hub.runtime("kueche")
+    notes = _async_get_or_create_notifications(hass)
+    key = "ambiframe_offline_kueche"
+
+    hub._check_offline(display, rt, hub.started + timedelta(minutes=4))
+    assert key not in notes  # noch zu früh
+    hub._check_offline(display, rt, hub.started + timedelta(minutes=6))
+    assert key in notes and "Küche" in notes[key]["message"]
+
+    # Display meldet sich wieder → Benachrichtigung weg
+    await client.send_json_auto_id({"type": "ambiframe/display/connect", "display_id": "kueche", "client_id": "tab", "name": "Tablet"})
+    assert (await client.receive_json())["success"]
+    hub._check_offline(display, rt, hub.started + timedelta(minutes=7))
+    assert key not in notes
+    assert rt.offline_notified is False
+
+
+async def test_offline_notification_off_or_sleeping(hass: HomeAssistant, setup_ambiframe: MockConfigEntry, hass_ws_client: Any) -> None:
+    """Ohne „notify“ und bei ausgeschaltetem Bildschirm keine Benachrichtigung."""
+    from datetime import timedelta
+
+    from homeassistant.components.persistent_notification import _async_get_or_create_notifications
+
+    client = await hass_ws_client(hass)
+    await client.send_json_auto_id({"type": "ambiframe/config/save", "config": minimal_config()})
+    assert (await client.receive_json())["success"]
+    hub = setup_ambiframe.runtime_data.hub
+    rt = hub.runtime("kueche")
+    hub._check_offline(hub.display_config("kueche"), rt, hub.started + timedelta(hours=3))
+    assert "ambiframe_offline_kueche" not in _async_get_or_create_notifications(hass)
+
+    rt.asleep = True
+    hub._check_offline({"id": "kueche", "name": "Küche", "watchdog": {"notify": 5}}, rt, hub.started + timedelta(hours=3))
+    assert "ambiframe_offline_kueche" not in _async_get_or_create_notifications(hass)

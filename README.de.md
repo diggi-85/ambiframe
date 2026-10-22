@@ -29,6 +29,10 @@ Ist die Wäsche fertig, steht es kurz da und bleibt dann als kleine Erinnerung.
 
 - **Seiten aus Widgets** in einem 12×8-Raster: Uhr, Datum, Text, Wetter (aktuell, Karte, Stunden, Tage, Zeile),
   Wert, Räume, Status („Gerade“), Kalender/Müll, Infozeile, Kamera und **jede Lovelace-Karte**.
+- **Widgets für den Alltag:** Küchentimer (HA-Timer mit Schnellstart-Knöpfen), Pinnwand (Text-Helfer, z. B. vom
+  Handy gesetzt), Countdown (Datum, Datum-Helfer oder Kalender), Abfahrten (ÖPNV-Sensoren, Linienfilter, Fußweg),
+  animiertes Regenradar (RainViewer), Sonne & Mond (Auf- und Untergang, Tageslänge, Mondphase) sowie Pollen & Luft
+  (Ampel-Stufen, Sensoren werden automatisch gefunden).
 - **Wiedergabeliste pro Display**. Seiten mit Bedingung (`show_if`) erscheinen nur, wenn sie relevant sind,
   z. B. Müll nur am Vorabend.
 - **Ereignisse** unterbrechen die Anzeige:
@@ -101,8 +105,9 @@ Ist die Wäsche fertig, steht es kurz da und bleibt dann als kleine Erinnerung.
   dorthin), *Pause* (endet nach `pause_minutes`, Standard 60), *Nächste Seite*, *Neu laden*, *Verbunden* und
   *Zuletzt aktiv* – ideal für Automationen („Tesla kommt heim → Seite Energie“).
 - **Läuft von selbst weiter:** Displays melden sich alle 30 s. Hängt eines, drückt Ambiframe die eingestellte
-  Neustart-Taste (`watchdog.button`, z. B. Fully „Start-URL laden“). Nach einem Ambiframe-Update laden sich alle
-  Displays selbst neu – nie mitten in Klingel oder Kamera.
+  Neustart-Taste (`watchdog.button`, z. B. Fully „Start-URL laden“). Auf Wunsch meldet Home Assistant, wenn ein
+  Display seit `watchdog.notify` Minuten offline ist – die Benachrichtigung verschwindet von selbst, sobald es wieder
+  da ist. Nach einem Ambiframe-Update laden sich alle Displays selbst neu – nie mitten in Klingel oder Kamera.
 - **Mehrere Geräte:** Ohne `?display=` fragt ein Gerät einmal, welches Display es ist, und merkt es sich.
   Der Editor zeigt unter *Wiedergabe → Geräte*, wer gerade was anzeigt.
 - **Auf den Fernseher:** Ein Display lässt sich als Videostream (bis 25 fps) an einen Apple TV (AirPlay) oder
@@ -213,6 +218,13 @@ events:
 | `calendar` | `entity`, `variant` (card/line), `waste`, `days`, `label` |
 | `infoline` | `items: [{type: weather/calendar/entity/text, …}]` |
 | `camera` | `entity`, `mode` (live/snapshot), `radius` |
+| `timer` | `entities` (timer.*, leer = alle), `presets` („5, 10, 15“ Minuten), `target`, `show_idle` |
+| `board` | `entities` (input_text/text, leer = Namen mit „pinnwand“, „nachricht“, „notiz“), `expire_hours`, `size`, `empty_text` |
+| `countdown` | `items: [{name, date \| entity, icon}]` (input_datetime, Zeitstempel-Sensor, Kalender), `max`, `show_past` |
+| `departures` | `entities` (ÖPNV-Sensoren, leer = automatisch), `lines`, `walk` (Minuten), `max`, `show_platform`, `attribute` |
+| `radar` | `zoom` (4–7), `map` (auto/light/dark/osm), `map_url`, `frames` (6 = letzte Stunde), `speed`, `latitude`/`longitude` |
+| `sky` | `show` (sun/moon, leer = beides), `latitude`/`longitude` (Standard: Zuhause) |
+| `air` | `entities: [{entity, name, kind, scale}]` (pollen, aqi, pm25, pm10, ozone, no2; leer = automatisch), `only_elevated`, `max` |
 | `card` | `card:` beliebige Lovelace-Karten-Konfiguration |
 
 Für alle Widgets gelten `align`/`valign` (start/center/end), `show_if` (Bedingungen) sowie `tap_action` und

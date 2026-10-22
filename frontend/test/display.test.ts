@@ -238,3 +238,29 @@ describe("Dashboard in der HA-App", () => {
     window.removeEventListener("location-changed", onChange);
   });
 });
+
+describe("Kamera live", () => {
+  const cam = ent("camera.einfahrt", "idle", { access_token: "abc", entity_picture: "/api/camera_proxy/camera.einfahrt?token=abc" });
+
+  it("öffnet keine eigene MJPEG-Verbindung, solange HAs Player lädt", async () => {
+    const el = document.createElement("af-camera-view") as El;
+    el.hass = hassWith(cam);
+    el.entity = "camera.einfahrt";
+    document.body.appendChild(el);
+    await el.updateComplete;
+    expect(el.shadowRoot!.querySelector("img")).toBeNull();
+    expect(el.shadowRoot!.textContent).toContain("Kamera wird verbunden");
+  });
+
+  it("nutzt HAs gemeinsamen Stream, sobald der Player da ist", async () => {
+    if (!customElements.get("ha-camera-stream")) customElements.define("ha-camera-stream", class extends HTMLElement {});
+    const el = document.createElement("af-camera-view") as El;
+    el.hass = hassWith(cam);
+    el.entity = "camera.einfahrt";
+    document.body.appendChild(el);
+    await el.updateComplete;
+    await el.updateComplete;
+    expect(el.shadowRoot!.querySelector("ha-camera-stream")).not.toBeNull();
+    expect(el.shadowRoot!.querySelector("img[src*='camera_proxy_stream']")).toBeNull();
+  });
+});

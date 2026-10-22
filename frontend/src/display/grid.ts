@@ -42,6 +42,10 @@ export const gridFor = (orientation: Orientation, aspect?: number): Grid => {
   return a > base ? { ...g, w: Math.round(g.h * a) } : { ...g, h: Math.round(g.w / a) };
 };
 
+/** Feinstes Raster im Editor: halbe Zellen (Ziehen, Größe, Pfeiltasten) */
+export const GRID_STEP = 0.5;
+export const snap = (v: number): number => Math.round(v / GRID_STEP) * GRID_STEP;
+
 /** Pixel-Rechteck einer Rasterposition */
 export const cellRect = (g: Grid, p: Pos) => {
   const colW = (g.w - 2 * g.padX - (g.cols - 1) * g.gap) / g.cols;

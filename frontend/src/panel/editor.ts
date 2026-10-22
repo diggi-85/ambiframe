@@ -34,7 +34,7 @@ import {
   slug,
   uniqueId,
 } from "../editor/schemas";
-import { BASE, layoutOf, type Orientation, type Pos } from "../display/grid";
+import { BASE, GRID_STEP, layoutOf, type Orientation, type Pos } from "../display/grid";
 import { anyIcon } from "../icons";
 import { THEMES } from "../styles";
 import type { DisplayConfig, EventConfig, Hass, PageConfig, AmbiframeConfig, Theme, WidgetConfig } from "../types";
@@ -523,7 +523,9 @@ class AmbiframePanel extends LitElement {
       if (e.shiftKey) this.redo();
       else this.undo();
     } else if (!typing && this.tab === "seiten" && this.widgetId) {
-      const step: Record<string, [number, number]> = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
+      // Pfeiltasten verschieben in halben Zellen (wie das Raster)
+      const q = GRID_STEP;
+      const step: Record<string, [number, number]> = { ArrowLeft: [-q, 0], ArrowRight: [q, 0], ArrowUp: [0, -q], ArrowDown: [0, q] };
       if (e.key === "Delete" || e.key === "Backspace") {
         e.preventDefault();
         this.removeWidget();
@@ -540,7 +542,7 @@ class AmbiframePanel extends LitElement {
         if (e.shiftKey) {
           // Größe nur beim angeklickten Widget
           const c = cur[0].pos;
-          const next = { ...c, w: Math.min(Math.max(1, c.w + dx), g.cols - c.x), h: Math.min(Math.max(1, c.h + dy), g.rows - c.y) };
+          const next = { ...c, w: Math.min(Math.max(q, c.w + dx), g.cols - c.x), h: Math.min(Math.max(q, c.h + dy), g.rows - c.y) };
           this.updatePage((p) => this.setPos(p, cur[0].id, next), "keys");
         } else {
           const fits = cur.every(({ pos }) => pos.x + dx >= 0 && pos.x + pos.w + dx <= g.cols && pos.y + dy >= 0 && pos.y + pos.h + dy <= g.rows);

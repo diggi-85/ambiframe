@@ -133,14 +133,26 @@ ACTION = vol.Schema(
     extra=vol.ALLOW_EXTRA,
 )
 
+def _grid(minimum: float, maximum: float) -> vol.All:
+    """Rasterposition in halben Zellen (0, 0,5, 1 …); ganze Werte bleiben ganze Zahlen (übersichtliches YAML)."""
+
+    def half(value: float) -> float | int:
+        if abs(value * 2 - round(value * 2)) > 1e-9:
+            raise vol.Invalid("nur ganze oder halbe Rasterschritte (z. B. 2 oder 2.5)")
+        return int(value) if float(value).is_integer() else round(value * 2) / 2
+
+    return vol.All(vol.Coerce(float), vol.Range(min=minimum, max=maximum), half)
+
+
 WIDGET = vol.Schema(
     {
         vol.Required("id"): _ID,
         vol.Required("type"): cv.string,
-        vol.Required("x"): vol.All(vol.Coerce(int), vol.Range(min=0, max=GRID_COLUMNS - 1)),
-        vol.Required("y"): vol.All(vol.Coerce(int), vol.Range(min=0, max=GRID_ROWS - 1)),
-        vol.Required("w"): vol.All(vol.Coerce(int), vol.Range(min=1, max=GRID_COLUMNS)),
-        vol.Required("h"): vol.All(vol.Coerce(int), vol.Range(min=1, max=GRID_ROWS)),
+        # Raster 12×8 in halben Zellen (Editor rastet auf 0,5 ein)
+        vol.Required("x"): _grid(0, GRID_COLUMNS - 0.5),
+        vol.Required("y"): _grid(0, GRID_ROWS - 0.5),
+        vol.Required("w"): _grid(0.5, GRID_COLUMNS),
+        vol.Required("h"): _grid(0.5, GRID_ROWS),
         vol.Optional("options", default=dict): dict,
         vol.Optional("show_if", default=list): [CONDITION],
         vol.Optional("tap_action"): ACTION,
@@ -149,10 +161,10 @@ WIDGET = vol.Schema(
         # Eigene Position im Hochformat (Raster 8×12)
         vol.Optional("portrait"): vol.Schema(
             {
-                vol.Required("x"): vol.All(vol.Coerce(int), vol.Range(min=0, max=PORTRAIT_COLUMNS - 1)),
-                vol.Required("y"): vol.All(vol.Coerce(int), vol.Range(min=0, max=PORTRAIT_ROWS - 1)),
-                vol.Required("w"): vol.All(vol.Coerce(int), vol.Range(min=1, max=PORTRAIT_COLUMNS)),
-                vol.Required("h"): vol.All(vol.Coerce(int), vol.Range(min=1, max=PORTRAIT_ROWS)),
+                vol.Required("x"): _grid(0, PORTRAIT_COLUMNS - 0.5),
+                vol.Required("y"): _grid(0, PORTRAIT_ROWS - 0.5),
+                vol.Required("w"): _grid(0.5, PORTRAIT_COLUMNS),
+                vol.Required("h"): _grid(0.5, PORTRAIT_ROWS),
             }
         ),
     },
@@ -184,6 +196,8 @@ PAGE = vol.Schema(
                     )
                 ],
                 vol.Optional("ambient"): vol.In(AMBIENTS),
+                # Abdunkeln von Foto/Kamera für lesbaren Text (fehlt = normal)
+                vol.Optional("shade"): vol.In(["none", "light", "strong"]),
             },
             extra=vol.ALLOW_EXTRA,
         ),
@@ -309,11 +323,13 @@ DISPLAY = vol.Schema(
         vol.Optional("mode"): vol.In(THEME_MODES),
         vol.Optional("orientation"): vol.In(["auto", "landscape", "portrait"]),
         vol.Optional("transition"): TRANSITION,
-        # Watchdog: diese Taste drücken, wenn sich das Display „after“ Sekunden nicht meldet
+        # Watchdog: diese Taste drücken, wenn sich das Display „after“ Sekunden nicht meldet;
+        # „notify“: nach so vielen Minuten ohne Meldung eine Benachrichtigung in HA (0 = aus)
         vol.Optional("watchdog"): vol.Schema(
             {
                 vol.Optional("button"): cv.entity_id,
                 vol.Optional("after", default=120): vol.All(vol.Coerce(int), vol.Range(min=60, max=3600)),
+                vol.Optional("notify"): vol.All(vol.Coerce(int), vol.Range(min=0, max=1440)),
             }
         ),
         # Pause endet nach so vielen Minuten von selbst (0 = nie)

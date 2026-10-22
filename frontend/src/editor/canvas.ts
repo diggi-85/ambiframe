@@ -3,7 +3,7 @@
 import { LitElement, css, html, nothing } from "lit";
 import { t } from "../i18n";
 import "../display/display";
-import { BASE, cellRect, layoutOf, type Orientation, type Pos } from "../display/grid";
+import { BASE, GRID_STEP, cellRect, layoutOf, snap, type Orientation, type Pos } from "../display/grid";
 import type { Hass, AmbiframeConfig, WidgetConfig } from "../types";
 import { checkConditions } from "../util";
 import { define } from "../widgets/base";
@@ -93,11 +93,12 @@ export class AfCanvas extends LitElement {
     const d = this.drag;
     if (!d) return;
     const g = this.stage;
-    const dc = Math.round((e.clientX - d.x0) / this.scale / ((g.w - 2 * g.padX + g.gap) / g.cols));
-    const dr = Math.round((e.clientY - d.y0) / this.scale / ((g.h - 2 * g.padY + g.gap) / g.rows));
+    // Einrasten in halben Zellen
+    const dc = snap((e.clientX - d.x0) / this.scale / ((g.w - 2 * g.padX + g.gap) / g.cols));
+    const dr = snap((e.clientY - d.y0) / this.scale / ((g.h - 2 * g.padY + g.gap) / g.rows));
     const o = d.orig;
     if (d.mode === "resize") {
-      const next = { x: o.x, y: o.y, w: Math.min(Math.max(1, o.w + dc), g.cols - o.x), h: Math.min(Math.max(1, o.h + dr), g.rows - o.y) };
+      const next = { x: o.x, y: o.y, w: Math.min(Math.max(GRID_STEP, o.w + dc), g.cols - o.x), h: Math.min(Math.max(GRID_STEP, o.h + dr), g.rows - o.y) };
       this.emit("move", { moves: [{ id: d.id, ...next }], done: false });
       return;
     }
@@ -157,7 +158,9 @@ export class AfCanvas extends LitElement {
         ${this.grid
           ? Array.from({ length: g.cols * g.rows }, (_, i) => {
               const r = cellRect(g, { x: i % g.cols, y: Math.floor(i / g.cols), w: 1, h: 1 });
-              return html`<i class="cell" style="left:${r.left * s}px;top:${r.top * s}px;width:${r.width * s}px;height:${r.height * s}px"></i>`;
+              return html`<i class="cell" style="left:${r.left * s}px;top:${r.top * s}px;width:${r.width * s}px;height:${r.height * s}px"
+                ><b class="half v"></b><b class="half h"></b
+              ></i>`;
             })
           : nothing}
         ${(page?.widgets ?? []).map((w) => {
@@ -209,6 +212,23 @@ export class AfCanvas extends LitElement {
       border: 1px dashed rgba(255, 255, 255, 0.07);
       border-radius: 4px;
       pointer-events: none;
+    }
+    /* Halbe Zellen: feine Hilfslinien in der Mitte jeder Zelle */
+    .cell .half {
+      position: absolute;
+      background: rgba(255, 255, 255, 0.04);
+    }
+    .cell .half.v {
+      left: 50%;
+      top: 0;
+      bottom: 0;
+      width: 1px;
+    }
+    .cell .half.h {
+      top: 50%;
+      left: 0;
+      right: 0;
+      height: 1px;
     }
     .box {
       position: absolute;

@@ -74,6 +74,16 @@ export class AfPage extends LitElement {
         background: linear-gradient(to top, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.5) 40%, rgba(0, 0, 0, 0.12) 72%, rgba(0, 0, 0, 0) 100%),
           linear-gradient(to right, rgba(0, 0, 0, 0.5) 0%, rgba(0, 0, 0, 0) 58%);
       }
+      /* Abdunkeln pro Seite einstellbar: leicht = halb so stark, kräftig = über die ganze Fläche */
+      .shade.light {
+        opacity: 0.5;
+      }
+      .shade.strong::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.25);
+      }
       .bgcam {
         position: absolute;
         inset: 0;
@@ -271,7 +281,7 @@ export class AfPage extends LitElement {
     return html`<div class="root ${cls}" style=${colored ? `background-color:${bg.color}` : ""}>
       ${bg.type === "photo" && this.photo
         ? html`<div class="photo" style="background-image:url('${this.photo.url}')"></div>
-            <div class="shade"></div>
+            ${bg.shade === "none" ? nothing : html`<div class="shade ${bg.shade ?? ""}"></div>`}
             ${this.photo.credit ? html`<div class="credit">${this.photo.credit}</div>` : nothing}`
         : nothing}
       ${bg.type === "camera" && (cam.entity || cam.url)
@@ -284,7 +294,7 @@ export class AfPage extends LitElement {
               .refresh=${cam.refresh ?? 20}
               .osd=${"KAMERA"}
             ></af-camera-view>
-            <div class="shade cam"></div>
+            ${bg.shade === "none" ? nothing : html`<div class="shade cam ${bg.shade ?? ""}"></div>`}
             ${cam.name ? html`<div class="credit">${cam.name}</div>` : nothing}`
         : nothing}
       ${ambient !== "none"

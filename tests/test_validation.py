@@ -411,3 +411,15 @@ def test_sounds_reminders_and_mini_options() -> None:
         broken["events"][0].update(bad)
         with pytest.raises(vol.Invalid):
             validate_config(broken)
+
+
+def test_widget_grid_half_steps() -> None:
+    """Feineres Raster: halbe Zellen erlaubt, ganze bleiben ganze Zahlen, krumme Werte nicht."""
+    raw = minimal_config()
+    raw["pages"][0]["widgets"][0].update(x=1.5, y=0, w=2.5, h=1)
+    widget = validate_config(raw)["pages"][0]["widgets"][0]
+    assert (widget["x"], widget["y"], widget["w"], widget["h"]) == (1.5, 0, 2.5, 1)
+    assert isinstance(widget["y"], int)
+    raw["pages"][0]["widgets"][0].update(x=1.3)
+    with pytest.raises(vol.Invalid):
+        validate_config(raw)

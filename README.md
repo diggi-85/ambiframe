@@ -30,6 +30,10 @@ Dutch and French).</sub>
 
 - **Pages built from widgets** on a 12×8 grid: clock, date, text, weather (current, card, hourly, daily, line),
   value, rooms, status ("right now"), calendar/waste, info line, camera and **any Lovelace card**.
+- **Everyday widgets:** kitchen timer (HA timers with quick-start buttons), notice board (text helpers, e.g. set from
+  your phone), countdown (date, date helper or calendar), departures (public transport sensors, line filter, walking
+  time), animated rain radar (RainViewer), sun & moon (sunrise/sunset, day length, moon phase) and pollen & air quality
+  (traffic-light levels, sensors found automatically).
 - **A playlist per display.** Pages with a condition (`show_if`) only appear when they are relevant, e.g. waste
   collection only the evening before.
 - **Events** interrupt the display:
@@ -107,8 +111,9 @@ Dutch and French).</sub>
   *Pause* (ends after `pause_minutes`, default 60), *Next page*, *Reload*, *Connected* and *Last active* – ideal for
   automations ("car comes home → energy page").
 - **Keeps itself running:** displays report every 30 s. If one hangs, Ambiframe presses the configured restart button
-  (`watchdog.button`, e.g. Fully "Load start URL"). After an Ambiframe update all displays reload by themselves –
-  never in the middle of a doorbell or camera event.
+  (`watchdog.button`, e.g. Fully "Load start URL"). If you like, Home Assistant notifies you when a display has been
+  offline for `watchdog.notify` minutes – the notification disappears by itself once it is back. After an Ambiframe
+  update all displays reload by themselves – never in the middle of a doorbell or camera event.
 - **Several devices:** without `?display=`, a device asks once which display it is and remembers it. The editor shows
   under *Playback → Devices* who is showing what.
 - Everything is **stored in Home Assistant** (`.storage/ambiframe`) and is therefore part of every backup.
@@ -209,6 +214,13 @@ events:
 | `calendar` | `entity`, `variant` (card/line), `waste`, `days`, `label` |
 | `infoline` | `items: [{type: weather/calendar/entity/text/…, …}]` |
 | `camera` | `entity`, `mode` (live/snapshot), `radius` |
+| `timer` | `entities` (timer.*, empty = all), `presets` ("5, 10, 15" minutes), `target`, `show_idle` |
+| `board` | `entities` (input_text/text, empty = names with "board", "message", "note"), `expire_hours`, `size`, `empty_text` |
+| `countdown` | `items: [{name, date \| entity, icon}]` (input_datetime, timestamp sensor, calendar), `max`, `show_past` |
+| `departures` | `entities` (public transport sensors, empty = automatic), `lines`, `walk` (minutes), `max`, `show_platform`, `attribute` |
+| `radar` | `zoom` (4–7), `map` (auto/light/dark/osm), `map_url`, `frames` (6 = last hour), `speed`, `latitude`/`longitude` |
+| `sky` | `show` (sun/moon, empty = both), `latitude`/`longitude` (default: home) |
+| `air` | `entities: [{entity, name, kind, scale}]` (pollen, aqi, pm25, pm10, ozone, no2; empty = automatic), `only_elevated`, `max` |
 | `card` | `card:` any Lovelace card configuration |
 
 All widgets support `align`/`valign` (start/center/end), `show_if` (conditions) as well as `tap_action` and
