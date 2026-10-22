@@ -28,8 +28,9 @@ Dutch and French).</sub>
 
 ## Features
 
-- **Pages built from widgets** on a 12×8 grid: clock, date, text, weather (current, card, hourly, daily, line),
-  value, rooms, status ("right now"), calendar/waste, info line, camera and **any Lovelace card**.
+- **Pages built from 44 widgets** on a 12×8 grid with half-cell steps: clock, date, text, weather (current, card,
+  hourly, daily, rain preview, line), value, rooms, status ("right now"), calendar/waste, info line, camera and **any
+  Lovelace card** – the full list is under [Widgets](#widgets).
 - **Everyday widgets:** kitchen timer (HA timers with quick-start buttons), notice board (text helpers, e.g. set from
   your phone), countdown (date, date helper or calendar), departures (public transport sensors, line filter, walking
   time), animated rain radar (RainViewer), sun & moon (sunrise/sunset, day length, moon phase) and pollen & air quality
@@ -64,16 +65,18 @@ Dutch and French).</sub>
   adjustable, per page, off at night and with "reduce motion".
 - **Page transitions:** fade, blur, slide or zoom with any duration – globally, per display, per page.
 - **Control mode:** a tap brings up the HA dashboard; after a minute without touch Ambiframe returns.
-- **Native camera** via Home Assistant's own stream (WebRTC/HLS), with MJPEG as a fallback.
+- **Native camera** via Home Assistant's own stream (WebRTC/HLS) – all displays share one connection to the camera,
+  which matters for cameras that allow only a few (e.g. Tapo); MJPEG only as a fallback.
 - **Photos** from the HA media folder `ambiframe` or a **shared iCloud album** (public link), optionally mixed with
   Bing's pictures of the day (region selectable).
 - **News** from any RSS, Atom or RDF feed; suggestions in English (BBC, Guardian, Sky News, NPR, New York Times, ABC,
-  CBC, Al Jazeera, DW) and German (tagesschau, n-tv, SPIEGEL, ZDFheute, Deutschlandfunk, ZEIT, FAZ, SZ, heise, ORF,
-  SRF). Without a choice, sources match the display language. Large image with headline, list or ticker; the server
+  CBC, Al Jazeera, DW), German (tagesschau, n-tv, SPIEGEL, ZDFheute, Deutschlandfunk, ZEIT, FAZ, SZ, heise, ORF,
+  SRF), Dutch (NOS, NU.nl, VRT NWS) and French (Le Monde, franceinfo, RFI, Le Figaro). Without a choice, sources match the display language. Large image with headline, list or ticker; the server
   fetches the feeds (cached for 10 min) and swaps small thumbnails for large images. The ticker can be switched per
   display and is off on TVs and in the video stream (it would freeze or stutter there).
 - **Webcams and cameras as background:** pages can use an HA camera or a webcam link (image, MJPEG, `.m3u8`, YouTube
-  live) as their background; the editor suggests public webcams.
+  live) as their background; the editor suggests public webcams. The darkening behind clock and text is adjustable per
+  page (normal, light, strong or off).
 - **Info line** with weather, appointments, all waste bins in rotation, running appliances with remaining time,
   "window open and it's raining", what's playing, the robot vacuum and the car charging.
 - **Daily content and day preview:** Wikipedia article of the day (English, German or Swedish) and a quote (ZenQuotes:
@@ -101,7 +104,8 @@ Dutch and French).</sub>
 - **Your own look:** custom colours for light and dark (background, text, accent, cards, good/warning/cool) on any
   style, corner radius, custom CSS globally and per page; save styles, export and import them as YAML. Per widget:
   as a card, accent and text colour, size, opacity, padding (`look`).
-- **Comfortable editing:** multi-select (⇧/⌘-click), drag groups together, guides for aligned edges, copy/paste with
+- **Comfortable editing:** half-cell grid (drag, resize, arrow keys), multi-select (⇧/⌘-click), drag groups together,
+  guides for aligned edges, copy/paste with
   ⌘C/⌘V (as YAML – also between pages, tabs and devices), your own templates for widget groups and whole pages,
   pages as YAML export/import. The editor also works on a phone.
 - **Tap actions:** every widget can do something on tap or long press – toggle, open HA details, run a script/action,
@@ -159,6 +163,7 @@ displays:
   - id: living_room
     name: Living room
     playlist: [{ page: photo }, { page: weather, duration: 20 }]
+    watchdog: { notify: 30 }    # HA notification after 30 min offline
     night: { entity: input_boolean.night, page: night }
     control: { enabled: true, dashboard: /lovelace/0, idle: 60 }
 
@@ -166,7 +171,7 @@ pages:
   - id: photo
     name: Photo frame
     duration: 90
-    background: { type: photo }
+    background: { type: photo, shade: light }   # shade: none | light | strong
     widgets:
       - { id: clock, type: clock, x: 0, y: 4, w: 6, h: 2, options: { valign: end } }
       - { id: date, type: date, x: 0, y: 6, w: 7, h: 1 }
@@ -207,13 +212,36 @@ events:
 | `chart` | `entities: [{entity, name, color}]`, `kind` (line/area/bar), `hours`, `period` (hour/day), `value`, `min`, `max`, `unit`, `decimals`, `label`, `style: card` |
 | `gauge` | `entity`, `attribute`, `kind` (ring/half), `min`, `max`, `unit`, `decimals`, `color`, `severity: [{from, color}]`, `name`, `icon` |
 | `image` | `url` (link, `/local/…`, `media-source://…`, template) or `entity`, `fit` (cover/contain), `refresh`, `caption`, `radius` |
-| `weather` | `entity`, `variant` (now/card/hourly/daily/line), `hours`, `days`, `name` |
+| `weather` | `entity`, `variant` (now/card/hourly/daily/rain/line), `hours`, `days`, `name`, `rain_sensor`, `threshold` |
 | `value` | `entity`, `attribute`, `name`, `unit`, `decimals`, `style: card`, `label`, `icon`, `sub`, `secondary`, `cold` |
 | `rooms` | `rooms: [{name, temperature, humidity, climate, windows}]`, `cold`, `warm`, `columns` |
 | `status` | `windows` (auto/list), `appliances`, `lights: auto`, `waste`, `waste_days`, `extra`, `max` |
 | `calendar` | `entity`, `variant` (card/line), `waste`, `days`, `label` |
 | `infoline` | `items: [{type: weather/calendar/entity/text/…, …}]` |
-| `camera` | `entity`, `mode` (live/snapshot), `radius` |
+| `camera` | `entity` or `url` (webcam), `mode` (live/snapshot), `refresh`, `title`, `text`, `radius` |
+| `agenda` | `calendars`, `days`, `max`, `location` |
+| `today` | `calendars`, `weather` – appointments, weather and waste for the day |
+| `waste` | `bins: [{name, entity, color, out}]`, `max`, `highlight` (days) |
+| `activity` | `variant: list` (default: one line), `entities`, `exclude`, `max`, `within` (minutes) |
+| `warnings` | `entities`, `calm_text` |
+| `list` | `rows: [{name, entity, attribute, icon, format, unit, decimals}]` |
+| `persons` | `persons: [{entity, name, location}]` |
+| `media` | `entities`, `variant: full` (default: compact), `show_paused` |
+| `appliances` | `items: [{name, running, icon, power, progress, end, cost}]`, `empty_text` |
+| `price` | `entity`, `home` (Tibber), `window` (cheapest hours), `tomorrow`, `note` |
+| `power` | `production: [{name, entity}]`, `consumption`, `forecast`, `forecast_remaining`, `extra`, `extra_name` |
+| `consumers` | `count`, `devices`, `exclude` |
+| `balance` | `switch_hour`, `groups` (YAML) |
+| `batteries` | `part`, `devices`, `threshold`, `max`, `exclude` |
+| `car` | `name`, `battery`, `range`, `location`, `charging`, `plugged`, `charger_power`, `time_full`, `lock`, `limit`, `inside_temp` |
+| `vacuum` | `vacuums: [{entity, name, battery, room, map}]` |
+| `covers` | `covers: [{entity, name, invert}]`, `only_open` |
+| `pet` | `name`, `visits`, `unit`, `days`, `icon` |
+| `job` | `title`, `progress`, `remaining`, `end`, `layer`, `layers`, `status`, `temps` (e.g. 3D printer) |
+| `qr` | `ssid`, `password`, `encryption`, `hidden`, `show_password`, `hint` or `image` |
+| `news` | `variant` (`list`/`ticker`, default: large image), `feeds`, `interval`, `max`, `speed` |
+| `daily` | `kind: quote` (default: Wikipedia article), `language`, `source`, `image` |
+| `summary` | `style: card` (default: no frame), `size` |
 | `timer` | `entities` (timer.*, empty = all), `presets` ("5, 10, 15" minutes), `target`, `show_idle` |
 | `board` | `entities` (input_text/text, empty = names with "board", "message", "note"), `expire_hours`, `size`, `empty_text` |
 | `countdown` | `items: [{name, date \| entity, icon}]` (input_datetime, timestamp sensor, calendar), `max`, `show_past` |

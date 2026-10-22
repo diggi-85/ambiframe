@@ -27,8 +27,9 @@ Ist die Wäsche fertig, steht es kurz da und bleibt dann als kleine Erinnerung.
 
 ## Was Ambiframe kann
 
-- **Seiten aus Widgets** in einem 12×8-Raster: Uhr, Datum, Text, Wetter (aktuell, Karte, Stunden, Tage, Zeile),
-  Wert, Räume, Status („Gerade“), Kalender/Müll, Infozeile, Kamera und **jede Lovelace-Karte**.
+- **Seiten aus 44 Widgets** in einem 12×8-Raster mit halben Schritten: Uhr, Datum, Text, Wetter (aktuell, Karte,
+  Stunden, Tage, Regen-Vorschau, Zeile), Wert, Räume, Status („Gerade“), Kalender/Müll, Infozeile, Kamera und **jede
+  Lovelace-Karte** – die vollständige Liste steht unter [Widgets](#widgets).
 - **Widgets für den Alltag:** Küchentimer (HA-Timer mit Schnellstart-Knöpfen), Pinnwand (Text-Helfer, z. B. vom
   Handy gesetzt), Countdown (Datum, Datum-Helfer oder Kalender), Abfahrten (ÖPNV-Sensoren, Linienfilter, Fußweg),
   animiertes Regenradar (RainViewer), Sonne & Mond (Auf- und Untergang, Tageslänge, Mondphase) sowie Pollen & Luft
@@ -64,15 +65,17 @@ Ist die Wäsche fertig, steht es kurz da und bleibt dann als kleine Erinnerung.
   Stärke und Tempo einstellbar, pro Seite wählbar, nachts und bei „Bewegung reduzieren“ aus.
 - **Seitenwechsel** als Überblenden, Unschärfe, Schieben oder Zoom, Dauer frei – global, pro Display, pro Seite.
 - **Bedienmodus:** Tippen holt das HA-Dashboard, nach einer Minute ohne Berührung kehrt Ambiframe zurück.
-- **Kamera nativ** über HAs eigenen Stream (WebRTC/HLS), mit MJPEG als Rückfall.
+- **Kamera nativ** über HAs eigenen Stream (WebRTC/HLS) – alle Displays teilen sich eine Verbindung zur Kamera,
+  wichtig bei Kameras, die nur wenige erlauben (z. B. Tapo); MJPEG nur als Rückfall.
 - **Fotos** aus dem HA-Medienordner `ambiframe`, ersatzweise die Bing-Bilder des Tages (Region wählbar).
 - **Nachrichten** aus jedem RSS-, Atom- oder RDF-Feed; Vorschläge auf Deutsch (tagesschau, n-tv, SPIEGEL, ZDFheute,
-  Deutschlandfunk, ZEIT, FAZ, SZ, heise, ORF, SRF) und Englisch (BBC, Guardian, Sky News, NPR, New York Times, ABC,
-  CBC, Al Jazeera, DW). Ohne eigene Wahl passend zur Sprache. Großbild mit Schlagzeile, Liste oder Laufband; der
+  Deutschlandfunk, ZEIT, FAZ, SZ, heise, ORF, SRF), Englisch (BBC, Guardian, Sky News, NPR, New York Times, ABC,
+  CBC, Al Jazeera, DW), Niederländisch (NOS, NU.nl, VRT NWS) und Französisch (Le Monde, franceinfo, RFI, Le Figaro). Ohne eigene Wahl passend zur Sprache. Großbild mit Schlagzeile, Liste oder Laufband; der
   Server holt die Feeds (10 min zwischengespeichert) und tauscht kleine Vorschaubilder gegen große. Das Laufband ist
   pro Display schaltbar und auf dem Fernseher sowie im Videostream aus (dort würde es stehen oder ruckeln).
 - **Webcams und Kameras als Hintergrund:** Seiten können eine HA-Kamera oder einen Webcam-Link (Bild, MJPEG,
-  `.m3u8`, YouTube live) als Hintergrund haben; der Editor schlägt öffentliche Webcams vor.
+  `.m3u8`, YouTube live) als Hintergrund haben; der Editor schlägt öffentliche Webcams vor. Wie stark der
+  Hintergrund hinter Uhr und Text abgedunkelt wird, ist pro Seite einstellbar (normal, leicht, kräftig oder aus).
 - **Fotos aus einem geteilten iCloud-Album** (öffentlicher Link), gemischt mit dem Medienordner.
 - **Infozeile mit allen Mülltonnen** im Wechsel („Biotonne und Restmüll morgen“ → „Papier am Freitag“).
 - **KI-Zusammenfassung** (über `ai_task`, bevorzugt Gemini) zu festen Zeiten: Überschrift und 3–5 Punkte aus Wetter,
@@ -95,7 +98,8 @@ Ist die Wäsche fertig, steht es kurz da und bleibt dann als kleine Erinnerung.
 - **Eigenes Aussehen:** eigene Farben je Hell/Dunkel (Hintergrund, Schrift, Akzent, Karten, Gut/Warnung/Kühl)
   auf jedem Stil, Eckenradius, eigenes CSS global und pro Seite; Stile speichern, als YAML exportieren und
   importieren. Pro Widget: als Karte, Akzent- und Schriftfarbe, Größe, Deckkraft, Innenabstand (`look`).
-- **Bequem bearbeiten:** Mehrfachauswahl (⇧/⌘-Klick), Gruppe gemeinsam ziehen, Hilfslinien für bündige
+- **Bequem bearbeiten:** Raster mit halben Zellen (Ziehen, Größe, Pfeiltasten), Mehrfachauswahl (⇧/⌘-Klick), Gruppe
+  gemeinsam ziehen, Hilfslinien für bündige
   Kanten, Kopieren/Einfügen per ⌘C/⌘V (als YAML – auch zwischen Seiten, Tabs und Geräten), eigene Vorlagen für
   Widget-Gruppen und ganze Seiten, Seiten als YAML exportieren und importieren.
 - **Antippen:** Jedes Widget kann beim Antippen bzw. langen Drücken etwas tun – ein/aus schalten, HA-Details
@@ -114,6 +118,8 @@ Ist die Wäsche fertig, steht es kurz da und bleibt dann als kleine Erinnerung.
   LG-webOS-TV schicken – per Schalter *Auf dem Fernseher* oder Aktion `ambiframe.show_on_tv` /
   `ambiframe.stop_on_tv`. Braucht das Add-on Puppet. Schritt für Schritt (auch zum Einfügen in Claude):
   [`docs/airplay-apple-tv.md`](docs/airplay-apple-tv.md).
+- **Sprachen:** Deutsch, Englisch, Niederländisch und Französisch – Oberfläche, Editor, Startkonfiguration und
+  KI-Zusammenfassung.
 - **iPad und iPhone über die HA-App:** Dashboard-Karte `custom:ambiframe-card` (`display: <id>`) im Kiosk-Modus
   zeigt Ambiframe im Vollbild, auch für Benutzer ohne Admin-Rechte.
 - **Tagesinhalt und Tagesvorschau:** Wikipedia-Artikel des Tages (Deutsch, Englisch oder Schwedisch) und ein Zitat
@@ -163,6 +169,7 @@ displays:
   - id: wohnzimmer
     name: Wohnzimmer
     playlist: [{ page: foto }, { page: wetter, duration: 20 }]
+    watchdog: { notify: 30 }    # HA-Benachrichtigung nach 30 min offline
     night: { entity: input_boolean.nachtruhe, page: nacht }
     control: { enabled: true, dashboard: /lovelace/0, idle: 60 }
 
@@ -170,7 +177,7 @@ pages:
   - id: foto
     name: Bilderrahmen
     duration: 90
-    background: { type: photo }
+    background: { type: photo, shade: light }   # shade: none | light | strong
     widgets:
       - { id: uhr, type: clock, x: 0, y: 4, w: 6, h: 2, options: { valign: end } }
       - { id: datum, type: date, x: 0, y: 6, w: 7, h: 1 }
@@ -211,13 +218,36 @@ events:
 | `chart` | `entities: [{entity, name, color}]`, `kind` (line/area/bar), `hours`, `period` (hour/day), `value`, `min`, `max`, `unit`, `decimals`, `label`, `style: card` |
 | `gauge` | `entity`, `attribute`, `kind` (ring/half), `min`, `max`, `unit`, `decimals`, `color`, `severity: [{from, color}]`, `name`, `icon` |
 | `image` | `url` (Link, `/local/…`, `media-source://…`, Vorlage) oder `entity`, `fit` (cover/contain), `refresh`, `caption`, `radius` |
-| `weather` | `entity`, `variant` (now/card/hourly/daily/line), `hours`, `days`, `name` |
+| `weather` | `entity`, `variant` (now/card/hourly/daily/rain/line), `hours`, `days`, `name`, `rain_sensor`, `threshold` |
 | `value` | `entity`, `attribute`, `name`, `unit`, `decimals`, `style: card`, `label`, `icon`, `sub`, `secondary`, `cold` |
 | `rooms` | `rooms: [{name, temperature, humidity, climate, windows}]`, `cold`, `warm`, `columns` |
 | `status` | `windows` (auto/Liste), `appliances`, `lights: auto`, `waste`, `waste_days`, `extra`, `max` |
 | `calendar` | `entity`, `variant` (card/line), `waste`, `days`, `label` |
 | `infoline` | `items: [{type: weather/calendar/entity/text, …}]` |
-| `camera` | `entity`, `mode` (live/snapshot), `radius` |
+| `camera` | `entity` oder `url` (Webcam), `mode` (live/snapshot), `refresh`, `title`, `text`, `radius` |
+| `agenda` | `calendars`, `days`, `max`, `location` |
+| `today` | `calendars`, `weather` – Termine, Wetter und Müll des Tages |
+| `waste` | `bins: [{name, entity, color, out}]`, `max`, `highlight` (Tage) |
+| `activity` | `variant: list` (Standard: eine Zeile), `entities`, `exclude`, `max`, `within` (Minuten) |
+| `warnings` | `entities`, `calm_text` |
+| `list` | `rows: [{name, entity, attribute, icon, format, unit, decimals}]` |
+| `persons` | `persons: [{entity, name, location}]` |
+| `media` | `entities`, `variant: full` (Standard: kompakt), `show_paused` |
+| `appliances` | `items: [{name, running, icon, power, progress, end, cost}]`, `empty_text` |
+| `price` | `entity`, `home` (Tibber), `window` (günstigste Stunden), `tomorrow`, `note` |
+| `power` | `production: [{name, entity}]`, `consumption`, `forecast`, `forecast_remaining`, `extra`, `extra_name` |
+| `consumers` | `count`, `devices`, `exclude` |
+| `balance` | `switch_hour`, `groups` (YAML) |
+| `batteries` | `part`, `devices`, `threshold`, `max`, `exclude` |
+| `car` | `name`, `battery`, `range`, `location`, `charging`, `plugged`, `charger_power`, `time_full`, `lock`, `limit`, `inside_temp` |
+| `vacuum` | `vacuums: [{entity, name, battery, room, map}]` |
+| `covers` | `covers: [{entity, name, invert}]`, `only_open` |
+| `pet` | `name`, `visits`, `unit`, `days`, `icon` |
+| `job` | `title`, `progress`, `remaining`, `end`, `layer`, `layers`, `status`, `temps` (z. B. 3D-Drucker) |
+| `qr` | `ssid`, `password`, `encryption`, `hidden`, `show_password`, `hint` oder `image` |
+| `news` | `variant` (`list`/`ticker`, Standard: Großbild), `feeds`, `interval`, `max`, `speed` |
+| `daily` | `kind: quote` (Standard: Wikipedia-Artikel), `language`, `source`, `image` |
+| `summary` | `style: card` (Standard: ohne Rahmen), `size` |
 | `timer` | `entities` (timer.*, leer = alle), `presets` („5, 10, 15“ Minuten), `target`, `show_idle` |
 | `board` | `entities` (input_text/text, leer = Namen mit „pinnwand“, „nachricht“, „notiz“), `expire_hours`, `size`, `empty_text` |
 | `countdown` | `items: [{name, date \| entity, icon}]` (input_datetime, Zeitstempel-Sensor, Kalender), `max`, `show_past` |
