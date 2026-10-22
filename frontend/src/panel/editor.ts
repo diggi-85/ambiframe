@@ -1350,15 +1350,21 @@ class AmbiframePanel extends LitElement {
   private renderModeOverrides(mode: { inherit?: boolean }) {
     if (mode.inherit) return nothing;
     const d = this.draft!;
-    const own = d.displays.filter((x) => x.mode && x.mode !== (d.design.mode ?? "auto"));
-    if (!own.length) return nothing;
+    const ownTheme = d.displays.filter((x) => x.theme && x.theme !== d.design.theme);
+    const ownMode = d.displays.filter((x) => x.mode && x.mode !== (d.design.mode ?? "auto"));
+    if (!ownTheme.length && !ownMode.length) return nothing;
+    const names = (list: DisplayConfig[]) => list.map((x) => x.name).join(", ");
     return html`<p class="hint mode-note">
-      ${t("{names}: eigene Einstellung für Hell/Dunkel – dort gilt diese.", { names: own.map((x) => x.name).join(", ") })}
+      ${ownTheme.length ? html`${t("{names}: eigener Stil – dort gilt dieser.", { names: names(ownTheme) })} ` : nothing}
+      ${ownMode.length ? html`${t("{names}: eigene Einstellung für Hell/Dunkel – dort gilt diese.", { names: names(ownMode) })} ` : nothing}
       <button
         class="small"
         @click=${() =>
           this.mutate((dd) => {
-            for (const x of dd.displays) delete x.mode;
+            for (const x of dd.displays) {
+              delete x.theme;
+              delete x.mode;
+            }
           })}
       >
         ${t("Für alle übernehmen")}
@@ -1465,7 +1471,13 @@ class AmbiframePanel extends LitElement {
       ${this.renderThemeCards(
         d.design.theme,
         (th) => this.mutate((dd) => (dd.design.theme = th)),
-        (th) => ({ cfg: { ...d, design: { ...d.design, theme: th } } as AmbiframeConfig }),
+        (th) => {
+          // Eigenes Vorschau-Display ohne Abweichungen – sonst gewinnt z. B. der eigene Stil des ersten Displays und
+          // alle Kärtchen sähen gleich aus
+          const { theme: _t, mode: _m, design: _d, text_size: _s, contrast: _c, transition: _tr, ...plain } = d.displays[0] ?? ({} as DisplayConfig);
+          const preview = { ...plain, id: "__stilvorschau", name: "", playlist: [], night: {}, events: "all" } as unknown as DisplayConfig;
+          return { cfg: { ...d, design: { ...d.design, theme: th }, displays: [...d.displays, preview] } as AmbiframeConfig, id: preview.id };
+        },
         { value: d.design.mode ?? "auto", set: (m) => this.mutate((dd) => (dd.design.mode = (m ?? "auto") as AmbiframeConfig["design"]["mode"])) },
       )}
       <div class="cols">

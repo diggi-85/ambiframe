@@ -1195,4 +1195,5 @@ export const FR: Record<string, string> = {
   "franceinfo (FR)": "franceinfo (FR)",
   "{names}: eigene Einstellung für Hell/Dunkel – dort gilt diese.": "{names} : réglage clair/sombre propre – il s'applique là.",
   "Für alle übernehmen": "Appliquer à tous",
+  "{names}: eigener Stil – dort gilt dieser.": "{names} : style propre – il s'applique là.",
 };
