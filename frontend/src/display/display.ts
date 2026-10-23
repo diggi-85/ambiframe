@@ -160,6 +160,7 @@ export class AfDisplay extends LitElement {
     streamMode: { type: Boolean, attribute: "stream-mode" },
     shift: { state: true },
     preview: { type: Boolean },
+    still: { type: Boolean },
     fixedPage: { attribute: false },
     speed: { type: Number },
     theme: { reflect: true },
@@ -215,6 +216,8 @@ export class AfDisplay extends LitElement {
     this.requestUpdate("config", old);
   }
   preview = false;
+  /** Kleine Vorschau (Stil-Karten, Übersicht): ohne Hintergrund-Animation – viele davon gleichzeitig legen sonst den Browser lahm */
+  still = false;
   fixedPage: string | null = null;
   speed = 1;
   theme = "ruhig";
@@ -376,14 +379,14 @@ export class AfDisplay extends LitElement {
     const design = this.config?.design;
     const resolved = normalizeTheme(d?.theme ?? design?.theme);
     this.theme = resolved.theme;
-    if (changed.has("config") || changed.has("preview") || changed.has("displayId") || changed.has("streamMode")) {
+    if (changed.has("config") || changed.has("preview") || changed.has("still") || changed.has("displayId") || changed.has("streamMode")) {
       const a = design?.ambient;
-      const ambient = { type: a?.type ?? THEMES.find((t) => t.id === resolved.theme)?.ambient ?? "none", strength: a?.strength ?? 1, speed: a?.speed ?? "slow", color: a?.color, weather: a?.weather };
+      const ambient = { type: this.still ? "none" : (a?.type ?? THEMES.find((t) => t.id === resolved.theme)?.ambient ?? "none"), strength: a?.strength ?? 1, speed: a?.speed ?? "slow", color: a?.color, weather: a?.weather };
       // Laufband: im Videostream steht es (Einzelbilder), auf dem Fernseher ruckelt es – dort ohne eigene Wahl aus
       const ticker = !this.streamMode && (d?.ticker ?? d?.profile !== "tv");
       const def = THEMES.find((t) => t.id === resolved.theme);
       this.ctx = this.config
-        ? { forecasts: this.forecasts, config: this.config, preview: this.preview, ambient, displayId: d?.id, ticker, tiles: !!def?.tiles, flap: !!def?.flap }
+        ? { forecasts: this.forecasts, config: this.config, preview: this.preview, ambient, displayId: d?.id, ticker, tiles: !!def?.tiles, flap: !!def?.flap, still: this.still }
         : undefined;
       if (changed.has("config")) this.photos.reload();
     }

@@ -1518,4 +1518,6 @@ export const FR: Record<string, string> = {
   "Widgets der Seite anordnen und einstellen": "Disposer et régler les widgets de la page",
   "Zur neuen Oberfläche": "Vers la nouvelle interface",
   "Zurück zur einfachen Oberfläche – arbeitet mit derselben Konfiguration": "Retour à l’interface simple – même configuration",
+  "Fehler von Home Assistant: {code}": "Erreur de Home Assistant : {code}",
+  "Verbindung zu Home Assistant unterbrochen – bitte Seite neu laden.": "Connexion à Home Assistant perdue – veuillez recharger la page.",
 };

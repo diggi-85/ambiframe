@@ -204,4 +204,6 @@ export interface DisplayContext {
   tiles?: boolean;
   /** Stil zeigt Uhr und Abfahrten als Fallblatt */
   flap?: boolean;
+  /** Kleine Vorschau: keine Hintergrund-Animationen, auch nicht die einer Seite */
+  still?: boolean;
 }

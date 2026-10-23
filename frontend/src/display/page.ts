@@ -289,7 +289,7 @@ export class AfPage extends LitElement {
     const night = p.palette === "night";
     // Animation: Seite > Design/Stil; nachts nie
     const base = this.ctx?.ambient;
-    const wanted = night ? "none" : bg.ambient ?? base?.type ?? "none";
+    const wanted = night || this.ctx?.still ? "none" : (bg.ambient ?? base?.type ?? "none");
     // „Wie das Wetter“: Animation nach dem Zustand der Wetter-Entität (Schnee bei Schnee, Tropfen bei Regen …)
     const ambient =
       wanted === "weather"

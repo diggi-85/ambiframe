@@ -1518,4 +1518,6 @@ export const NL: Record<string, string> = {
   "Widgets der Seite anordnen und einstellen": "Widgets van de pagina schikken en instellen",
   "Zur neuen Oberfläche": "Naar de nieuwe interface",
   "Zurück zur einfachen Oberfläche – arbeitet mit derselben Konfiguration": "Terug naar de eenvoudige interface – werkt met dezelfde configuratie",
+  "Fehler von Home Assistant: {code}": "Fout van Home Assistant: {code}",
+  "Verbindung zu Home Assistant unterbrochen – bitte Seite neu laden.": "Verbinding met Home Assistant verbroken – laad de pagina opnieuw.",
 };

@@ -741,7 +741,8 @@ export class AfAmbient extends LitElement {
 
   private renderRain() {
     const rnd = random(17);
-    const count = this.small ? 10 : [22, 38, 60][this.strength - 1];
+    // jeder Tropfen ist eine Linse mit Unschärfe – teuer; daher eher wenige, dafür gut sichtbare
+    const count = this.small ? 8 : [16, 26, 40][this.strength - 1];
     return html`<div class="layer rain">
       ${Array.from({ length: count }, (_, i) => {
         const size = 14 + rnd() * rnd() * 46;

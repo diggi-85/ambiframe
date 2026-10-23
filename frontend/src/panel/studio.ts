@@ -256,7 +256,8 @@ export class AmbiframeStudio extends LitElement {
       this.saved = JSON.stringify(this.draft);
       this.dirty = false;
     } catch (e) {
-      alert(t("Speichern fehlgeschlagen: {msg}", { msg: (e as Error).message ?? String(e) }));
+      const err = e as { message?: unknown; code?: unknown };
+      alert(t("Speichern fehlgeschlagen: {msg}", { msg: typeof err?.message === "string" ? err.message : String(err?.code ?? e) }));
     } finally {
       this.saving = false;
     }
@@ -379,7 +380,7 @@ export class AmbiframeStudio extends LitElement {
           const profile = PROFILES.find((p) => p.id === d.profile);
           const own = [d.theme && t("eigener Stil"), d.mode && t("eigenes Hell/Dunkel"), d.design && Object.keys(d.design).length && t("eigenes Design")].filter(Boolean);
           return html`<article class="dcard" @click=${() => this.openDisplay(d.id)}>
-            <div class="mini"><af-display preview .hass=${this.hass} .config=${c} display-id=${d.id} .speed=${0.15}></af-display></div>
+            <div class="mini"><af-display preview still .hass=${this.hass} .config=${c} display-id=${d.id} .speed=${0.15}></af-display></div>
             <div class="meta">
               <div>
                 <h3>${d.name}</h3>

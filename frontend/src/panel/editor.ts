@@ -97,6 +97,20 @@ const setUiChoice = (v: string): void => {
   }
 };
 
+/** Fehler lesbar machen – HA liefert Objekte ({code, message}), Zahlen (Verbindung weg) oder Text */
+const errorText = (err: unknown): string => {
+  if (typeof err === "string") return err;
+  if (typeof err === "number") return t("Verbindung zu Home Assistant unterbrochen – bitte Seite neu laden.");
+  const e = err as { message?: unknown; code?: unknown } | null;
+  if (e && typeof e.message === "string" && e.message) return e.message;
+  if (e && e.code !== undefined) return t("Fehler von Home Assistant: {code}", { code: String(e.code) });
+  try {
+    return JSON.stringify(err);
+  } catch {
+    return String(err);
+  }
+};
+
 class AmbiframePanel extends LitElement {
   static properties = {
     studio: { state: true },
@@ -209,7 +223,7 @@ class AmbiframePanel extends LitElement {
       this.unsub = this.hass.connection
         .subscribeMessage<{ config: AmbiframeConfig }>((m) => this.onConfig(m.config), { type: "ambiframe/config/subscribe" })
         .catch((err: { message?: string }) => {
-          this.message = { kind: "error", text: t("Ambiframe ist nicht erreichbar: {error}", { error: String(err?.message ?? err) }) };
+          this.message = { kind: "error", text: t("Ambiframe ist nicht erreichbar: {error}", { error: errorText(err) }) };
           return undefined;
         });
     }
@@ -330,7 +344,7 @@ class AmbiframePanel extends LitElement {
       this.saved = clone(this.draft);
       this.message = { kind: "ok", text: t("Gespeichert – alle Displays zeigen es sofort.") };
     } catch (err) {
-      this.message = { kind: "error", text: (err as { message?: string }).message ?? String(err) };
+      this.message = { kind: "error", text: errorText(err) };
     } finally {
       this.saving = false;
     }
@@ -1349,6 +1363,7 @@ class AmbiframePanel extends LitElement {
             <div class="mini">
               <af-display
                 preview
+                still
                 .hass=${this.hass}
                 .config=${withSample}
                 display-id=${id ?? ""}
