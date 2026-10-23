@@ -1,9 +1,10 @@
 // Was der Editor pro Widget, Seite, Ereignis und Display anzeigt – plus Vorlagen für neue Elemente
 import { t } from "../i18n";
 import { FONTS } from "../fonts";
-import { THEMES } from "../styles";
+import { PALETTES, THEMES } from "../styles";
 import { WEBCAM_PRESETS } from "../widgets/media";
 import { NEWS_PRESETS, defaultFeeds } from "../widgets/news";
+import { PIXEL_ICONS } from "../widgets/pixel";
 import type { EventConfig, Hass, PageConfig, AmbiframeConfig, WidgetConfig } from "../types";
 import { SOUNDS } from "../sound";
 import { formContext, type Field } from "./form";
@@ -42,6 +43,7 @@ export const WIDGET_FIELDS: Record<string, Field[]> = {
     { key: "size", label: "Größe", type: "select", options: [[undefined, "füllt das Feld"], ["small", "klein (Kopfzeile)"]] },
     { key: "font", label: "Schrift", type: "select", options: [[undefined, "Stil-Schrift"], ["sans", "Schlicht"]] },
     { key: "seconds", label: "Sekunden", type: "boolean" },
+    { key: "style", label: "Darstellung", type: "select", options: [[undefined, "wie der Stil"], ["flap", "Fallblatt"], ["plain", "Ziffern"]] },
     COLOR,
   ],
   date: [
@@ -58,6 +60,7 @@ export const WIDGET_FIELDS: Record<string, Field[]> = {
       help: "Darf Vorlagen enthalten, z. B. {{ states('sensor.aussen') }} °C – wird live aktualisiert.",
     },
     { key: "markdown", label: "Formatierung (Markdown)", type: "boolean", help: "# Titel, - Liste, **fett**, *Akzent*, [mdi:icon], --- Linie" },
+    { key: "typewriter", label: "Schreibmaschine", type: "boolean", help: "Text erscheint Zeichen für Zeichen, bei jeder Änderung neu", when: (v) => !v.markdown },
     { key: "style", label: "Stil", type: "select", options: [[undefined, "Fließtext"], ["label", "Überschrift klein"], ["title", "Titel"], ["big", "Groß"]] },
     { key: "size", label: "Schriftgröße", type: "number", min: 10, max: 200 },
     { key: "icon", label: "Icon", type: "icon" },
@@ -476,6 +479,7 @@ export const WIDGET_FIELDS: Record<string, Field[]> = {
     { key: "walk", label: "Fußweg (Minuten)", type: "number", min: 0, max: 60, placeholder: "0", help: "Abfahrten, die nicht mehr erreichbar sind, ausblenden" },
     { key: "max", label: "Höchstens", type: "number", min: 1, max: 15, placeholder: "6" },
     { key: "show_platform", label: "Gleis zeigen", type: "boolean" },
+    { key: "flap", label: "Fallblatt-Tafel", type: "select", options: [[undefined, "wie der Stil"], [true, "an"], [false, "aus"]] },
     { key: "attribute", label: "Attribut mit der Liste", type: "text", placeholder: "automatisch" },
     LABEL,
   ],
@@ -522,6 +526,52 @@ export const WIDGET_FIELDS: Record<string, Field[]> = {
     { key: "only_elevated", label: "Nur erhöhte Werte", type: "boolean" },
     { key: "max", label: "Höchstens", type: "number", min: 1, max: 15, placeholder: "8" },
     LABEL,
+  ],
+  analog: [
+    {
+      key: "face",
+      label: "Zifferblatt",
+      type: "select",
+      options: [[undefined, "Schlicht"], ["bahnhof", "Bahnhofsuhr"], ["elegant", "Elegant (römische Ziffern)"], ["punkte", "Punkte (modern)"]],
+    },
+    { key: "seconds", label: "Sekundenzeiger", type: "boolean", default: true },
+    { key: "numbers", label: "Ziffern", type: "select", options: [[undefined, "wie das Zifferblatt"], [true, "an"], [false, "aus"]] },
+  ],
+  wordclock: [
+    {
+      key: "face",
+      label: "Front",
+      type: "select",
+      options: [[undefined, "wie die Seite"], ["black", "Schwarz"], ["white", "Weiß"], ["brass", "Messing"], ["copper", "Kupfer"], ["accent", "Akzentfarbe"]],
+    },
+    { key: "color", label: "Leuchtfarbe", type: "color", help: "Leer = passend zur Front" },
+    { key: "font", label: "Schrift", type: "select", options: [[undefined, "Text-Schrift (schlicht)"], ["display", "Uhr-Schrift des Stils"]] },
+    { key: "glow", label: "Leuchten", type: "boolean", default: true },
+    { key: "dots", label: "Minutenpunkte", type: "boolean", default: true },
+    { key: "prefix", label: "„Es ist“ zeigen", type: "boolean", default: true },
+    { key: "language", label: "Sprache", type: "select", options: [[undefined, "wie die Anzeige"], ["de", "Deutsch"], ["en", "English"], ["nl", "Nederlands"], ["fr", "Français"]] },
+  ],
+  pixel: [
+    {
+      key: "items",
+      label: "Infos",
+      type: "list",
+      addLabel: "Info",
+      help: "Leer = Uhrzeit, Wetter und Datum",
+      itemLabel: (it) => it.text ?? it.entity ?? it.type ?? "Info",
+      fields: [
+        { key: "type", label: "Art", type: "select", options: [[undefined, "Wert einer Entität oder Text"], ["time", "Uhrzeit"], ["date", "Datum"]] },
+        { key: "entity", label: "Entität", type: "entity", when: (v) => !v.type },
+        { key: "attribute", label: "Attribut", type: "text", when: (v) => !v.type },
+        { key: "text", label: "Fester Text", type: "text", when: (v) => !v.type },
+        { key: "icon", label: "Pixel-Symbol", type: "select", options: [[undefined, "automatisch"], ...Object.keys(PIXEL_ICONS).map((k): [string, string] => [k, k])] },
+        { key: "unit", label: "Einheit", type: "text", when: (v) => !v.type },
+        { key: "decimals", label: "Nachkommastellen", type: "number", min: 0, max: 3, when: (v) => !v.type },
+        { key: "color", label: "Textfarbe", type: "color" },
+      ],
+    },
+    { key: "interval", label: "Wechsel nach (s)", type: "number", min: 2, max: 120, placeholder: "6" },
+    { key: "frame", label: "Schwarzes Gehäuse", type: "boolean", default: true },
   ],
   card: [{ key: "card", label: "Lovelace-Karte (YAML)", type: "yaml", help: "Jede Karte aus dem Dashboard, z. B. type: entities …" }],
   price: [
@@ -780,15 +830,42 @@ const MODE_OPTIONS: [string | undefined, string][] = [
 export const AMBIENT_OPTIONS: [string, string][] = [
   ["none", "Aus"],
   ["particles", "Schwebende Partikel"],
+  ["snow", "Schnee"],
+  ["stars", "Sternenhimmel"],
+  ["glitter", "Glitzer"],
   ["flow", "Fließender Verlauf"],
+  ["hue", "Farbwechsel"],
+  ["aurora", "Polarlicht"],
   ["bokeh", "Lichtschimmer"],
   ["mist", "Nebel"],
+  ["weather", "Wie das Wetter (Schnee, Regen, Wind …)"],
+  ["raindrops", "Regentropfen am Fenster"],
+  ["wind", "Wind"],
+  ["clouds", "Ziehende Wolken"],
+  ["fireflies", "Glühwürmchen"],
+  ["leaves", "Fallende Blätter"],
+  ["blossoms", "Kirschblüten"],
+  ["bubbles", "Aufsteigende Blasen"],
+  ["lava", "Lavalampe"],
+  ["waves", "Wellen"],
+  ["fire", "Kaminfeuer"],
+  ["matrix", "Zeichenregen"],
+  ["warp", "Sternenflug"],
+  ["mystify", "Linienspiel"],
+  ["logo", "Springendes Logo"],
+  ["pipes", "Rohre"],
+  ["confetti", "Konfetti"],
+  ["fireworks", "Feuerwerk"],
+  ["hearts", "Herzen"],
 ];
 const TRANSITION_OPTIONS: [string, string][] = [
   ["fade", "Überblenden"],
   ["blur", "Weich (Unschärfe)"],
   ["slide", "Schieben"],
   ["zoom", "Zoom"],
+  ["cube", "Würfel (3D)"],
+  ["flip", "Umdrehen (3D)"],
+  ["page", "Blättern"],
 ];
 
 /** Aktion beim Antippen / langen Drücken eines Widgets */
@@ -841,7 +918,13 @@ const ACTION_FIELDS: Field[] = [
 
 /** Darstellung eines einzelnen Widgets */
 export const WIDGET_LOOK_FIELDS: Field[] = [
-  { key: "look.card", label: "Als Karte", type: "boolean", help: "Fläche, Rand und Radius des Stils" },
+  {
+    key: "look.card",
+    label: "Als Karte",
+    type: "select",
+    options: [[undefined, "automatisch (wie der Stil)"], [true, "ja"], [false, "nein"]],
+    help: "Fläche, Rand und Radius des Stils. Kachel-Stile (Kacheln, Tonal, Cockpit) zeigen Widgets automatisch als Karte.",
+  },
   { key: "look.accent", label: "Akzentfarbe", type: "color" },
   { key: "look.ink", label: "Schriftfarbe", type: "color" },
   { key: "look.size", label: "Größe (%)", type: "number", min: 50, max: 200, step: 5, placeholder: "100" },
@@ -966,6 +1049,7 @@ export const EVENT_KINDS: { id: EventConfig["kind"]; name: string; short: string
   { id: "info", name: "Hinweis + Erinnerung (Geräte)", short: "Hinweis", icon: "info" },
   { id: "page", name: "Seite zeigen (z. B. bei Bewegung)", short: "Seite", icon: "page" },
   { id: "media", name: "Musik-Cover (bei Liedwechsel)", short: "Musik-Cover", icon: "music" },
+  { id: "effect", name: "Anlass (Konfetti, Feuerwerk, Herzen …)", short: "Anlass", icon: "sparkle" },
 ];
 
 const titled = (v: Record<string, any>) => ["alarm", "live", "info"].includes(v.kind);
@@ -1073,8 +1157,25 @@ export const eventFields = (config: AmbiframeConfig): Field[] => [
     help: "Während der Wiedergabe erneut zeigen; leer oder 0 = nur beim Liedwechsel",
   },
   { key: "camera", label: "Kamera", type: "entity", domains: ["camera"], when: is("alarm", "live") },
-  { key: "title", label: "Titel", type: "text", when: titled },
-  { key: "where", label: "Ort / Zusatz", type: "text", when: titled },
+  {
+    key: "effect",
+    label: "Animation",
+    type: "select",
+    options: [
+      [undefined, "Konfetti"],
+      ["fireworks", "Feuerwerk"],
+      ["hearts", "Herzen"],
+      ["glitter", "Glitzer"],
+      ["snow", "Schnee"],
+      ["blossoms", "Kirschblüten"],
+      ["bubbles", "Blasen"],
+    ],
+    when: is("effect"),
+    help: "Z. B. Auslöser calendar.geburtstage (zu „on“) für Konfetti am Geburtstag",
+  },
+  { key: "title", label: "Titel", type: "text", when: (v) => titled(v) || v.kind === "effect", placeholder: "z. B. Alles Gute!" },
+  { key: "where", label: "Ort / Zusatz", type: "text", when: (v) => titled(v) || v.kind === "effect" },
+  { key: "duration", label: "Dauer (s)", type: "number", min: 3, placeholder: "30", when: is("effect") },
   { key: "where", label: "Raum", type: "text", when: is("media"), placeholder: "Name des Players" },
   { key: "icon", label: "Icon", type: "icon", when: titled },
   { key: "text", label: "Text aus Entität", type: "entity", when: titled, help: "z. B. KI-Beschreibung oder Warn-Überschrift" },
@@ -1307,9 +1408,16 @@ export const displayFields = (config: AmbiframeConfig): Field[] => [
 /** Display: eigenes Design – leer = wie Design */
 export const DISPLAY_DESIGN_FIELDS: Field[] = [
   { key: "design.accent", label: "Akzentfarbe", type: "color", help: "Leer = wie Design" },
+  {
+    key: "design.palette",
+    label: "Farbpalette",
+    type: "select",
+    options: [[undefined, "wie Design"], ...Object.entries(PALETTES).map(([id, p]): [string, string] => [id, p.name]), ["tagesverlauf", "Tagesverlauf"]],
+  },
   { key: "design.fonts.display", label: "Schrift Uhr & Titel", type: "select", options: [[undefined, "wie Design"], ...FONT_OPTIONS.slice(1)] },
   { key: "design.fonts.text", label: "Schrift Text", type: "select", options: [[undefined, "wie Design"], ...FONT_OPTIONS.slice(1)] },
   { key: "design.ambient.type", label: "Animation", type: "select", options: [[undefined, "wie Design"], ...AMBIENT_OPTIONS] },
+  { key: "design.cover_colors", label: "Farben passend zum Cover", type: "select", options: [[undefined, "wie Design"], [true, "an"], [false, "aus"]] },
   {
     key: "design.evening",
     label: "Abendstimmung",
@@ -1444,6 +1552,13 @@ export const LOOK_FIELDS: Field[] = [
   { key: "design.mode", label: "Hell/Dunkel", type: "select", options: MODE_OPTIONS },
   { key: "design.fonts.display", label: "Schrift Uhr & Titel", type: "select", options: FONT_OPTIONS },
   { key: "design.fonts.text", label: "Schrift Text", type: "select", options: FONT_OPTIONS },
+  {
+    key: "design.palette",
+    label: "Farbpalette",
+    type: "select",
+    options: [[undefined, "Farben des Stils"], ...Object.entries(PALETTES).map(([id, p]): [string, string] => [id, p.name]), ["tagesverlauf", "Tagesverlauf (wandert mit der Uhrzeit)"]],
+    help: "Legt sich über den Stil; eigene Farben gehen vor.",
+  },
   { key: "design.accent", label: "Akzentfarbe", type: "color", help: "Leer = Farbe des Stils" },
   {
     key: "design.text_size",
@@ -1495,8 +1610,17 @@ export const MOTION_FIELDS: Field[] = [
   { key: "design.ambient.type", label: "Animation", type: "select", options: [[undefined, "wie der Stil"], ...AMBIENT_OPTIONS], help: "Sehr ruhig; nachts aus. Pro Seite änderbar." },
   { key: "design.ambient.strength", label: "Stärke", type: "select", options: [[undefined, "dezent"], [2, "mittel"], [3, "deutlich"]], advanced: true },
   { key: "design.ambient.speed", label: "Tempo", type: "select", options: [[undefined, "langsam"], ["normal", "normal"]], advanced: true },
+  { key: "design.ambient.color", label: "Farbe der Animation", type: "color", help: "Leer = passend zum Stil (Glitzer: Akzentfarbe)" },
+  { key: "design.ambient.weather", label: "Wetter", type: "entity", domains: ["weather"], placeholder: "erstes Wetter", when: (v) => v.design?.ambient?.type === "weather" },
   { key: "design.transition.type", label: "Seitenwechsel", type: "select", options: [[undefined, "Überblenden"], ...TRANSITION_OPTIONS.slice(1)] },
   { key: "design.transition.duration", label: "Dauer (s)", type: "number", min: 0.2, max: 10, step: 0.1, placeholder: "2.4", advanced: true },
+  {
+    key: "design.cover_colors",
+    label: "Farben passend zum Cover",
+    type: "boolean",
+    help: "Läuft Musik, nehmen Hintergrund, Akzent und Karten die Farben des Album-Covers an – danach blendet es weich zurück.",
+  },
+  { key: "design.cover_players", label: "Nur diese Player", type: "entities", domains: ["media_player"], help: "Leer = alle", when: (v) => !!v.design?.cover_colors },
 ];
 
 export const DESIGN_FIELDS: Field[] = [
@@ -1611,6 +1735,11 @@ const w = (id: string, type: string, x: number, y: number, ww: number, h: number
 
 export const PAGE_TEMPLATES: { id: string; name: string; build: (hass?: Hass) => Omit<PageConfig, "id" | "name"> }[] = [
   { id: "leer", name: "Leere Seite", build: () => ({ duration: 30, background: { type: "none" }, palette: "normal", widgets: [] }) },
+  {
+    id: "wortuhr",
+    name: "Wortuhr",
+    build: () => ({ duration: 60, background: { type: "none" }, palette: "normal", widgets: [w("wortuhr", "wordclock", 0, 0, 12, 8, { face: "black" })] }),
+  },
   {
     id: "foto",
     name: "Bilderrahmen",

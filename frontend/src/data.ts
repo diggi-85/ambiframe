@@ -200,4 +200,8 @@ export interface DisplayContext {
   displayId?: string;
   /** false: kein Nachrichten-Laufband (Videostream, Fernseher oder abgeschaltet) */
   ticker?: boolean;
+  /** Stil zeigt Widgets als Kacheln (Kacheln, Tonal, Cockpit) */
+  tiles?: boolean;
+  /** Stil zeigt Uhr und Abfahrten als Fallblatt */
+  flap?: boolean;
 }

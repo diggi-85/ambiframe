@@ -6,6 +6,7 @@ import { markdown, markdownStyles } from "../markdown";
 import { alignStyles, widgetStyles } from "../styles";
 import { TemplateWatch } from "../template";
 import { fmtDate, fmtTime } from "../util";
+import "./clocks";
 import { AfTickingWidget, AfWidget, define } from "./base";
 
 const COLORS: Record<string, string> = {
@@ -38,6 +39,9 @@ class AfClock extends AfTickingWidget {
         line-height: 1;
         color: var(--af-ink-2);
       }
+      af-flap {
+        font-size: min(70cqh, 21cqw);
+      }
       .col {
         color: var(--af-colon, inherit);
         opacity: var(--af-colon-opacity, 0.55);
@@ -64,6 +68,9 @@ class AfClock extends AfTickingWidget {
     const small = this.options.size === "small";
     const font = this.options.font === "sans" || small ? "" : "display";
     const sec = this.options.seconds ? html`<span class="col">:</span>${String(now.getSeconds()).padStart(2, "0")}` : nothing;
+    // Fallblatt: im Fallblatt-Stil oder mit style: flap (style: plain schaltet es ab)
+    if (!small && (this.options.style === "flap" || (this.ctx?.flap && this.options.style !== "plain")))
+      return html`<af-flap .text=${`${h}:${m}${this.options.seconds ? `:${String(now.getSeconds()).padStart(2, "0")}` : ""}`}></af-flap>`;
     return html`<div class="clock num ${font} ${small ? "small" : ""}" style="color:${color(this.options.color, "")}">
       ${h}<span class="col">:</span>${m}${sec}
     </div>`;
@@ -131,13 +138,52 @@ class AfText extends AfWidget {
       .wait {
         opacity: 0.35;
       }
+      .cursor {
+        animation: blink 1s steps(1) infinite;
+        color: var(--af-accent);
+        margin-left: 0.04em;
+      }
+      @keyframes blink {
+        50% {
+          opacity: 0;
+        }
+      }
     `,
   ];
 
   private tpl = new TemplateWatch(this);
+  /** Schreibmaschine: so viele Zeichen sind schon „getippt“ */
+  private typed = 0;
+  private typedFor = "";
+  private typeTimer?: number;
 
   protected willUpdate(): void {
     this.tpl.set(this.hass, this.options.text);
+  }
+
+  disconnectedCallback(): void {
+    super.disconnectedCallback();
+    clearInterval(this.typeTimer);
+    this.typeTimer = undefined;
+    this.typedFor = "";
+  }
+
+  /** Text Zeichen für Zeichen erscheinen lassen – neu, sobald sich der Text ändert */
+  private typewriter(text: string): string {
+    if (text !== this.typedFor) {
+      this.typedFor = text;
+      this.typed = 0;
+      clearInterval(this.typeTimer);
+      this.typeTimer = window.setInterval(() => {
+        this.typed++;
+        if (this.typed >= this.typedFor.length) {
+          clearInterval(this.typeTimer);
+          this.typeTimer = undefined;
+        }
+        this.requestUpdate();
+      }, 55);
+    }
+    return text.slice(0, this.typed);
   }
 
   render() {
@@ -149,6 +195,8 @@ class AfText extends AfWidget {
     if (text === undefined) return html`<div class="wait" style="${style};${extra}">…</div>`;
     const icon = o.icon ? html`${anyIcon(o.icon)} ` : nothing;
     if (o.markdown) return html`<div style="${style};${extra};width:100%">${icon}${markdown(text)}</div>`;
+    if (o.typewriter && !matchMedia("(prefers-reduced-motion: reduce)").matches)
+      return html`<div class="${font}" style="${style};${extra};white-space:pre-line">${icon}${this.typewriter(text)}<span class="cursor">▍</span></div>`;
     return html`<div class="${font}" style="${style};${extra};white-space:pre-line">${icon}${text}</div>`;
   }
 }

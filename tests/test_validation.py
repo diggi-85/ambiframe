@@ -423,3 +423,30 @@ def test_widget_grid_half_steps() -> None:
     raw["pages"][0]["widgets"][0].update(x=1.3)
     with pytest.raises(vol.Invalid):
         validate_config(raw)
+
+
+def test_new_styles_backgrounds_and_cover_colors() -> None:
+    """Neue Stile und Hintergründe, Cover-Farben global und pro Display."""
+    for theme in ("pixel", "arcade", "cockpit", "tonal", "kacheln", "klartext", "fallblatt"):
+        assert validate_config(minimal_config(design={"theme": theme}))["design"]["theme"] == theme
+    for ambient in ("snow", "stars", "glitter", "hue", "aurora"):
+        validate_config(minimal_config(design={"ambient": {"type": ambient}}))
+    config = minimal_config(design={"cover_colors": True, "cover_players": ["media_player.kueche"]})
+    config["displays"][0]["design"] = {"cover_colors": False}
+    out = validate_config(config)
+    assert out["design"]["cover_colors"] is True
+    assert out["displays"][0]["design"]["cover_colors"] is False
+    with pytest.raises(vol.Invalid):
+        validate_config(minimal_config(design={"cover_players": ["kein_player"]}))
+    with pytest.raises(vol.Invalid):
+        validate_config(minimal_config(design={"ambient": {"type": "feuerwerk"}}))
+
+
+def test_palettes_effects_and_transitions() -> None:
+    """Farbpaletten, Anlass-Ereignisse und neue Seitenübergänge."""
+    out = validate_config(minimal_config(design={"palette": "tagesverlauf", "transition": {"type": "cube"}, "ambient": {"type": "weather", "weather": "weather.home"}}))
+    assert out["design"]["palette"] == "tagesverlauf"
+    event = {"id": "geburtstag", "kind": "effect", "effect": "confetti", "entity": "calendar.geburtstage", "to": "on", "title": "Alles Gute!", "enabled": True}
+    assert validate_config(minimal_config(events=[event]))["events"][0]["effect"] == "confetti"
+    with pytest.raises(vol.Invalid):
+        validate_config(minimal_config(design={"palette": "regenbogen"}))

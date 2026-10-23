@@ -44,10 +44,41 @@ GRID_ROWS: Final = 8
 PORTRAIT_COLUMNS: Final = 8
 PORTRAIT_ROWS: Final = 12
 
-EVENT_KINDS: Final = ("alarm", "live", "info", "page", "media")
+EVENT_KINDS: Final = ("alarm", "live", "info", "page", "media", "effect")
 # Diese Arten zeigen Titel/Ort und brauchen deshalb einen Titel
 EVENT_KINDS_TITLED: Final = ("alarm", "live", "info")
-THEMES: Final = ("ruhig", "klar", "gold", "glass", "aurora", "editorial", "minimal")
+THEMES: Final = ("ruhig", "klar", "gold", "glass", "aurora", "editorial", "minimal", "pixel", "arcade", "cockpit", "tonal", "kacheln", "klartext", "fallblatt", "millennium", "glanz", "handheld", "bauhaus", "softui", "boho", "landhaus", "natur")
 THEME_MODES: Final = ("auto", "light", "dark")
-AMBIENTS: Final = ("none", "particles", "flow", "bokeh", "mist")
-TRANSITIONS: Final = ("fade", "blur", "slide", "zoom")
+AMBIENTS: Final = (
+    "none",
+    "particles",
+    "snow",
+    "stars",
+    "glitter",
+    "flow",
+    "hue",
+    "aurora",
+    "bokeh",
+    "mist",
+    "raindrops",
+    "wind",
+    "clouds",
+    "fireflies",
+    "leaves",
+    "blossoms",
+    "bubbles",
+    "lava",
+    "waves",
+    "fire",
+    "matrix",
+    "warp",
+    "mystify",
+    "logo",
+    "pipes",
+    "confetti",
+    "fireworks",
+    "hearts",
+    "weather",
+)
+PALETTES: Final = ("nordisch", "vampir", "mocha", "retro", "nachtstadt", "tagesverlauf")
+TRANSITIONS: Final = ("fade", "blur", "slide", "zoom", "cube", "flip", "page")

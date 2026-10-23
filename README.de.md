@@ -27,7 +27,7 @@ Ist die Wäsche fertig, steht es kurz da und bleibt dann als kleine Erinnerung.
 
 ## Was Ambiframe kann
 
-- **Seiten aus 44 Widgets** in einem 12×8-Raster mit halben Schritten: Uhr, Datum, Text, Wetter (aktuell, Karte,
+- **Seiten aus 47 Widgets** in einem 12×8-Raster mit halben Schritten: Uhr, Datum, Text, Wetter (aktuell, Karte,
   Stunden, Tage, Regen-Vorschau, Zeile), Wert, Räume, Status („Gerade“), Kalender/Müll, Infozeile, Kamera und **jede
   Lovelace-Karte** – die vollständige Liste steht unter [Widgets](#widgets).
 - **Widgets für den Alltag:** Küchentimer (HA-Timer mit Schnellstart-Knöpfen), Pinnwand (Text-Helfer, z. B. vom
@@ -44,6 +44,8 @@ Ist die Wäsche fertig, steht es kurz da und bleibt dann als kleine Erinnerung.
     mindestens `duration` s, danach `hold_after` s Nachlauf, höchstens `max` s, mit `cooldown` nach dem Ende
   - `media`: Musik-Cover beim Liedwechsel (`entities`: Player, `style`: `card`/`fullscreen`,
     `interval`: zwischendurch alle n Minuten); Gruppen zeigen jedes Lied nur einmal
+  - `effect`: Anlass-Animation über allem – Konfetti, Feuerwerk, Herzen, Glitzer … mit großem Titel, z. B.
+    „Alles Gute!“ aus einem Geburtstagskalender
 - **Ereignisse mit Ton und Regeln:** mitgelieferte Töne (Gong, Ding-Dong, Glocke, Alarm – wiederholt sich, bis
   jemand tippt) oder eigener Link, auf dem Tablet über Fully; Ruhezeiten (stumm oder gar nicht), „nur wenn jemand
   zu Hause ist“, beliebige Bedingungen und der Auslöser `to: "*"` = jede Änderung – z. B. für Tasten und
@@ -57,13 +59,30 @@ Ist die Wäsche fertig, steht es kurz da und bleibt dann als kleine Erinnerung.
 - **Mini-Karte „Läuft gerade“:** dauerhaft oder je Titel eine Weile, wie lange nach einer Pause, Bedingungen und
   Ruhezeiten, Ecke, Größe, Cover, Fortschritt und Hintergrund.
 - **Nachtmodus** (gedimmte Uhr, wandert gegen Einbrennen) und **Abendstimmung**.
-- **Sieben Stile, jeder hell und dunkel:** Ruhig, Klar, Gold, Liquid Glass, Aurora, Editorial, Minimal.
-  Hell/Dunkel automatisch nach Sonnenstand (weich überblendet) oder fest, pro Display änderbar.
-- **Zwölf Schriften** lokal mitgeliefert (u. a. Fraunces, Instrument Serif, Playfair, Inter, Geist, Outfit),
+- **22 Stile, jeder hell und dunkel:** Ruhig, Klar, Gold, Glas, Aurora, Editorial, Minimal, Pixel (LED-Punktmatrix),
+  Arcade (Neon), Cockpit, Tonal, Kacheln, Klartext (groß und kontrastreich), Fallblatt, Millennium, Glanz, Handheld,
+  Bauhaus, Soft-UI, Boho, Landhaus und Natur. Kachel-Stile setzen Widgets automatisch in Karten. Hell/Dunkel
+  automatisch nach Sonnenstand (weich überblendet) oder fest, pro Display änderbar.
+- **Farbpaletten** über jedem Stil (Nordisch, Vampir, Mocha, Retro, Nachtstadt) oder **Tagesverlauf** – die Farben
+  wandern mit der Uhrzeit. Auf Wunsch **Farben passend zum Album-Cover**: Läuft Musik, nehmen Hintergrund, Akzent und
+  Karten die Cover-Farben an und blenden danach weich zurück.
+- **13 Schriften** lokal mitgeliefert (u. a. Fraunces, Instrument Serif, Playfair, Inter, Geist, Outfit),
   getrennt für Uhr/Titel und Text, zusätzlich pro Widget.
-- **Ruhige Hintergrund-Animationen:** schwebende Partikel, fließender Verlauf, Lichtschimmer, Nebel –
-  Stärke und Tempo einstellbar, pro Seite wählbar, nachts und bei „Bewegung reduzieren“ aus.
-- **Seitenwechsel** als Überblenden, Unschärfe, Schieben oder Zoom, Dauer frei – global, pro Display, pro Seite.
+- **Hintergrund-Animationen** – Stärke, Tempo und Farbe einstellbar, pro Seite wählbar, nachts und bei „Bewegung
+  reduzieren“ aus:
+  - ruhig: schwebende Partikel, fließender Verlauf, Farbwechsel, Polarlicht, Lichtschimmer, Nebel
+  - Natur & Wetter: Schnee, Regentropfen am Fenster (wie kleine Linsen), Wind, ziehende Wolken, Sternenhimmel,
+    Glühwürmchen, fallende Blätter, Kirschblüten, Blasen – oder **wie das Wetter**, passend zur Wetter-Entität
+  - gemütlich: Kaminfeuer, Lavalampe, Wellen, Glitzer
+  - kräftig: Zeichenregen, Sternenflug, Linienspiel, springendes Logo, Rohre
+- **Seitenwechsel** als Überblenden, Unschärfe, Schieben, Zoom, Würfel, Umdrehen oder Blättern, Dauer frei – global,
+  pro Display, pro Seite.
+- **Uhren:** Wortuhr (Deutsch, Englisch, Niederländisch, Französisch; Fronten Schwarz, Weiß, Messing, Kupfer),
+  analoge Uhr (Bahnhof, schlicht, elegant, Punkte), Fallblatt-Uhr und -Abfahrten, LED-Pixel-Anzeige mit
+  8×8-Symbolen, Schreibmaschinen-Text.
+- **Studio (Prototyp):** eine neue, einfachere Oberfläche – Übersicht aller Displays, eine Seite pro Display (Ort &
+  Gerät, Inhalte, Aussehen, Momente, Technik) und eine Seite für alle Displays, immer mit Live-Vorschau (Wetter und
+  Nacht simulieren, Momente testen). Sie arbeitet mit derselben Konfiguration – Ausprobieren ändert nichts.
 - **Bedienmodus:** Tippen holt das HA-Dashboard, nach einer Minute ohne Berührung kehrt Ambiframe zurück.
 - **Kamera nativ** über HAs eigenen Stream (WebRTC/HLS) – alle Displays teilen sich eine Verbindung zur Kamera,
   wichtig bei Kameras, die nur wenige erlauben (z. B. Tapo); MJPEG nur als Rückfall.
@@ -212,7 +231,10 @@ events:
 
 | Typ | Wichtige Optionen |
 |---|---|
-| `clock` | `size` (auto/small), `seconds`, `font`, `color` |
+| `clock` | `size` (auto/small), `seconds`, `font`, `color`, `style: flap` (Fallblatt) |
+| `analog` | `face` (schlicht/bahnhof/elegant/punkte), `seconds`, `numbers` |
+| `wordclock` | `face` (black/white/brass/copper/accent), `color`, `font`, `glow`, `dots`, `prefix`, `language` |
+| `pixel` | `items: [{type: time/date, entity, attribute, text, icon, unit, decimals, color}]`, `interval`, `frame` |
 | `date` | `format` (long/short), `size`, `color`, `style: card` |
 | `text` | `text` (darf Jinja enthalten), `markdown`, `style` (label/title/body/big), `size`, `color`, `icon` |
 | `chart` | `entities: [{entity, name, color}]`, `kind` (line/area/bar), `hours`, `period` (hour/day), `value`, `min`, `max`, `unit`, `decimals`, `label`, `style: card` |

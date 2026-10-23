@@ -10,5 +10,6 @@
   { "id": "outfit", "name": "Outfit", "kind": "sans", "pkg": "@fontsource-variable/outfit", "file": "outfit-latin-wght-normal.woff2", "weight": "100 900" },
   { "id": "jakarta", "name": "Plus Jakarta Sans", "kind": "sans", "pkg": "@fontsource-variable/plus-jakarta-sans", "file": "plus-jakarta-sans-latin-wght-normal.woff2", "weight": "200 800" },
   { "id": "space-grotesk", "name": "Space Grotesk", "kind": "sans", "pkg": "@fontsource-variable/space-grotesk", "file": "space-grotesk-latin-wght-normal.woff2", "weight": "300 700" },
-  { "id": "nunito", "name": "Nunito (rund)", "kind": "sans", "pkg": "@fontsource-variable/nunito", "file": "nunito-latin-wght-normal.woff2", "weight": "200 1000" }
+  { "id": "nunito", "name": "Nunito (rund)", "kind": "sans", "pkg": "@fontsource-variable/nunito", "file": "nunito-latin-wght-normal.woff2", "weight": "200 1000" },
+  { "id": "doto", "name": "Doto (LED-Punkte)", "kind": "sans", "pkg": "@fontsource-variable/doto", "file": "doto-latin-full-normal.woff2", "weight": "100 900" }
 ]

@@ -82,6 +82,7 @@ const toYaml = (c: unknown) => dump(c, { lineWidth: 120, noRefs: true });
 
 class AmbiframePanel extends LitElement {
   static properties = {
+    studio: { state: true },
     hass: { attribute: false },
     narrow: { attribute: false },
     route: { attribute: false },
@@ -1772,7 +1773,15 @@ class AmbiframePanel extends LitElement {
     ></af-wizard>`;
   }
 
+  /** Neue Oberfläche „Studio“ (Prototyp) statt des bisherigen Editors – gleiche Konfiguration */
+  private studio = false;
+
   render() {
+    if (this.studio)
+      return html`<div class="studio-wrap">
+        <button class="small studio-exit" @click=${() => (this.studio = false)}>← ${t("Bisheriger Editor")}</button>
+        <ambiframe-studio .hass=${this.hass}></ambiframe-studio>
+      </div>`;
     setLang(resolveLang(this.draft?.design.language, this.hass?.language));
     // Display-Auswahl für die Bedingung „nur auf Display“
     if (this.draft) {
@@ -1807,6 +1816,9 @@ class AmbiframePanel extends LitElement {
         </nav>
         <span class="spacer"></span>
         ${this.renderHealthButton()}
+        <button class="small" title=${t("Neue, einfachere Oberfläche ausprobieren – arbeitet mit derselben Konfiguration")} @click=${() => (this.studio = true)}>
+          ✨ ${t("Neue Oberfläche testen")}
+        </button>
         <span class="seg mode" title=${t("Einfach: nur das Nötige · Erweitert: alle Möglichkeiten")}>
           <button class="small ${this.advanced ? "" : "on"}" @click=${() => this.setAdvanced(false)}>${t("Einfach")}</button>
           <button class="small ${this.advanced ? "on" : ""}" @click=${() => this.setAdvanced(true)}>${t("Erweitert")}</button>
@@ -1841,6 +1853,18 @@ class AmbiframePanel extends LitElement {
   }
 
   static styles = css`
+      .studio-wrap {
+        position: relative;
+        height: 100%;
+      }
+      .studio-exit {
+        position: absolute;
+        left: 50%;
+        transform: translateX(-50%);
+        top: 10px;
+        z-index: 5;
+      }
+
     .scope {
       display: flex;
       align-items: center;

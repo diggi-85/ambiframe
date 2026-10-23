@@ -12,6 +12,7 @@ from homeassistant.helpers import config_validation as cv
 
 from .const import (
     AMBIENTS,
+    PALETTES,
     BING_MARKETS,
     LANGUAGES,
     CONFIG_VERSION,
@@ -220,6 +221,8 @@ EVENT = vol.Schema(
         vol.Optional("from"): cv.string,
         vol.Optional("to"): cv.string,
         vol.Required("kind"): vol.In(EVENT_KINDS),
+        # Art „effect“: Animation über allem (Konfetti, Feuerwerk …)
+        vol.Optional("effect"): vol.In(AMBIENTS),
         vol.Optional("camera"): cv.entity_id,
         vol.Optional("title", default=""): cv.string,
         vol.Optional("page"): _ID,
@@ -277,6 +280,8 @@ _AMBIENT = vol.Schema(
         vol.Optional("type"): vol.In(AMBIENTS),
         vol.Optional("strength"): vol.All(vol.Coerce(int), vol.Range(min=1, max=3)),
         vol.Optional("speed"): vol.In(["slow", "normal"]),
+        vol.Optional("color"): cv.string,
+        vol.Optional("weather"): cv.entity_id,
     }
 )
 # Pro Display abweichend vom Haupt-Design (fehlt ein Wert, gilt das Design)
@@ -290,6 +295,9 @@ DISPLAY_DESIGN = vol.Schema(
         vol.Optional("radius"): vol.All(vol.Coerce(int), vol.Range(min=0, max=120)),
         vol.Optional("css"): cv.string,
         vol.Optional("language"): vol.In(["auto", *LANGUAGES]),
+        vol.Optional("cover_colors"): cv.boolean,
+        vol.Optional("cover_players"): [cv.entity_id],
+        vol.Optional("palette"): vol.In(PALETTES),
     }
 )
 # Töne pro Display: stumm, Lautstärke (skaliert die des Ereignisses), Ruhezeit „HH:MM“–„HH:MM“
@@ -410,6 +418,10 @@ CONFIG = vol.Schema(
                 vol.Optional("contrast"): vol.In(CONTRASTS),
                 vol.Optional("css"): cv.string,
                 vol.Optional("language"): vol.In(["auto", *LANGUAGES]),
+                # Farben passend zum Cover der laufenden Musik; leere Player-Liste = alle
+                vol.Optional("cover_colors"): cv.boolean,
+                vol.Optional("cover_players"): [cv.entity_id],
+                vol.Optional("palette"): vol.In(PALETTES),
                 vol.Optional("presets"): [vol.Schema({vol.Required("name"): cv.string, vol.Required("design"): dict})],
             },
             extra=vol.ALLOW_EXTRA,

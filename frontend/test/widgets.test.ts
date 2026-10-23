@@ -1,6 +1,8 @@
 // @vitest-environment happy-dom
 // Neue Widgets: Timer, Pinnwand, Countdown, Abfahrten, Sonne & Mond, Pollen & Luft – Rechenlogik und Anzeige
 import { describe, expect, it, vi } from "vitest";
+import { CLOCKS, litCells } from "../src/widgets/wordclock";
+import "../src/widgets/clocks";
 import { airKindOf, airLevel, countdownText, moonPhase, readDepartures, sunTimes, targetDate, tileOf, timerLeft } from "../src/widgets/plus";
 import type { Hass, HassEntity } from "../src/types";
 
@@ -253,5 +255,98 @@ describe("Regenradar", () => {
     el.remove();
     vi.useRealTimers();
     vi.unstubAllGlobals();
+  });
+});
+
+describe("Wortuhr", () => {
+  const words = (l: "de" | "en" | "nl" | "fr", h: number, m: number) => {
+    // Leuchtende Buchstaben zeilenweise zu Wörtern zusammensetzen
+    const lit = litCells(l, h, m)!;
+    return CLOCKS[l].rows
+      .map((row, r) => [...row].map((ch, c) => (lit.has(`${r},${c}`) ? ch : " ")).join(""))
+      .join(" ")
+      .split(/\s+/)
+      .filter(Boolean)
+      .join(" ");
+  };
+
+  it("findet für jede Uhrzeit in jeder Sprache alle Wörter im Gitter", () => {
+    for (const l of ["de", "en", "nl", "fr"] as const) {
+      expect(CLOCKS[l].rows.every((r) => [...r].length === 11)).toBe(true);
+      for (let h = 0; h < 24; h++) for (let m = 0; m < 60; m += 5) expect(litCells(l, h, m), `${l} ${h}:${m}`).not.toBeNull();
+    }
+  });
+
+  it("sagt die Uhrzeit richtig", () => {
+    expect(words("de", 14, 25)).toBe("ES IST FÜNF VOR HALB DREI");
+    expect(words("de", 1, 0)).toBe("ES IST EIN UHR");
+    expect(words("de", 9, 45)).toBe("ES IST VIERTEL VOR ZEHN");
+    expect(words("de", 22, 10)).toBe("ES IST ZEHN NACH ZEHN");
+    expect(words("en", 15, 15)).toBe("IT IS A QUARTER PAST THREE");
+    expect(words("en", 10, 0)).toBe("IT IS TEN OCLOCK");
+    expect(words("en", 11, 35)).toBe("IT IS TWENTYFIVE TO TWELVE");
+    expect(words("nl", 7, 25)).toBe("HET IS VIJF VOOR HALF ACHT");
+    expect(words("fr", 13, 30)).toBe("IL EST UNE HEURE ET DEMIE");
+    expect(words("fr", 11, 45)).toBe("IL EST MIDI MOINS LE QUART");
+    expect(words("fr", 0, 30)).toBe("IL EST MINUIT ET DEMI");
+    // Minuten zwischen den Fünfern: gleiche Wörter wie davor
+    expect(words("de", 14, 27)).toBe(words("de", 14, 25));
+  });
+
+  it("zeigt Minutenpunkte und lässt „ES IST“ auf Wunsch weg", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 9, 23, 14, 27));
+    const el = await mount("af-wordclock", hassOf([]), { prefix: false, language: "de" });
+    expect(el.shadowRoot!.querySelectorAll(".dot.on").length).toBe(2);
+    const on = [...el.shadowRoot!.querySelectorAll("span.on")].map((s) => s.textContent).join("");
+    expect(on).toBe("FÜNFVORHALBDREI");
+    el.remove();
+    vi.useRealTimers();
+  });
+});
+
+describe("Analoge Uhr und Fallblatt", () => {
+  it("rechnet die Zeigerstellung", async () => {
+    const { handPhases } = await import("../src/widgets/clocks");
+    const p = handPhases(new Date(2026, 9, 23, 15, 30, 15));
+    expect(p.s).toBe(15);
+    expect(p.m).toBe(30 * 60 + 15);
+    expect(p.h).toBe(3 * 3600 + 30 * 60 + 15);
+  });
+
+  it("blättert über Zwischenzeichen und endet beim Ziel", async () => {
+    const { flapPath } = await import("../src/widgets/clocks");
+    expect(flapPath("3", "5")).toEqual(["4", "5"]);
+    expect(flapPath("5", "5")).toEqual([]);
+    expect(flapPath("0", "Z")).toHaveLength(6);
+    expect(flapPath("0", "Z").at(-1)).toBe("Z");
+    expect(flapPath("€", "A")).toEqual(["A"]);
+  });
+
+  it("zeigt am Ende den richtigen Text", async () => {
+    vi.useFakeTimers();
+    const flap = document.createElement("af-flap") as El;
+    flap.text = "14:56";
+    document.body.append(flap);
+    await flap.updateComplete;
+    await vi.advanceTimersByTimeAsync(3000);
+    await flap.updateComplete;
+    expect(flap.cells.map((c: { cur: string }) => c.cur).join("")).toBe("14:56");
+    flap.text = "14:57";
+    await flap.updateComplete;
+    await vi.advanceTimersByTimeAsync(3000);
+    expect(flap.cells.map((c: { cur: string }) => c.cur).join("")).toBe("14:57");
+    flap.remove();
+    vi.useRealTimers();
+  });
+});
+
+describe("Namen kürzen", () => {
+  it("entfernt den gemeinsamen Ortsnamen", async () => {
+    const { stripCommon } = await import("../src/widgets/plus");
+    expect(stripCommon(["Musterstadt-Nord, Germany PM2,5", "Musterstadt-Nord, Germany Ozon"])).toEqual(["PM2,5", "Ozon"]);
+    expect(stripCommon(["Pollenflug Birke", "Pollenflug Gräser"])).toEqual(["Birke", "Gräser"]);
+    expect(stripCommon(["Birke", "Erle"])).toEqual(["Birke", "Erle"]);
+    expect(stripCommon(["Feinstaub"])).toEqual(["Feinstaub"]);
   });
 });

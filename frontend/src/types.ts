@@ -135,8 +135,37 @@ export interface PageConfig {
   widgets: WidgetConfig[];
 }
 
-export type AmbientKind = "none" | "particles" | "flow" | "bokeh" | "mist";
-export type TransitionKind = "fade" | "blur" | "slide" | "zoom";
+export type AmbientKind =
+  | "none"
+  | "particles"
+  | "snow"
+  | "stars"
+  | "glitter"
+  | "flow"
+  | "hue"
+  | "aurora"
+  | "bokeh"
+  | "mist"
+  | "raindrops"
+  | "wind"
+  | "clouds"
+  | "fireflies"
+  | "leaves"
+  | "blossoms"
+  | "bubbles"
+  | "lava"
+  | "waves"
+  | "fire"
+  | "matrix"
+  | "warp"
+  | "mystify"
+  | "logo"
+  | "pipes"
+  | "confetti"
+  | "fireworks"
+  | "hearts"
+  | "weather";
+export type TransitionKind = "fade" | "blur" | "slide" | "zoom" | "cube" | "flip" | "page";
 export interface TransitionConfig {
   type: TransitionKind;
   /** Sekunden für den ganzen Wechsel */
@@ -145,10 +174,12 @@ export interface TransitionConfig {
 /** auto = hell bei Tag, dunkel nach Sonnenuntergang */
 export type ThemeMode = "auto" | "light" | "dark";
 
-export type EventKind = "alarm" | "live" | "info" | "page" | "media";
+export type EventKind = "alarm" | "live" | "info" | "page" | "media" | "effect";
 
 export interface EventConfig {
   id: string;
+  /** Art „effect“: welche Animation (confetti, fireworks, hearts, snow …) */
+  effect?: AmbientKind;
   name?: string;
   enabled: boolean;
   /** Auslöser; bei „page“ ergänzt um weitere Auslöser, bei „media“ stehen die Player in `entities`. */
@@ -254,12 +285,12 @@ export interface DisplayConfig {
 }
 
 export type DisplayDesign = Partial<
-  Pick<AmbiframeConfig["design"], "accent" | "evening" | "fonts" | "ambient" | "colors" | "radius" | "css" | "language">
+  Pick<AmbiframeConfig["design"], "accent" | "evening" | "fonts" | "ambient" | "colors" | "radius" | "css" | "language" | "cover_colors" | "cover_players" | "palette">
 >;
 
 export type TextSize = "normal" | "large" | "xlarge";
 
-export type Theme = "ruhig" | "klar" | "gold" | "glass" | "editorial" | "minimal" | "aurora";
+export type Theme = "ruhig" | "klar" | "gold" | "glass" | "editorial" | "minimal" | "aurora" | "pixel" | "arcade" | "cockpit" | "tonal" | "kacheln" | "klartext" | "fallblatt" | "millennium" | "glanz" | "handheld" | "bauhaus" | "softui" | "boho" | "landhaus" | "natur";
 
 export interface SoundConfig {
   id: string;
@@ -279,7 +310,7 @@ export interface AmbiframeConfig {
     /** Schrift-IDs aus fonts.json; fehlt = Schrift des Stils */
     fonts?: { display?: string; text?: string };
     /** Hintergrund-Animation; type fehlt = Standard des Stils */
-    ambient?: { type?: AmbientKind; strength?: 1 | 2 | 3; speed?: "slow" | "normal" };
+    ambient?: { type?: AmbientKind; strength?: 1 | 2 | 3; speed?: "slow" | "normal"; color?: string; weather?: string };
     transition?: Partial<TransitionConfig>;
     /** Eigene Farben je Hell/Dunkel – überschreiben die des Stils */
     colors?: { dark?: ColorSet; light?: ColorSet };
@@ -292,6 +323,12 @@ export interface AmbiframeConfig {
     contrast?: "normal" | "high";
     /** Eigenes CSS für alle Displays */
     css?: string;
+    /** Fertige Farbpalette (nordisch, vampir, mocha, retro, nachtstadt, tagesverlauf) */
+    palette?: string;
+    /** Farben passend zum Cover der laufenden Musik (Hintergrund, Akzent, Karten) */
+    cover_colors?: boolean;
+    /** Nur diese Player; leer = alle */
+    cover_players?: string[];
     /** Gespeicherte eigene Stile (Momentaufnahme des Designs) */
     presets?: { name: string; design: Record<string, unknown> }[];
   };

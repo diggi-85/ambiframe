@@ -28,7 +28,7 @@ Dutch and French).</sub>
 
 ## Features
 
-- **Pages built from 44 widgets** on a 12×8 grid with half-cell steps: clock, date, text, weather (current, card,
+- **Pages built from 47 widgets** on a 12×8 grid with half-cell steps: clock, date, text, weather (current, card,
   hourly, daily, rain preview, line), value, rooms, status ("right now"), calendar/waste, info line, camera and **any
   Lovelace card** – the full list is under [Widgets](#widgets).
 - **Everyday widgets:** kitchen timer (HA timers with quick-start buttons), notice board (text helpers, e.g. set from
@@ -45,6 +45,8 @@ Dutch and French).</sub>
     at most `max` s, with `cooldown` after it ends
   - `media`: album cover when the track changes (`entities`: players, `style`: `card`/`fullscreen`,
     `interval`: repeat every n minutes); groups show each track only once
+  - `effect`: an occasion animation over everything – confetti, fireworks, hearts, glitter … with a big title, e.g.
+    "Happy birthday!" from a birthday calendar
 - **Events with sound and rules:** bundled sounds (gong, ding-dong, bell, alarm – repeats until someone taps) or
   your own link, played on the tablet via Fully; quiet hours (muted or not at all), "only when someone is home", any
   conditions, and the trigger `to: "*"` = every change – e.g. for buttons and `event.*` entities (fresh events only,
@@ -57,13 +59,28 @@ Dutch and French).</sub>
 - **Now playing mini card:** permanent or per track for a while, how long after pausing, conditions and quiet hours,
   corner, size, cover, progress and background.
 - **Night mode** (dimmed clock that drifts to prevent burn-in) and **evening mood**.
-- **Seven styles, each light and dark:** Calm, Clear, Gold, Liquid Glass, Aurora, Editorial, Minimal.
-  Light/dark automatically by the sun (with a soft fade) or fixed, adjustable per display.
-- **Twelve fonts** bundled locally (including Fraunces, Instrument Serif, Playfair, Inter, Geist, Outfit), separately
+- **22 styles, each light and dark:** Calm, Clear, Gold, Glass, Aurora, Editorial, Minimal, Pixel (LED dot matrix),
+  Arcade (neon), Cockpit, Tonal, Tiles, Clear text (large and high contrast), Split-flap, Millennium, Gloss, Handheld,
+  Bauhaus, Soft UI, Boho, Country house and Nature. Tile styles put widgets into cards automatically. Light/dark
+  automatically by the sun (with a soft fade) or fixed, adjustable per display.
+- **Colour palettes** on top of any style (Nordic, Vampire, Mocha, Retro, Night city) or **Course of the day** – the
+  colours drift with the time. Optionally **colours from the album cover**: while music plays, background, accent and
+  cards take on the cover's colours and fade back afterwards.
+- **13 fonts** bundled locally (including Fraunces, Instrument Serif, Playfair, Inter, Geist, Outfit), separately
   for clock/titles and text, and per widget.
-- **Calm background animations:** floating particles, flowing gradient, light shimmer, fog – strength and speed
-  adjustable, per page, off at night and with "reduce motion".
-- **Page transitions:** fade, blur, slide or zoom with any duration – globally, per display, per page.
+- **Background animations** – strength, speed and colour adjustable, per page, off at night and with "reduce motion":
+  - calm: floating particles, flowing gradient, colour shift, aurora, light shimmer, fog
+  - nature & weather: snow, raindrops on the window (lens-like), wind, drifting clouds, starry sky, fireflies, falling
+    leaves, cherry blossoms, bubbles – or **like the weather**, which switches with your weather entity
+  - cosy: fireplace, lava lamp, waves, glitter
+  - bold: code rain, star flight, line play, bouncing logo, pipes
+- **Page transitions:** fade, blur, slide, zoom, cube, flip or page turn with any duration – globally, per display,
+  per page.
+- **Clocks:** word clock (German, English, Dutch, French; faces black, white, brass, copper), analogue clock (station,
+  plain, elegant, dots), split-flap clock and departures, LED pixel display with 8×8 icons, typewriter text.
+- **Studio (prototype):** a new, simpler editor – an overview of all displays, a page per display (location & device,
+  contents, look, moments, technical) and a page for all displays, always with a live preview (simulate weather and
+  night, test moments). It works on the same configuration, so nothing changes when you try it.
 - **Control mode:** a tap brings up the HA dashboard; after a minute without touch Ambiframe returns.
 - **Native camera** via Home Assistant's own stream (WebRTC/HLS) – all displays share one connection to the camera,
   which matters for cameras that allow only a few (e.g. Tapo); MJPEG only as a fallback.
@@ -206,7 +223,10 @@ events:
 
 | Type | Main options |
 |---|---|
-| `clock` | `size` (auto/small), `seconds`, `font`, `color` |
+| `clock` | `size` (auto/small), `seconds`, `font`, `color`, `style: flap` (split-flap) |
+| `analog` | `face` (schlicht/bahnhof/elegant/punkte), `seconds`, `numbers` |
+| `wordclock` | `face` (black/white/brass/copper/accent), `color`, `font`, `glow`, `dots`, `prefix`, `language` |
+| `pixel` | `items: [{type: time/date, entity, attribute, text, icon, unit, decimals, color}]`, `interval`, `frame` |
 | `date` | `format` (long/short), `size`, `color`, `style: card` |
 | `text` | `text` (may contain Jinja), `markdown`, `style` (label/title/body/big), `size`, `color`, `icon` |
 | `chart` | `entities: [{entity, name, color}]`, `kind` (line/area/bar), `hours`, `period` (hour/day), `value`, `min`, `max`, `unit`, `decimals`, `label`, `style: card` |

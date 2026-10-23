@@ -5,13 +5,14 @@ import { html as staticHtml, unsafeStatic } from "lit/static-html.js";
 import type { DisplayContext } from "../data";
 import { fontStack } from "../fonts";
 import { nightTokens, photoTokens } from "../styles";
-import type { Hass, PageConfig, Photo, WidgetConfig } from "../types";
+import type { AmbientKind, Hass, PageConfig, Photo, WidgetConfig } from "../types";
 import { templateChanges } from "../template";
 import { checkConditions, customStyle } from "../util";
 import { define } from "../widgets/base";
 import { WIDGETS } from "../widgets/registry";
 import "../widgets/media";
 import "./ambient";
+import { weatherAmbient } from "./effects";
 
 import { BASE, cellRect, layoutOf, type Grid, type Orientation, type Pos } from "./grid";
 
@@ -20,6 +21,13 @@ const TEXT: Record<string, string> = { start: "left", center: "center", end: "ri
 
 /** Welche Webcam zuletzt je Seite lief (bleibt über Seitenwechsel erhalten) */
 const camTurns = new Map<string, number>();
+
+/** Diese Widgets haben eine eigene Fläche oder stehen frei – Kachel-Stile setzen sie nicht in eine Kachel */
+const FREE = new Set(["clock", "date", "text", "image", "camera", "card", "infoline", "wordclock", "pixel", "radar", "news", "daily", "pet", "balance"]);
+
+/** Als Kachel zeigen: per Widget (look.card) oder automatisch im Kachel-Stil */
+export const boxed = (w: WidgetConfig, tiles?: boolean): boolean =>
+  w.look?.card ?? (!!tiles && !FREE.has(w.type) && w.options?.style !== "card" && w.options?.variant !== "card");
 
 export class AfPage extends LitElement {
   static properties = {
@@ -45,7 +53,13 @@ export class AfPage extends LitElement {
         inset: 0;
         background-color: var(--af-bg);
         /* weiche Farbflächen des Stils (Glas, Aurora) – der fließende Verlauf ersetzt sie */
-        background-image: var(--af-bg-art, none);
+        /* Cover-Farben (sonst durchsichtig), darunter die weichen Farbflächen des Stils */
+        background-image:
+          radial-gradient(60% 70% at 12% 18%, var(--af-cover-1), transparent 62%),
+          radial-gradient(55% 65% at 88% 26%, var(--af-cover-2), transparent 62%),
+          radial-gradient(75% 70% at 58% 100%, var(--af-cover-3), transparent 64%),
+          var(--af-bg-art, none);
+        background-size: 100% 100%, 100% 100%, 100% 100%, var(--af-bg-size, auto);
         color: var(--af-ink);
         overflow: hidden;
       }
@@ -116,7 +130,9 @@ export class AfPage extends LitElement {
       }
       /* Darstellung „als Karte“ – Fläche, Rand und Radius des Stils */
       .cell.boxed {
-        background: var(--af-card, var(--af-surface));
+        background:
+          linear-gradient(var(--af-card-tint, var(--af-cover-tint)), var(--af-card-tint, var(--af-cover-tint))),
+          var(--af-card, var(--af-surface));
         border: var(--af-card-border, 1px solid var(--af-line));
         border-top: var(--af-card-rule, var(--af-card-border, 1px solid var(--af-line)));
         border-radius: var(--af-card-radius, 32px);
@@ -227,7 +243,7 @@ export class AfPage extends LitElement {
       .join(";");
     if (!type) return html`<div class="cell" style=${style}><div class="unknown">Unbekanntes Widget „${w.type}“</div></div>`;
     const tag = unsafeStatic(type.tag);
-    const cls = ["cell", w.tap_action || w.hold_action ? "act" : "", look.card ? "boxed" : ""].filter(Boolean).join(" ");
+    const cls = ["cell", w.tap_action || w.hold_action ? "act" : "", boxed(w, this.ctx?.tiles) ? "boxed" : ""].filter(Boolean).join(" ");
     const zoom = look.size && Number(look.size) !== 100 ? `zoom:${Number(look.size) / 100}` : "";
     return html`<div
       class=${cls}
@@ -273,7 +289,12 @@ export class AfPage extends LitElement {
     const night = p.palette === "night";
     // Animation: Seite > Design/Stil; nachts nie
     const base = this.ctx?.ambient;
-    const ambient = night ? "none" : bg.ambient ?? base?.type ?? "none";
+    const wanted = night ? "none" : bg.ambient ?? base?.type ?? "none";
+    // „Wie das Wetter“: Animation nach dem Zustand der Wetter-Entität (Schnee bei Schnee, Tropfen bei Regen …)
+    const ambient =
+      wanted === "weather"
+        ? (weatherAmbient(this.hass?.states[base?.weather ?? Object.keys(this.hass?.states ?? {}).find((id) => id.startsWith("weather.")) ?? ""]?.state) as AmbientKind)
+        : wanted;
     const colored = bg.type === "color" && bg.color;
     const onImage = bg.type === "photo" || bg.type === "camera";
     const cam = this.cameraSource(p);
@@ -298,7 +319,7 @@ export class AfPage extends LitElement {
             ${cam.name ? html`<div class="credit">${cam.name}</div>` : nothing}`
         : nothing}
       ${ambient !== "none"
-        ? html`<af-ambient .type=${ambient} .strength=${base?.strength ?? 1} .speed=${base?.speed ?? "slow"} .small=${!!this.ctx?.preview}></af-ambient>`
+        ? html`<af-ambient .type=${ambient} .strength=${base?.strength ?? 1} .speed=${base?.speed ?? "slow"} .tint=${base?.color} .small=${!!this.ctx?.preview}></af-ambient>`
         : nothing}
       ${repeat(
         widgets.filter((w) => layout[w.id]),

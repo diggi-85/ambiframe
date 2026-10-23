@@ -5,5 +5,6 @@ import "./display/page";
 import "./display/display";
 import "./panel/display-panel";
 import "./panel/editor";
+import "./panel/studio";
 
 registerFonts();

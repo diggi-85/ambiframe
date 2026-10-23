@@ -6,7 +6,7 @@ import { repeat } from "lit/directives/repeat.js";
 import { ForecastStore, PhotoProvider, preload, type DisplayContext } from "../data";
 import { fontStack } from "../fonts";
 import { MDI_MAP, iconSvg } from "../icons";
-import { THEMES, normalizeTheme, themeTokens } from "../styles";
+import { THEMES, normalizeTheme, themeTokens, PALETTES, dayHue } from "../styles";
 import type { DisplayConfig, EventConfig, Hass, HassEntity, PageConfig, Photo, TapAction, TransitionConfig, AmbiframeConfig } from "../types";
 import { triggered } from "../events";
 import { playSound, stopSound } from "../sound";
@@ -15,7 +15,9 @@ import { define } from "../widgets/base";
 import "../widgets/media";
 import { BASE, gridFor, type Grid, type Orientation } from "./grid";
 import "./page";
+import "./ambient";
 import { leaveToDashboard } from "./leave";
+import { coverTokens, loadPalette, registerCoverProperties, type Hsl } from "./cover";
 
 interface Layer {
   key: number;
@@ -285,6 +287,14 @@ export class AfDisplay extends LitElement {
   private mediaTimer?: number;
   private mediaQueue?: number;
   private mediaTicker?: number;
+  /** Laufender Anlass-Effekt (Ereignis-Art „effect“) */
+  private effect?: { ev: EventConfig; seq: number };
+  private effectTimer?: number;
+  /** Farben aus dem laufenden Cover (design.cover_colors) */
+  private coverPal?: Hsl[];
+  private coverUrl?: string;
+  private coverClear?: number;
+  private coverGen = 0;
   private mediaPoll?: number;
   private miniTicker?: number;
   private lastMediaKey = "";
@@ -309,6 +319,7 @@ export class AfDisplay extends LitElement {
 
   connectedCallback(): void {
     super.connectedCallback();
+    registerCoverProperties();
     // In der HA-App (iPad/iPhone) liegt in einer Ecke das Zahnrad für die Kiosk-Einstellungen
     if (/Home ?Assistant\//.test(navigator.userAgent)) this.setAttribute("app", "");
     this.resize = new ResizeObserver(() => this.measure());
@@ -367,13 +378,17 @@ export class AfDisplay extends LitElement {
     this.theme = resolved.theme;
     if (changed.has("config") || changed.has("preview") || changed.has("displayId") || changed.has("streamMode")) {
       const a = design?.ambient;
-      const ambient = { type: a?.type ?? THEMES.find((t) => t.id === resolved.theme)?.ambient ?? "none", strength: a?.strength ?? 1, speed: a?.speed ?? "slow" };
+      const ambient = { type: a?.type ?? THEMES.find((t) => t.id === resolved.theme)?.ambient ?? "none", strength: a?.strength ?? 1, speed: a?.speed ?? "slow", color: a?.color, weather: a?.weather };
       // Laufband: im Videostream steht es (Einzelbilder), auf dem Fernseher ruckelt es – dort ohne eigene Wahl aus
       const ticker = !this.streamMode && (d?.ticker ?? d?.profile !== "tv");
-      this.ctx = this.config ? { forecasts: this.forecasts, config: this.config, preview: this.preview, ambient, displayId: d?.id, ticker } : undefined;
+      const def = THEMES.find((t) => t.id === resolved.theme);
+      this.ctx = this.config
+        ? { forecasts: this.forecasts, config: this.config, preview: this.preview, ambient, displayId: d?.id, ticker, tiles: !!def?.tiles, flap: !!def?.flap }
+        : undefined;
       if (changed.has("config")) this.photos.reload();
     }
     this.applyMode(resolved.light);
+    if (changed.has("hass") || changed.has("config")) this.watchCover();
     this.updateShift();
     const nightEntity = d?.night?.entity;
     const night = !!nightEntity && this.hass?.states[nightEntity]?.state === "on";
@@ -425,7 +440,8 @@ export class AfDisplay extends LitElement {
     // Akzentfarbe und Schriften aus dem Design direkt am Host – so gelten sie auch für abgeleitete Werte
     const design = this.config?.design;
     const set = (name: string, value?: string) => (value ? this.style.setProperty(name, value) : this.style.removeProperty(name));
-    const c = design?.colors?.[this.mode] ?? {};
+    // Farbpalette unter den eigenen Farben
+    const c = { ...PALETTES[design?.palette ?? ""]?.[this.mode], ...design?.colors?.[this.mode] };
     const mix = (color: string | undefined, pct: number) => (color ? `color-mix(in srgb, ${color} ${pct}%, transparent)` : undefined);
     // Lesbarkeit: kleinere Texte größer, gedämpfte Schrift kräftiger (Display vor Design)
     const size = this.display?.text_size ?? design?.text_size ?? "normal";
@@ -450,8 +466,48 @@ export class AfDisplay extends LitElement {
     set("--af-card-radius", design?.radius != null ? `${design.radius}px` : undefined);
     set("--af-display", fontStack(design?.fonts?.display));
     set("--af-sans", fontStack(design?.fonts?.text));
+    // Farben vom Cover zuletzt – sie gehen vor Stil und eigenen Farben, solange Musik läuft
+    // Tagesverlauf: wie die Cover-Farben, nur nach der Uhrzeit (Cover geht vor)
+    const hue = design?.palette === "tagesverlauf" ? dayHue(new Date()) : undefined;
+    const pal = this.coverPal ?? (hue === undefined ? undefined : [0, 30, -30].map((d) => ({ h: (hue + d + 360) % 360, s: 0.6, l: 0.5 })));
+    const cover = pal ? coverTokens(pal, this.mode) : {};
+    for (const name of ["--af-cover-tint", "--af-cover-1", "--af-cover-2", "--af-cover-3"]) set(name, cover[name]);
+    if (cover["--af-accent"]) set("--af-accent", cover["--af-accent"]);
+    if (cover["--af-bg"]) set("--af-bg", cover["--af-bg"]);
     // Eigenes CSS als letzter Stil im Shadow-DOM
     customStyle(this.renderRoot, design?.css);
+  }
+
+  /** Cover des laufenden Players beobachten; nach 15 s ohne Musik zurück zu den Farben des Stils */
+  private watchCover(): void {
+    const design = this.config?.design;
+    const states = this.hass?.states ?? {};
+    const players = design?.cover_players?.length ? design.cover_players : Object.keys(states).filter((id) => id.startsWith("media_player."));
+    const pic = design?.cover_colors
+      ? players.map((id) => states[id]).find((s) => s?.state === "playing" && s.attributes.entity_picture)?.attributes.entity_picture
+      : undefined;
+    if (typeof pic === "string") {
+      clearTimeout(this.coverClear);
+      this.coverClear = undefined;
+      if (pic === this.coverUrl) return;
+      this.coverUrl = pic;
+      const gen = ++this.coverGen;
+      void loadPalette(pic).then((pal) => {
+        if (gen !== this.coverGen || !pal) return;
+        this.coverPal = pal;
+        this.requestUpdate();
+      });
+      return;
+    }
+    if (!this.coverPal || this.coverClear) return;
+    const reset = () => {
+      this.coverPal = this.coverUrl = this.coverClear = undefined;
+      this.coverGen++;
+      this.requestUpdate();
+    };
+    // Ausgeschaltet: sofort zurück; sonst Pause zwischen zwei Titeln abwarten
+    if (!design?.cover_colors) reset();
+    else this.coverClear = window.setTimeout(reset, 15e3);
   }
 
   /** Übergang einer Seite: Seite > Display > Design > Standard */
@@ -658,6 +714,8 @@ export class AfDisplay extends LitElement {
       this.openPip(ev);
     } else if (ev.kind === "page") {
       if (!this.openTakeover(ev)) return;
+    } else if (ev.kind === "effect") {
+      this.openEffect(ev);
     } else {
       const at = n ? new Date(n.last_changed) : new Date();
       const dur = o && n ? at.getTime() - new Date(o.last_changed).getTime() : undefined;
@@ -732,10 +790,32 @@ export class AfDisplay extends LitElement {
     if (ev.kind === "info") this.openNotice(ev, new Date(), 102 * 60e3, 0.63);
     else if (ev.kind === "live") this.openPip(ev);
     else if (ev.kind === "page") this.openTakeover(ev, true);
+    else if (ev.kind === "effect") this.openEffect(ev);
     else if (ev.kind === "media") {
       const playing = triggersOf(ev).find((id) => mediaKey(this.hass?.states[id]));
       void this.openMedia(ev, playing ?? triggersOf(ev)[0] ?? "media_player.demo", { force: true, demo: !playing });
     } else this.openAlarm(ev);
+  }
+
+  /** Anlass: Konfetti, Feuerwerk, Herzen … für eine Weile über allem, auf Wunsch mit großem Titel */
+  private openEffect(ev: EventConfig): void {
+    clearTimeout(this.effectTimer);
+    this.effect = { ev, seq: ++this.seq };
+    this.effectTimer = window.setTimeout(() => {
+      this.effect = undefined;
+      this.requestUpdate();
+    }, this.secs(ev.duration ?? 30) * 1000);
+    this.requestUpdate();
+  }
+
+  private renderEffect() {
+    const e = this.effect;
+    if (!e) return nothing;
+    const title = e.ev.title ?? "";
+    return html`<div class="effect" @click=${() => ((this.effect = undefined), this.requestUpdate())}>
+      <af-ambient .type=${e.ev.effect ?? "confetti"} .strength=${3} .speed=${"normal"}></af-ambient>
+      ${title ? html`<div class="effect-title display">${title}${e.ev.where ? html`<small>${e.ev.where}</small>` : nothing}</div>` : nothing}
+    </div>`;
   }
 
   private secs(base: number): number {
@@ -1609,7 +1689,7 @@ export class AfDisplay extends LitElement {
           ></af-page>`,
       )}
       ${this.renderChips()}
-      ${this.renderMini()} ${this.renderMedia()} ${this.renderPip()} ${this.renderPopup()} ${this.renderNotice()} ${this.renderAlarm()}
+      ${this.renderEffect()} ${this.renderMini()} ${this.renderMedia()} ${this.renderPip()} ${this.renderPopup()} ${this.renderNotice()} ${this.renderAlarm()}
       ${this.renderAsk()} ${this.renderToast()} ${this.renderNav()} ${this.renderMenu()} ${this.renderHistory()}
     </div>
     ${this.renderControl()}`;
@@ -1626,6 +1706,14 @@ export class AfDisplay extends LitElement {
         overflow: hidden;
         /* Falls doch Ränder bleiben (extreme Seitenverhältnisse): in der Farbe des Stils statt schwarz */
         background: var(--af-bg);
+        /* Cover-Farben und Stilwechsel weich überblenden (die Werte sind als <color> angemeldet) */
+        transition:
+          --af-accent 2s ease,
+          --af-bg 2s ease,
+          --af-cover-tint 2s ease,
+          --af-cover-1 2s ease,
+          --af-cover-2 2s ease,
+          --af-cover-3 2s ease;
         -webkit-tap-highlight-color: transparent;
         user-select: none;
         /* Android/Fully: kein automatisches Vergrößern einzelner Textblöcke („Text-Autosizing“) */
@@ -1668,6 +1756,7 @@ export class AfDisplay extends LitElement {
       /* Hell/Dunkel-Wechsel: kurz ausblenden statt hart umschalten */
       .stage {
         transition: opacity 1.5s var(--af-ease-soft);
+        perspective: 2400px;
       }
       .stage.dim {
         opacity: 0;
@@ -1699,6 +1788,86 @@ export class AfDisplay extends LitElement {
       .t-zoom {
         --in: zoom-in;
         --out: zoom-out;
+      }
+      /* Würfel, Karte umdrehen, Blättern: in 3D, die Bühne hat Perspektive */
+      .t-cube,
+      .t-flip,
+      .t-page {
+        backface-visibility: hidden;
+      }
+      .t-cube {
+        --in: cube-in;
+        --out: cube-out;
+        transform-origin: 50% 50% -640px;
+      }
+      .t-flip {
+        --in: flip-in;
+        --out: flip-out;
+      }
+      .t-page {
+        --in: fade-in;
+        --out: page-out;
+        transform-origin: 0 50%;
+      }
+      @keyframes cube-in {
+        from {
+          transform: rotateY(-90deg);
+        }
+      }
+      @keyframes cube-out {
+        to {
+          transform: rotateY(90deg);
+          opacity: 0.4;
+        }
+      }
+      @keyframes flip-in {
+        from {
+          opacity: 0;
+          transform: rotateY(-90deg) scale(0.92);
+        }
+      }
+      @keyframes flip-out {
+        to {
+          opacity: 0;
+          transform: rotateY(90deg) scale(0.92);
+        }
+      }
+      @keyframes page-out {
+        to {
+          transform: rotateY(-115deg);
+          opacity: 0.2;
+          box-shadow: 40px 0 60px rgba(0, 0, 0, 0.5);
+        }
+      }
+      /* Anlass-Effekt über allem */
+      .effect {
+        position: absolute;
+        inset: 0;
+        z-index: 40;
+        display: grid;
+        place-items: center;
+        /* leichter Schleier, damit der Titel über der Seite lesbar bleibt */
+        background: var(--af-veil);
+        animation: fade-in 1s var(--af-ease-soft) both;
+      }
+      .effect af-ambient {
+        position: absolute;
+        inset: 0;
+      }
+      .effect-title {
+        position: relative;
+        text-align: center;
+        font-size: 96px;
+        line-height: 1.05;
+        color: var(--af-ink);
+        text-shadow: 0 4px 30px var(--af-bg);
+        animation: fade-in 1.2s var(--af-ease-soft) both;
+      }
+      .effect-title small {
+        display: block;
+        margin-top: 16px;
+        font-size: 34px;
+        color: var(--af-ink-2);
       }
       @keyframes fade-in {
         from {

@@ -8,6 +8,7 @@ import { widgetStyles } from "../styles";
 import type { Hass, HassEntity } from "../types";
 import { ago, dayDiff, fmtTime, nameOf, parseDate, stateOf } from "../util";
 import { AfWidget, define } from "./base";
+import "./clocks";
 
 /* ───────── Gemeinsame Helfer ───────── */
 
@@ -477,7 +478,7 @@ class AfDepartures extends AfWidget {
         padding: 3px 10px;
         border-radius: 8px;
         background: var(--af-accent);
-        color: var(--af-bg, #000);
+        color: var(--af-on-accent, var(--af-bg, #000));
         font-weight: 600;
         font-size: 0.85em;
       }
@@ -504,6 +505,15 @@ class AfDepartures extends AfWidget {
       .calm {
         font-size: calc(20px * var(--af-fs, 1));
         color: var(--af-ink-3);
+      }
+      .row.flap {
+        gap: 0.5em;
+        font-size: calc(24px * var(--af-fs, 1));
+        border-bottom: 0;
+        padding: calc(4px * var(--af-dense, 1)) 0;
+      }
+      .row.flap .dest {
+        flex: 1;
       }
     `,
   ];
@@ -534,6 +544,8 @@ class AfDepartures extends AfWidget {
     const now = Date.now();
     const lines = listOf(this.options.lines).map((l) => l.toLowerCase());
     const walk = Number(this.options.walk ?? 0) * 60e3;
+    // Fallblatt-Tafel: im Fallblatt-Stil oder mit flap: true
+    const flap = (this.options.flap as boolean | undefined) ?? !!this.ctx?.flap;
     const list = this.sources
       .flatMap((id) => readDepartures(this.hass?.states[id], this.options.attribute as string | undefined, now))
       .filter((d) => d.time.getTime() + d.delay * 60e3 >= now + walk)
@@ -544,6 +556,12 @@ class AfDepartures extends AfWidget {
       ${list.length
         ? list.map((d) => {
             const mins = Math.round((d.time.getTime() + d.delay * 60e3 - now) / 60e3);
+            if (flap)
+              return html`<div class="row flap">
+                <af-flap .text=${d.line.slice(0, 3).padEnd(3)}></af-flap>
+                <af-flap class="dest" .text=${d.destination.slice(0, 14).padEnd(14)}></af-flap>
+                <af-flap .text=${(mins <= 0 ? "0" : mins < 100 ? String(mins) : "99").padStart(2)}></af-flap>
+              </div>`;
             return html`<div class="row">
               <span class="line">${d.line || iconSvg("train")}</span>
               <span class="dest">${d.destination}${this.options.show_platform && d.platform ? html` <span class="plat">· ${t("Gleis {n}", { n: d.platform })}</span>` : nothing}</span>
@@ -821,10 +839,11 @@ class AfSky extends AfWidget {
         display: flex;
         flex-direction: column;
         gap: calc(14px * var(--af-dense, 1));
+        container-type: inline-size;
       }
       .grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
         gap: calc(18px * var(--af-dense, 1)) 28px;
       }
       .big {
@@ -836,12 +855,13 @@ class AfSky extends AfWidget {
         font-size: calc(46px * var(--af-fs, 1));
         color: var(--af-accent);
       }
+      /* passt sich der Breite an – auch bei großer Schrift läuft nichts über */
       .v {
-        font-size: calc(40px * var(--af-fs, 1));
+        font-size: min(calc(40px * var(--af-fs, 1)), 3.6cqw);
         line-height: 1.05;
       }
       .s {
-        font-size: calc(17px * var(--af-fs, 1));
+        font-size: min(calc(17px * var(--af-fs, 1)), 2.5cqw);
         color: var(--af-ink-3);
         margin-top: 4px;
       }
@@ -957,6 +977,17 @@ export const airKindOf = (id: string, s?: HassEntity): AirKind | null => {
 
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
+/** Gemeinsamen Anfang mehrerer Namen entfernen („Musterstadt-Nord, Germany PM2,5“ → „PM2,5“), nur an Wortgrenzen */
+export const stripCommon = (names: string[]): string[] => {
+  if (names.length < 2) return names;
+  let prefix = names[0];
+  for (const n of names) while (prefix && !n.startsWith(prefix)) prefix = prefix.slice(0, -1);
+  const cut = prefix.search(/[\s,·:–-]+[^\s,·:–-]*$/);
+  const len = /[\s,·:–-]$/.test(prefix) ? prefix.length : cut;
+  if (len <= 0) return names;
+  return names.map((n) => n.slice(len).replace(/^[\s,·:–-]+/, "") || n);
+};
+
 const LEVELS = ["keine", "gering", "mittel", "hoch"];
 const AIR_LEVELS = ["gut", "mäßig", "schlecht", "sehr schlecht"];
 
@@ -1042,12 +1073,13 @@ class AfAir extends AfWidget {
       .filter((r) => r.level >= 0 && (!this.options.only_elevated || r.level >= 1))
       .sort((a, b) => b.level - a.level)
       .slice(0, Number(this.options.max ?? 8));
+    const names = stripCommon(rows.map((r) => nameOf(this.hass, r.entity)));
     return html`${label(this.options, t("Pollen & Luft"))}
       ${rows.length
         ? rows.map(
-            (r) => html`<div class="row">
+            (r, i) => html`<div class="row">
               <span class="dot l${r.level}"></span>
-              <span class="name">${r.name || cap(nameOf(this.hass, r.entity).replace(/^(Pollenflug|Pollen)\s*/i, ""))}</span>
+              <span class="name">${r.name || cap(names[i].replace(/^(Pollenflug|Pollen)\s*/i, ""))}</span>
               <span class="lvl">${t((r.kind === "pollen" ? LEVELS : AIR_LEVELS)[r.level])}</span>
             </div>`,
           )

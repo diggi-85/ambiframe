@@ -10,6 +10,9 @@ import "./more";
 import "./extras";
 import "./news";
 import "./plus";
+import "./pixel";
+import "./wordclock";
+import "./clocks";
 import "./summary";
 import "./today";
 import "./weather";
@@ -65,5 +68,8 @@ export const WIDGETS: Record<string, WidgetType> = {
   radar: { tag: "af-radar", name: "Regenradar", icon: "mdi:radar", size: [6, 6] },
   sky: { tag: "af-sky", name: "Sonne & Mond", icon: "mdi:weather-sunset", size: [8, 2] },
   air: { tag: "af-air", name: "Pollen & Luft", icon: "mdi:flower-pollen", size: [4, 5] },
+  analog: { tag: "af-analog", name: "Analoge Uhr", icon: "mdi:clock-time-four-outline", size: [4, 4] },
+  wordclock: { tag: "af-wordclock", name: "Wortuhr", icon: "mdi:clock-digital", size: [8, 8] },
+  pixel: { tag: "af-pixel", name: "Pixel-Anzeige", icon: "mdi:dots-grid", size: [5, 2] },
   card: { tag: "af-card", name: "HA-Karte", icon: "mdi:card-outline", size: [4, 4] },
 };
