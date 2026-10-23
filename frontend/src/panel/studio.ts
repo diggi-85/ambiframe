@@ -76,6 +76,35 @@ const MOMENT_TEMPLATES: { id: string; name: string; icon: string; event: Partial
   { id: "warnung", name: "Wetterwarnung", icon: "warning", event: { kind: "info", to: "on", title: "Wetterwarnung", icon: "warning", at_night: true } },
 ];
 
+/** Ohne Auslöser (bzw. Player bei Musik) lässt sich ein Moment nicht speichern */
+export const needsTrigger = (ev: EventConfig): boolean =>
+  ev.kind === "media" ? !ev.entities?.length : !ev.entity && !ev.entities?.length;
+
+/** Passende Entität für eine Vorlage aus dem, was es in HA gibt (erste, die passt) */
+export const guessTrigger = (hass: Hass | undefined, id: string): Partial<EventConfig> => {
+  const ids = Object.keys(hass?.states ?? {});
+  const find = (domains: string[], re: RegExp, deviceClass?: string) =>
+    ids.find((e) => domains.some((d) => e.startsWith(`${d}.`)) && re.test(e) && (!deviceClass || hass?.states[e]?.attributes.device_class === deviceClass)) ??
+    (deviceClass ? ids.find((e) => domains.some((d) => e.startsWith(`${d}.`)) && hass?.states[e]?.attributes.device_class === deviceClass) : undefined);
+  const camera = ids.find((e) => e.startsWith("camera.") && /t[uü]r|door|front|haus|eingang/i.test(e));
+  switch (id) {
+    case "klingel":
+      return { entity: find(["binary_sensor", "event"], /klingel|doorbell|ring|besucher|bell/i), camera };
+    case "bewegung":
+      return { entity: find(["binary_sensor"], /t[uü]r|door|front|eingang|einfahrt/i, "motion"), camera };
+    case "waesche":
+      return { entity: find(["input_boolean", "binary_sensor", "sensor"], /wasch|wama|washer|w[aä]sche/i) };
+    case "musik":
+      return { entities: ids.filter((e) => e.startsWith("media_player.")) };
+    case "geburtstag":
+      return { entity: find(["calendar"], /geburtstag|birthday|anniversaire|verjaardag/i) };
+    case "warnung":
+      return { entity: find(["binary_sensor"], /nina|warn|dwd|unwetter/i) };
+    default:
+      return {};
+  }
+};
+
 const KIND_TEXT: Record<string, string> = {
   alarm: "Vollbild",
   live: "Bild-im-Bild",
@@ -211,6 +240,16 @@ export class AmbiframeStudio extends LitElement {
 
   private async save(): Promise<void> {
     if (!this.hass || !this.draft) return;
+    // Unvollständige Momente vorher zeigen statt einer Fehlermeldung vom Server
+    const missing = this.draft.events.find(needsTrigger);
+    if (missing) {
+      this.view = "display";
+      if (!this.displayId) this.displayId = ALL;
+      this.step = "momente";
+      this.openEvent = missing.id;
+      alert(t("Beim Moment „{name}“ fehlt noch der Auslöser – bitte unter „Anpassen“ wählen oder den Moment löschen.", { name: missing.name || missing.id }));
+      return;
+    }
     this.saving = true;
     try {
       await this.hass.callWS({ type: "ambiframe/config/save", config: this.draft, language: lang() });
@@ -706,11 +745,28 @@ export class AmbiframeStudio extends LitElement {
               <div>
                 <b>${ev.name || ev.title || ev.id}</b>
                 <span class="muted">${this.sentence(ev)}</span>
+                ${needsTrigger(ev)
+                  ? html`<span class="missing">${ev.kind === "media" ? t("Player fehlt – bitte unter „Anpassen“ wählen") : t("Auslöser fehlt – bitte unter „Anpassen“ wählen")}</span>`
+                  : nothing}
                 ${this.all ? html`<span class="muted small">${t("Auf: {list}", { list: shownOn.join(", ") || t("keinem Display") })}</span>` : nothing}
               </div>
               <span class="btns">
                 <button class="small" @click=${() => this.testMoment(ev.id)}>▶ ${t("Testen")}</button>
                 <button class="small ghost" @click=${() => (this.openEvent = open ? "" : ev.id)}>${open ? t("Fertig") : t("Anpassen")}</button>
+                <button
+                  class="small ghost danger"
+                  title=${t("Löschen")}
+                  @click=${() => {
+                    if (!confirm(t("Moment „{name}“ für alle Displays löschen?", { name: ev.name || ev.title || ev.id }))) return;
+                    this.mutate((cc) => {
+                      cc.events = cc.events.filter((x) => x.id !== ev.id);
+                      // aus den Listen der Displays nehmen
+                      for (const x of cc.displays) if (Array.isArray(x.events)) x.events = x.events.filter((e) => e !== ev.id);
+                    });
+                  }}
+                >
+                  ✕
+                </button>
               </span>
             </div>
             ${open ? this.form(eventFields(c), ev, (v) => this.mutate((cc) => (cc.events[cc.events.findIndex((x) => x.id === ev.id)] = v as EventConfig))) : nothing}
@@ -761,7 +817,10 @@ export class AmbiframeStudio extends LitElement {
 
   private addMoment(m: (typeof MOMENT_TEMPLATES)[number]): void {
     const id = uniqueId(m.id, this.draft!.events.map((e) => e.id));
-    this.mutate((c) => c.events.push({ id, name: t(m.name), enabled: true, title: "", ...structuredClone(m.event) } as EventConfig));
+    const guess = guessTrigger(this.hass, m.id);
+    const event = { id, name: t(m.name), enabled: true, title: "", ...structuredClone(m.event) } as EventConfig;
+    for (const [k, v] of Object.entries(guess)) if (v !== undefined && !(Array.isArray(v) && !v.length)) (event as unknown as Record<string, unknown>)[k] = v;
+    this.mutate((c) => c.events.push(event));
     this.openEvent = id;
   }
 
@@ -1380,6 +1439,15 @@ export class AmbiframeStudio extends LitElement {
     }
     .moment.off {
       opacity: 0.6;
+    }
+    .missing {
+      display: block;
+      margin-top: 4px;
+      font-size: 12px;
+      color: #ff6b5b;
+    }
+    button.danger {
+      color: #ff6b5b;
     }
     .sentence {
       display: grid;

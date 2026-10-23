@@ -1506,4 +1506,8 @@ export const FR: Record<string, string> = {
   "klare Nacht": "nuit claire",
   "Nach der Sonne": "Selon le soleil",
   "Bibliothek": "Bibliothèque",
+  "Auslöser fehlt – bitte unter „Anpassen“ wählen": "Déclencheur manquant – choisissez-en un dans « Ajuster »",
+  "Beim Moment „{name}“ fehlt noch der Auslöser – bitte unter „Anpassen“ wählen oder den Moment löschen.": "Le moment « {name} » n’a pas encore de déclencheur – choisissez-en un dans « Ajuster » ou supprimez-le.",
+  "Moment „{name}“ für alle Displays löschen?": "Supprimer le moment « {name} » pour tous les écrans ?",
+  "Player fehlt – bitte unter „Anpassen“ wählen": "Lecteur manquant – choisissez-en un dans « Ajuster »",
 };

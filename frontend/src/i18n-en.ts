@@ -1508,4 +1508,8 @@ export const EN: Record<string, string> = {
   "klare Nacht": "clear night",
   "Nach der Sonne": "By the sun",
   "Bibliothek": "Library",
+  "Auslöser fehlt – bitte unter „Anpassen“ wählen": "Trigger missing – please choose one under “Adjust”",
+  "Beim Moment „{name}“ fehlt noch der Auslöser – bitte unter „Anpassen“ wählen oder den Moment löschen.": "The moment “{name}” still has no trigger – please choose one under “Adjust” or delete the moment.",
+  "Moment „{name}“ für alle Displays löschen?": "Delete the moment “{name}” for all displays?",
+  "Player fehlt – bitte unter „Anpassen“ wählen": "Player missing – please choose one under “Adjust”",
 };

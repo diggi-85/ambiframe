@@ -25,7 +25,7 @@ const config = () => ({
   ],
   events: [
     { id: "klingel", kind: "alarm", entity: "binary_sensor.klingel", to: "on", title: "Klingel", enabled: true },
-    { id: "musik", kind: "media", entities: [], enabled: true, title: "" },
+    { id: "musik", kind: "media", entities: ["media_player.kueche"], enabled: true, title: "" },
   ],
   sounds: [],
 });
@@ -71,5 +71,50 @@ describe("Studio", () => {
     expect(out.pages).toEqual(before.pages);
     expect(out.events).toEqual(before.events);
     el.remove();
+  });
+});
+
+describe("Studio: Momente ohne Auslöser", () => {
+  it("erkennt fehlende Auslöser und schlägt passende vor", async () => {
+    const { needsTrigger, guessTrigger } = await import("../src/panel/studio");
+    expect(needsTrigger({ id: "w", kind: "info", enabled: true, title: "" } as never)).toBe(true);
+    expect(needsTrigger({ id: "m", kind: "media", entities: [], enabled: true, title: "" } as never)).toBe(true);
+    expect(needsTrigger({ id: "k", kind: "alarm", entity: "binary_sensor.x", enabled: true, title: "" } as never)).toBe(false);
+    const hass = {
+      states: Object.fromEntries(
+        ["binary_sensor.nina_warning_musterstadt_1", "binary_sensor.haustuer_klingel", "media_player.kueche", "media_player.bad", "camera.haustuer"].map((id) => [id, { entity_id: id, state: "off", attributes: {} }]),
+      ),
+    } as never;
+    expect(guessTrigger(hass, "warnung").entity).toBe("binary_sensor.nina_warning_musterstadt_1");
+    expect(guessTrigger(hass, "klingel")).toMatchObject({ entity: "binary_sensor.haustuer_klingel", camera: "camera.haustuer" });
+    expect(guessTrigger(hass, "musik").entities).toEqual(["media_player.kueche", "media_player.bad"]);
+    expect(guessTrigger(hass, "geburtstag").entity).toBeUndefined();
+  });
+
+  it("speichert nicht, solange ein Auslöser fehlt, und zeigt den Moment", async () => {
+    await import("../src/panel/studio");
+    const saved: unknown[] = [];
+    const hass = {
+      states: {},
+      callWS: vi.fn(async (msg: { type: string; config?: unknown }) => {
+        if (msg.type === "ambiframe/config") return config();
+        if (msg.type === "ambiframe/config/save") saved.push(msg.config);
+        return {};
+      }),
+      connection: { subscribeMessage: vi.fn() },
+    };
+    vi.stubGlobal("alert", vi.fn());
+    const el = document.createElement("ambiframe-studio") as HTMLElement & Record<string, any>;
+    el.hass = hass;
+    document.body.append(el);
+    await vi.waitFor(() => expect(el.draft).toBeTruthy());
+    el.openDisplay("__all");
+    el.addMoment({ id: "warnung", name: "Wetterwarnung", icon: "warning", event: { kind: "info", to: "on", title: "Wetterwarnung" } });
+    await el.save();
+    expect(saved).toHaveLength(0);
+    expect(el.step).toBe("momente");
+    expect(el.openEvent).toBe("warnung");
+    el.remove();
+    vi.unstubAllGlobals();
   });
 });

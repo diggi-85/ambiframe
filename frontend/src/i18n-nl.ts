@@ -1506,4 +1506,8 @@ export const NL: Record<string, string> = {
   "klare Nacht": "heldere nacht",
   "Nach der Sonne": "Volgens de zon",
   "Bibliothek": "Bibliotheek",
+  "Auslöser fehlt – bitte unter „Anpassen“ wählen": "Trigger ontbreekt – kies er een bij „Aanpassen”",
+  "Beim Moment „{name}“ fehlt noch der Auslöser – bitte unter „Anpassen“ wählen oder den Moment löschen.": "Bij het moment „{name}” ontbreekt nog de trigger – kies er een bij „Aanpassen” of verwijder het moment.",
+  "Moment „{name}“ für alle Displays löschen?": "Moment „{name}” voor alle displays verwijderen?",
+  "Player fehlt – bitte unter „Anpassen“ wählen": "Speler ontbreekt – kies er een bij „Aanpassen”",
 };
