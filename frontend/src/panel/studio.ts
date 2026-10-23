@@ -1,4 +1,4 @@
-// Studio (Prototyp): Einrichtung „Display zuerst“ mit rotem Faden. Jedes Display hat eine eigene Seite mit denselben
+// Studio: Einrichtung „Display zuerst“ mit rotem Faden. Jedes Display hat eine eigene Seite mit denselben
 // Fragen (Ort & Gerät · Inhalte · Aussehen · Momente · Technik), dazu eine Seite „Alle Displays“ für das Gemeinsame
 // (Aussehen für alle, Momente, Seiten-Bibliothek, Fotos & KI). Rechts immer die echte Vorschau.
 // Arbeitet auf derselben Konfiguration wie der bisherige Editor – nach einem Update geht nichts verloren.
@@ -262,6 +262,12 @@ export class AmbiframeStudio extends LitElement {
     }
   }
 
+  /** Experten-Editor öffnen; mit Seite direkt in deren Gestaltung */
+  private toClassic(page?: string): void {
+    if (this.dirty && !confirm(t("Ungespeicherte Änderungen verwerfen?"))) return;
+    this.dispatchEvent(new CustomEvent("open-classic", { detail: { page }, bubbles: true, composed: true }));
+  }
+
   /* ───────── Vorschau ───────── */
 
   /** hass für die Vorschau: Wetter und Nacht lassen sich simulieren, ohne HA zu ändern */
@@ -493,6 +499,7 @@ export class AmbiframeStudio extends LitElement {
               })}
             />
             <span class="btns" @click=${(ev: Event) => ev.stopPropagation()}>
+              <button class="small ghost" title=${t("Widgets der Seite anordnen und einstellen")} @click=${() => this.toClassic(e.page)}>${t("Gestalten")}</button>
               <button class="icon" ?disabled=${i === 0} title=${t("nach oben")} @click=${() => this.move(i, -1)}>↑</button>
               <button class="icon" ?disabled=${i === d.playlist.length - 1} title=${t("nach unten")} @click=${() => this.move(i, 1)}>↓</button>
               <button class="icon" title=${t("entfernen")} @click=${() => this.mutateDisplay((x) => x.playlist.splice(i, 1))}>✕</button>
@@ -549,6 +556,7 @@ export class AmbiframeStudio extends LitElement {
               <span class="types">${this.widgetTags(p)}</span>
             </div>
             <span class="muted users">${users.length ? users.join(", ") : t("von keinem Display gezeigt")}</span>
+            <button class="small ghost" title=${t("Widgets der Seite anordnen und einstellen")} @click=${(ev: Event) => (ev.stopPropagation(), this.toClassic(p.id))}>${t("Gestalten")}</button>
           </li>`;
         })}
       </ol>
@@ -932,8 +940,9 @@ export class AmbiframeStudio extends LitElement {
     if (!this.draft) return html`<div class="loading">${t("Lädt …")}</div>`;
     return html`<div class="app">
       <div class="bar">
-        <b>Ambiframe Studio</b><span class="beta">${t("Prototyp")}</span>
+        <b>Ambiframe</b>
         <span class="spacer"></span>
+        <button class="ghost" title=${t("Alle Möglichkeiten in der bisherigen Ansicht")} @click=${() => this.toClassic()}>${t("Experten-Editor")}</button>
         <label class="inline"><input type="checkbox" .checked=${this.advanced} @change=${(e: Event) => (this.advanced = (e.target as HTMLInputElement).checked)} />${t("Erweitert")}</label>
         <button class="ghost" ?disabled=${!this.dirty} @click=${() => this.load()}>${t("Verwerfen")}</button>
         <button class="primary" ?disabled=${!this.dirty || this.saving} @click=${() => this.save()}>
@@ -1317,7 +1326,7 @@ export class AmbiframeStudio extends LitElement {
       cursor: pointer;
     }
     .playlist.lib li {
-      grid-template-columns: 28px minmax(0, 1fr) auto;
+      grid-template-columns: 28px minmax(0, 1fr) auto auto;
     }
     .playlist li.on {
       border-color: var(--s-acc);

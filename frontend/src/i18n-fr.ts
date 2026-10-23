@@ -1510,4 +1510,12 @@ export const FR: Record<string, string> = {
   "Beim Moment „{name}“ fehlt noch der Auslöser – bitte unter „Anpassen“ wählen oder den Moment löschen.": "Le moment « {name} » n’a pas encore de déclencheur – choisissez-en un dans « Ajuster » ou supprimez-le.",
   "Moment „{name}“ für alle Displays löschen?": "Supprimer le moment « {name} » pour tous les écrans ?",
   "Player fehlt – bitte unter „Anpassen“ wählen": "Lecteur manquant – choisissez-en un dans « Ajuster »",
+  "Alle Möglichkeiten in der bisherigen Ansicht": "Toutes les options dans l’ancienne vue",
+  "Experten-Editor": "Éditeur expert",
+  "Gestalten": "Composer",
+  "Ungespeicherte Änderungen verwerfen und zur neuen Oberfläche wechseln?": "Abandonner les modifications non enregistrées et passer à la nouvelle interface ?",
+  "Ungespeicherte Änderungen verwerfen?": "Abandonner les modifications non enregistrées ?",
+  "Widgets der Seite anordnen und einstellen": "Disposer et régler les widgets de la page",
+  "Zur neuen Oberfläche": "Vers la nouvelle interface",
+  "Zurück zur einfachen Oberfläche – arbeitet mit derselben Konfiguration": "Retour à l’interface simple – même configuration",
 };

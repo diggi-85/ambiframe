@@ -80,6 +80,23 @@ const inheritFields = (fields: Field[]): Field[] =>
   });
 const toYaml = (c: unknown) => dump(c, { lineWidth: 120, noRefs: true });
 
+/** Gewählte Oberfläche auf diesem Gerät (Studio oder Experten-Editor) – ohne Speicher einfach Studio */
+const UI_KEY = "ambiframe-ui";
+const uiChoice = (): string | null => {
+  try {
+    return localStorage.getItem(UI_KEY);
+  } catch {
+    return null;
+  }
+};
+const setUiChoice = (v: string): void => {
+  try {
+    localStorage.setItem(UI_KEY, v);
+  } catch {
+    // privater Modus o. Ä.: dann eben nur für diese Sitzung
+  }
+};
+
 class AmbiframePanel extends LitElement {
   static properties = {
     studio: { state: true },
@@ -1773,15 +1790,30 @@ class AmbiframePanel extends LitElement {
     ></af-wizard>`;
   }
 
-  /** Neue Oberfläche „Studio“ (Prototyp) statt des bisherigen Editors – gleiche Konfiguration */
-  private studio = false;
+  /** Standard ist die Oberfläche „Studio“; wer den Experten-Editor wählt, bekommt ihn auf diesem Gerät wieder */
+  private studio = uiChoice() !== "classic";
+
+  /** Aus Studio: Experten-Editor öffnen – mit Seite direkt in den Seiteneditor (dann nur vorübergehend) */
+  private openClassic = (e: CustomEvent<{ page?: string }>): void => {
+    this.studio = false;
+    if (e.detail?.page) {
+      this.tab = "seiten";
+      this.pageId = e.detail.page;
+      this.widgetId = null;
+    } else setUiChoice("classic");
+  };
+
+  private openStudio(): void {
+    if (this.dirty && !confirm(t("Ungespeicherte Änderungen verwerfen und zur neuen Oberfläche wechseln?"))) return;
+    if (this.dirty) this.discard();
+    this.studio = true;
+    setUiChoice("studio");
+  }
 
   render() {
-    if (this.studio)
-      return html`<div class="studio-wrap">
-        <button class="small studio-exit" @click=${() => (this.studio = false)}>← ${t("Bisheriger Editor")}</button>
-        <ambiframe-studio .hass=${this.hass}></ambiframe-studio>
-      </div>`;
+    // Frische Installation: zuerst der Einrichtungsassistent des Experten-Editors
+    if (this.studio && this.draft?.setup_complete !== false)
+      return html`<ambiframe-studio .hass=${this.hass} @open-classic=${this.openClassic}></ambiframe-studio>`;
     setLang(resolveLang(this.draft?.design.language, this.hass?.language));
     // Display-Auswahl für die Bedingung „nur auf Display“
     if (this.draft) {
@@ -1816,8 +1848,8 @@ class AmbiframePanel extends LitElement {
         </nav>
         <span class="spacer"></span>
         ${this.renderHealthButton()}
-        <button class="small" title=${t("Neue, einfachere Oberfläche ausprobieren – arbeitet mit derselben Konfiguration")} @click=${() => (this.studio = true)}>
-          ✨ ${t("Neue Oberfläche testen")}
+        <button class="small" title=${t("Zurück zur einfachen Oberfläche – arbeitet mit derselben Konfiguration")} @click=${() => this.openStudio()}>
+          ✨ ${t("Zur neuen Oberfläche")}
         </button>
         <span class="seg mode" title=${t("Einfach: nur das Nötige · Erweitert: alle Möglichkeiten")}>
           <button class="small ${this.advanced ? "" : "on"}" @click=${() => this.setAdvanced(false)}>${t("Einfach")}</button>
@@ -1853,18 +1885,6 @@ class AmbiframePanel extends LitElement {
   }
 
   static styles = css`
-      .studio-wrap {
-        position: relative;
-        height: 100%;
-      }
-      .studio-exit {
-        position: absolute;
-        left: 50%;
-        transform: translateX(-50%);
-        top: 10px;
-        z-index: 5;
-      }
-
     .scope {
       display: flex;
       align-items: center;

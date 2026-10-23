@@ -1510,4 +1510,12 @@ export const NL: Record<string, string> = {
   "Beim Moment „{name}“ fehlt noch der Auslöser – bitte unter „Anpassen“ wählen oder den Moment löschen.": "Bij het moment „{name}” ontbreekt nog de trigger – kies er een bij „Aanpassen” of verwijder het moment.",
   "Moment „{name}“ für alle Displays löschen?": "Moment „{name}” voor alle displays verwijderen?",
   "Player fehlt – bitte unter „Anpassen“ wählen": "Speler ontbreekt – kies er een bij „Aanpassen”",
+  "Alle Möglichkeiten in der bisherigen Ansicht": "Alle mogelijkheden in de vorige weergave",
+  "Experten-Editor": "Expert-editor",
+  "Gestalten": "Vormgeven",
+  "Ungespeicherte Änderungen verwerfen und zur neuen Oberfläche wechseln?": "Niet-opgeslagen wijzigingen verwerpen en naar de nieuwe interface gaan?",
+  "Ungespeicherte Änderungen verwerfen?": "Niet-opgeslagen wijzigingen verwerpen?",
+  "Widgets der Seite anordnen und einstellen": "Widgets van de pagina schikken en instellen",
+  "Zur neuen Oberfläche": "Naar de nieuwe interface",
+  "Zurück zur einfachen Oberfläche – arbeitet mit derselben Konfiguration": "Terug naar de eenvoudige interface – werkt met dezelfde configuratie",
 };

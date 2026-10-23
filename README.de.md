@@ -80,9 +80,10 @@ Ist die Wäsche fertig, steht es kurz da und bleibt dann als kleine Erinnerung.
 - **Uhren:** Wortuhr (Deutsch, Englisch, Niederländisch, Französisch; Fronten Schwarz, Weiß, Messing, Kupfer),
   analoge Uhr (Bahnhof, schlicht, elegant, Punkte), Fallblatt-Uhr und -Abfahrten, LED-Pixel-Anzeige mit
   8×8-Symbolen, Schreibmaschinen-Text.
-- **Studio (Prototyp):** eine neue, einfachere Oberfläche – Übersicht aller Displays, eine Seite pro Display (Ort &
-  Gerät, Inhalte, Aussehen, Momente, Technik) und eine Seite für alle Displays, immer mit Live-Vorschau (Wetter und
-  Nacht simulieren, Momente testen). Sie arbeitet mit derselben Konfiguration – Ausprobieren ändert nichts.
+- **Studio – der Editor:** Übersicht aller Displays, eine Seite pro Display (Ort & Gerät, Inhalte, Aussehen, Momente,
+  Technik) und eine Seite für alle Displays, immer mit Live-Vorschau (Wetter und Nacht simulieren, Momente testen).
+  „Gestalten“ bei einer Seite öffnet den Seiteneditor zum Anordnen der Widgets; der **Experten-Editor** mit allen
+  Möglichkeiten ist einen Klick entfernt. Bestehende Konfigurationen werden unverändert übernommen.
 - **Bedienmodus:** Tippen holt das HA-Dashboard, nach einer Minute ohne Berührung kehrt Ambiframe zurück.
 - **Kamera nativ** über HAs eigenen Stream (WebRTC/HLS) – alle Displays teilen sich eine Verbindung zur Kamera,
   wichtig bei Kameras, die nur wenige erlauben (z. B. Tapo); MJPEG nur als Rückfall.
@@ -169,7 +170,8 @@ Ambiframe in meinem Home Assistant ein.“* Claude folgt dann der Anleitung in [
 
 1. In der Seitenleiste **Ambiframe** öffnen. Beim ersten Start legt Ambiframe aus deinen Entitäten eine
    Startkonfiguration an (Wetter, Räume nach Bereichen, Müllkalender).
-2. Unter **Displays** die Adresse des Displays kopieren, z. B. `http://homeassistant.local:8123/ambiframe-display?display=ambiframe`.
+2. Das Display öffnen (oder **+ Display hinzufügen**) und unter **Ort & Gerät** seine Adresse kopieren, z. B.
+   `http://homeassistant.local:8123/ambiframe-display?display=ambiframe`.
 3. Auf dem Tablet (empfohlen: [Fully Kiosk Browser](https://www.fully-kiosk.com)) als Start-URL eintragen und einmal anmelden.
    Am besten nimmst du dafür einen eigenen HA-Benutzer ohne Admin-Rechte.
 4. Optional in Fully die *JavaScript-Schnittstelle* aktivieren. Dann weckt Ambiframe den Bildschirm bei Ereignissen.
@@ -179,7 +181,7 @@ Auf iPad oder iPhone ein Dashboard nur mit der Karte `custom:ambiframe-card` anl
 
 ## Konfiguration
 
-Im Editor unter **YAML** (oder per Aktion `ambiframe.import_config`). Eine passende
+Im **Experten-Editor** unter **YAML** (oder per Aktion `ambiframe.import_config`). Eine passende
 Startkonfiguration legt Ambiframe beim ersten Start selbst an; sie lässt sich dort als YAML ansehen und anpassen.
 Ein vollständiges Beispiel steht in [`examples/beispiel.yaml`](examples/beispiel.yaml).
 

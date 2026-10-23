@@ -1512,4 +1512,12 @@ export const EN: Record<string, string> = {
   "Beim Moment „{name}“ fehlt noch der Auslöser – bitte unter „Anpassen“ wählen oder den Moment löschen.": "The moment “{name}” still has no trigger – please choose one under “Adjust” or delete the moment.",
   "Moment „{name}“ für alle Displays löschen?": "Delete the moment “{name}” for all displays?",
   "Player fehlt – bitte unter „Anpassen“ wählen": "Player missing – please choose one under “Adjust”",
+  "Alle Möglichkeiten in der bisherigen Ansicht": "All options in the previous view",
+  "Experten-Editor": "Expert editor",
+  "Gestalten": "Design",
+  "Ungespeicherte Änderungen verwerfen und zur neuen Oberfläche wechseln?": "Discard unsaved changes and switch to the new interface?",
+  "Ungespeicherte Änderungen verwerfen?": "Discard unsaved changes?",
+  "Widgets der Seite anordnen und einstellen": "Arrange and set up the page’s widgets",
+  "Zur neuen Oberfläche": "To the new interface",
+  "Zurück zur einfachen Oberfläche – arbeitet mit derselben Konfiguration": "Back to the simple interface – works with the same configuration",
 };

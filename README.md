@@ -78,9 +78,10 @@ Dutch and French).</sub>
   per page.
 - **Clocks:** word clock (German, English, Dutch, French; faces black, white, brass, copper), analogue clock (station,
   plain, elegant, dots), split-flap clock and departures, LED pixel display with 8×8 icons, typewriter text.
-- **Studio (prototype):** a new, simpler editor – an overview of all displays, a page per display (location & device,
-  contents, look, moments, technical) and a page for all displays, always with a live preview (simulate weather and
-  night, test moments). It works on the same configuration, so nothing changes when you try it.
+- **Studio – the editor:** an overview of all displays, a page per display (location & device, contents, look,
+  moments, technical) and a page for all displays, always with a live preview (simulate weather and night, test
+  moments). "Design" on a page opens the page editor for arranging widgets; the **expert editor** with every option is
+  one click away. Existing configurations carry over unchanged.
 - **Control mode:** a tap brings up the HA dashboard; after a minute without touch Ambiframe returns.
 - **Native camera** via Home Assistant's own stream (WebRTC/HLS) – all displays share one connection to the camera,
   which matters for cameras that allow only a few (e.g. Tapo); MJPEG only as a fallback.
@@ -160,7 +161,7 @@ Copy `custom_components/ambiframe` to `/config/custom_components/`, restart, add
 
 1. Open **Ambiframe** in the sidebar. On first start, Ambiframe creates a starter configuration from your entities
    (weather, rooms by area, waste calendar) and a wizard sets up your first display.
-2. Under **Displays**, copy the display's address, e.g.
+2. Open your display (or **+ Add display**) and copy its address under **Location & device**, e.g.
    `http://homeassistant.local:8123/ambiframe-display?display=ambiframe`.
 3. On the tablet (recommended: [Fully Kiosk Browser](https://www.fully-kiosk.com)) set it as the start URL and log in
    once – ideally with a separate HA user without admin rights.
@@ -171,7 +172,7 @@ mode.
 
 ## Configuration
 
-In the editor under **YAML** (or with the action `ambiframe.import_config`). Ambiframe creates a matching starter
+In the **expert editor** under **YAML** (or with the action `ambiframe.import_config`). Ambiframe creates a matching starter
 configuration on first start; you can view and adjust it there as YAML. A complete example is in
 [`examples/beispiel.yaml`](examples/beispiel.yaml).
 
