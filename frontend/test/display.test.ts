@@ -248,8 +248,9 @@ describe("Kamera live", () => {
     el.entity = "camera.einfahrt";
     document.body.appendChild(el);
     await el.updateComplete;
-    expect(el.shadowRoot!.querySelector("img")).toBeNull();
-    expect(el.shadowRoot!.textContent).toContain("Kamera wird verbunden");
+    expect(el.shadowRoot!.querySelector("img[src*='camera_proxy_stream']")).toBeNull();
+    // Standbild statt leerer Fläche, bis der Player läuft
+    expect(el.shadowRoot!.querySelector("img[src*='camera_proxy/']")).not.toBeNull();
   });
 
   it("nutzt HAs gemeinsamen Stream, sobald der Player da ist", async () => {

@@ -281,11 +281,14 @@ export class AfCameraView extends LitElement {
         : html`<div class="ph"><span>${this.osd}</span></div>`;
     }
     if (!s) return html`<div class="ph"><span>${this.osd}</span></div>`;
+    // Standbild darunter, bis der Live-Player das erste Bild hat (Türklingel: Stream braucht oft Sekunden)
+    const still = s.attributes.entity_picture as string | undefined;
+    const poster = still ? html`<img src=${still} alt="" />` : html`<div class="ph"><span>${this.osd || t("Kamera wird verbunden …")}</span></div>`;
     if (this.mode === "live" && this.native) {
-      return html`<ha-camera-stream .hass=${this.hass} .stateObj=${s} .muted=${true} .controls=${false} .fitMode=${"cover"} allow-exoplayer></ha-camera-stream>`;
+      return html`${poster}<ha-camera-stream .hass=${this.hass} .stateObj=${s} .muted=${true} .controls=${false} .fitMode=${"cover"} allow-exoplayer></ha-camera-stream>`;
     }
     // Live: auf HAs Player warten statt eine eigene MJPEG-Verbindung zur Kamera zu öffnen
-    if (this.mode === "live" && !this.nativeFailed) return html`<div class="ph"><span>${this.osd || t("Kamera wird verbunden …")}</span></div>`;
+    if (this.mode === "live" && !this.nativeFailed) return poster;
     // Token nur einmal übernehmen, sonst baut sich der Stream bei jedem Token-Wechsel neu auf
     const token = s.attributes.access_token as string | undefined;
     if (!this.src && token) {

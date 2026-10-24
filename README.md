@@ -12,18 +12,38 @@ appears. When the laundry is done, it says so briefly and then stays as a small 
 
 <table>
   <tr>
-    <td><img src="https://raw.githubusercontent.com/diggi-85/ambiframe/main/docs/screenshots/en/day-preview.png" alt="Day preview with appointments, weather and waste collection"></td>
-    <td><img src="https://raw.githubusercontent.com/diggi-85/ambiframe/main/docs/screenshots/en/now-playing.jpg" alt="Now playing: cover and progress"></td>
-    <td><img src="https://raw.githubusercontent.com/diggi-85/ambiframe/main/docs/screenshots/en/editor.jpg" alt="Editor inside Home Assistant"></td>
+    <td width="33%"><img src="https://raw.githubusercontent.com/diggi-85/ambiframe/main/docs/screenshots/en/doorbell.jpg" alt="Doorbell: live picture of the front door in full screen"></td>
+    <td width="33%"><img src="https://raw.githubusercontent.com/diggi-85/ambiframe/main/docs/screenshots/en/birthday.jpg" alt="Birthday with confetti"></td>
+    <td width="33%"><img src="https://raw.githubusercontent.com/diggi-85/ambiframe/main/docs/screenshots/en/music-cover.jpg" alt="Now playing in the colours of the cover"></td>
   </tr>
   <tr>
-    <td align="center"><sub>Day preview</sub></td>
-    <td align="center"><sub>Now playing</sub></td>
-    <td align="center"><sub>Editor inside Home Assistant</sub></td>
+    <td align="center"><sub><b>Someone’s at the door</b> – live camera</sub></td>
+    <td align="center"><sub><b>Moments</b> – confetti for a birthday</sub></td>
+    <td align="center"><sub><b>Music</b> in the colours of the cover</sub></td>
+  </tr>
+  <tr>
+    <td width="33%"><img src="https://raw.githubusercontent.com/diggi-85/ambiframe/main/docs/screenshots/en/weather-aurora.jpg" alt="Weather page with aurora animation"></td>
+    <td width="33%"><img src="https://raw.githubusercontent.com/diggi-85/ambiframe/main/docs/screenshots/en/word-clock.jpg" alt="Word clock with brass face"></td>
+    <td width="33%"><img src="https://raw.githubusercontent.com/diggi-85/ambiframe/main/docs/screenshots/en/style-pixel.jpg" alt="Pixel style with LED displays"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub><b>Animated backgrounds</b> – here aurora</sub></td>
+    <td align="center"><sub><b>Word clock</b> in four languages</sub></td>
+    <td align="center"><sub><b>22 styles</b> – here “Pixel”</sub></td>
+  </tr>
+  <tr>
+    <td width="33%"><img src="https://raw.githubusercontent.com/diggi-85/ambiframe/main/docs/screenshots/en/clocks-split-flap.jpg" alt="Analogue clocks and split-flap displays"></td>
+    <td width="33%"><img src="https://raw.githubusercontent.com/diggi-85/ambiframe/main/docs/screenshots/en/everyday.jpg" alt="Timer, notice board, countdown, departures, pollen and rain radar"></td>
+    <td width="33%"><img src="https://raw.githubusercontent.com/diggi-85/ambiframe/main/docs/screenshots/en/studio-display.jpg" alt="Studio with live preview"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub><b>Clocks</b> – station, split-flap, elegant</sub></td>
+    <td align="center"><sub><b>Everyday</b> – timers, departures, rain radar</sub></td>
+    <td align="center"><sub><b>Studio</b> – set up with a live preview</sub></td>
   </tr>
 </table>
 
-<sub>Screenshots with sample data. Ambiframe follows the language of the Home Assistant user (English, German,
+<sub>Screenshots with sample data; photos: Bing image of the day, front door: Unsplash. Ambiframe follows the language of the Home Assistant user (English, German,
 Dutch and French).</sub>
 
 ## Features
@@ -78,13 +98,12 @@ Dutch and French).</sub>
   per page.
 - **Clocks:** word clock (German, English, Dutch, French; faces black, white, brass, copper), analogue clock (station,
   plain, elegant, dots), split-flap clock and departures, LED pixel display with 8×8 icons, typewriter text.
-- **Studio – the editor:** an overview of all displays, a page per display (location & device, contents, look,
-  moments, technical) and a page for all displays, always with a live preview (simulate weather and night, test
-  moments). "Design" on a page opens the page editor for arranging widgets; the **expert editor** with every option is
-  one click away. Existing configurations carry over unchanged.
+- **Three editors, one configuration:** the *Studio* with a live preview, the *page editor* for arranging widgets and
+  the *expert editor* with every option – see [The editors](#the-editors).
 - **Control mode:** a tap brings up the HA dashboard; after a minute without touch Ambiframe returns.
 - **Native camera** via Home Assistant's own stream (WebRTC/HLS) – all displays share one connection to the camera,
-  which matters for cameras that allow only a few (e.g. Tapo); MJPEG only as a fallback.
+  which matters for cameras that allow only a few (e.g. Tapo). Until the live picture runs, the latest snapshot is shown
+  instead of an empty area; MJPEG only as a fallback.
 - **Photos** from the HA media folder `ambiframe` or a **shared iCloud album** (public link), optionally mixed with
   Bing's pictures of the day (region selectable).
 - **News** from any RSS, Atom or RDF feed; suggestions in English (BBC, Guardian, Sky News, NPR, New York Times, ABC,
@@ -105,7 +124,7 @@ Dutch and French).</sub>
   sensor *Ambiframe summary* (for announcements), button and action `ambiframe.generate_summary`.
 - **On the TV:** a display can be sent as a video stream (up to 25 fps) to an Apple TV (AirPlay) or an LG webOS TV –
   with the switch *On the TV* or the actions `ambiframe.show_on_tv` / `ambiframe.stop_on_tv`. Requires the Puppet
-  add-on. Step-by-step guide (German, also to paste into Claude): [`docs/airplay-apple-tv.md`](docs/airplay-apple-tv.md).
+  app (formerly add-on). Step-by-step guide (German): [`docs/airplay-apple-tv.md`](docs/airplay-apple-tv.md).
 - **Languages:** English, German, Dutch and French – the interface, editor, starter configuration and AI summary.
 - **iPad and iPhone via the HA app:** the dashboard card `custom:ambiframe-card` (`display: <id>`) in kiosk mode
   shows Ambiframe full screen, also for users without admin rights.
@@ -148,11 +167,6 @@ Dutch and French).</sub>
 2. Install "Ambiframe" and restart Home Assistant.
 3. *Settings → Devices & services → Add integration → Ambiframe*.
 
-### With Claude
-
-Download (or clone) the repository, start Claude Code in the folder and write: *"Install and set up Ambiframe in my
-Home Assistant."* Claude then follows the guide in [`CLAUDE.md`](CLAUDE.md).
-
 ### Manually
 
 Copy `custom_components/ambiframe` to `/config/custom_components/`, restart, add the integration.
@@ -170,9 +184,68 @@ Copy `custom_components/ambiframe` to `/config/custom_components/`, restart, add
 On an iPad or iPhone, create a dashboard with only the `custom:ambiframe-card` card and open it in the HA app's kiosk
 mode.
 
+## The editors
+
+All editors work on the same configuration – you can switch at any time and nothing is lost. Changes are only stored
+with **Save**; **Discard** brings back the last saved state.
+
+### Studio (default)
+
+![Studio: the look of a display with live preview](https://raw.githubusercontent.com/diggi-85/ambiframe/main/docs/screenshots/en/studio-display.jpg)
+
+The Studio starts from the display. The **overview** shows every display as a live preview, plus the **All displays**
+card. Each display answers the same questions in five steps:
+
+| Step | Question | What you set there |
+|---|---|---|
+| **Location & device** | Where is it? | Location (sets sensible defaults), device (Fully, browser or HA app) with the address to copy, page for the night |
+| **Contents** | What should it show? | Pages of the playlist, order, duration and “When?” (e.g. only in the morning) |
+| **Look** | How should it feel? | Style, light/dark, colours, background animation, fonts |
+| **Moments** | When should something happen? | Doorbell, motion, laundry done, music, birthday … with **▶ Test** |
+| **Technical** | Control, sound, video stream | Control mode, restart button and offline notification, sounds, video stream to the TV, photos |
+
+**All displays** is the shared page: look for all, moments, the **page library** and photos & AI. Whatever a display
+does not set itself comes from there. Small labels show where a value comes from – *as all displays ↗* or
+*own value ↺* (one click resets it).
+
+On the right the **preview** always runs with your real data: flip through pages, switch light/dark/night, simulate
+weather (sun, rain, snow, wind, clear night) and test moments without saving anything. Hovering over a style shows it
+in the preview right away. The **Advanced** checkbox reveals more fields and the fine-tuning (speed, transitions etc.).
+
+![Studio: the moments of a display](https://raw.githubusercontent.com/diggi-85/ambiframe/main/docs/screenshots/en/studio-moments.jpg)
+
+Moments apply to all displays; per display you only switch on or off which ones it shows. **New moment** offers ready
+templates and suggests the trigger from your entities.
+
+### Page editor
+
+![Page editor: arranging widgets on the grid](https://raw.githubusercontent.com/diggi-85/ambiframe/main/docs/screenshots/en/page-editor.jpg)
+
+**Design** on a page (in the Studio under *Contents* or in the page library) opens the page editor: all pages on the
+left, the page as a live picture in the middle, the settings of the selected widget or page on the right.
+
+- Add widgets from the bar at the bottom, drag them, resize at the bottom-right corner; a grid with half cells and
+  guides for aligned edges.
+- Multi-select with ⇧/⌘-click, arrow keys move (with ⇧ resize), ⌘C/⌘V copies as YAML – also between pages and
+  devices, ⌘D duplicates, ⌫ deletes, ⌘Z undoes.
+- **Landscape | Portrait** switches to the portrait layout, which can be adjusted separately.
+- Per page: duration, background (photo, camera, webcam, colour), darken, colours, transition, animation, condition.
+
+### Expert editor
+
+![Expert editor: events with every field](https://raw.githubusercontent.com/diggi-85/ambiframe/main/docs/screenshots/en/expert-editor.jpg)
+
+The expert editor shows everything at once, in tabs: **Pages** (the page editor), **Playback** (displays, playlists,
+connected devices), **Events** (the moments with every field, custom sounds, testing), **Design** (styles, custom
+colours, fonts, CSS, style import/export) and **YAML**. At the top you switch between **Simple** (only what's needed)
+and **Advanced** (every field and the YAML tab).
+
+Open it from the Studio with **Expert editor**; go back with **✨ To the new interface**. Ambiframe remembers per device
+which interface you chose last.
+
 ## Configuration
 
-In the **expert editor** under **YAML** (or with the action `ambiframe.import_config`). Ambiframe creates a matching starter
+In the **expert editor** under **Advanced → YAML** (or with the action `ambiframe.import_config`). Ambiframe creates a matching starter
 configuration on first start; you can view and adjust it there as YAML. A complete example is in
 [`examples/beispiel.yaml`](examples/beispiel.yaml).
 
@@ -198,7 +271,7 @@ events:
   - id: doorbell
     entity: binary_sensor.front_door_ring
     to: "on"
-    kind: alarm                 # alarm | live | info
+    kind: alarm                 # alarm | live | info | page | media | effect
     camera: camera.front_door
     title: Someone is at the door
     where: Front door
