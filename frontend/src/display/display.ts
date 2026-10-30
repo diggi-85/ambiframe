@@ -6,8 +6,8 @@ import { repeat } from "lit/directives/repeat.js";
 import { ForecastStore, PhotoProvider, preload, type DisplayContext } from "../data";
 import { fontStack } from "../fonts";
 import { MDI_MAP, iconSvg } from "../icons";
-import { THEMES, normalizeTheme, themeTokens, PALETTES, dayHue } from "../styles";
-import type { DisplayConfig, EventConfig, Hass, HassEntity, PageConfig, Photo, TapAction, TransitionConfig, AmbiframeConfig } from "../types";
+import { THEME_DEFS, digitFace, normalizeTheme, seasonTheme, stillStyles, themeTokens, PALETTES, dayHue } from "../styles";
+import type { CardStyle, DisplayConfig, EventConfig, Hass, HassEntity, PageConfig, Photo, TapAction, TransitionConfig, AmbiframeConfig } from "../types";
 import { triggered } from "../events";
 import { playSound, stopSound } from "../sound";
 import { checkCondition, checkConditions, customStyle, duration, effectiveConfig, fmt, fmtTime } from "../util";
@@ -30,6 +30,40 @@ interface Layer {
 
 /** Sanfter Standard: erst ausblenden, dann einblenden, zusammen 2,4 s */
 export const DEFAULT_TRANSITION: TransitionConfig = { type: "fade", duration: 2.4 };
+
+/** Kartenstil für alle Widgets (design.card_style) – überschreibt die Kartenwerte des Stils */
+const CARD_TOKENS = ["--af-card-filter", "--af-card-border", "--af-card-rule", "--af-card-shadow", "--af-card-tint"] as const;
+const CARD_STYLES: Record<CardStyle, Partial<Record<(typeof CARD_TOKENS)[number] | "--af-card", string>>> = {
+  solid: {
+    "--af-card": "color-mix(in srgb, var(--af-ink) 7%, var(--af-bg))",
+    "--af-card-filter": "none",
+    "--af-card-border": "1px solid var(--af-line)",
+    "--af-card-rule": "1px solid var(--af-line)",
+  },
+  glass: {
+    "--af-card": "color-mix(in srgb, var(--af-bg) 40%, transparent)",
+    "--af-card-filter": "blur(22px) saturate(1.4)",
+    "--af-card-border": "1px solid color-mix(in srgb, var(--af-ink) 14%, transparent)",
+    "--af-card-rule": "1px solid color-mix(in srgb, var(--af-ink) 22%, transparent)",
+    "--af-card-shadow": "0 14px 40px rgba(0, 0, 0, 0.18)",
+  },
+  outline: {
+    "--af-card": "transparent",
+    "--af-card-filter": "none",
+    "--af-card-border": "1.5px solid color-mix(in srgb, var(--af-ink) 24%, transparent)",
+    "--af-card-rule": "1.5px solid color-mix(in srgb, var(--af-ink) 24%, transparent)",
+    "--af-card-shadow": "none",
+    "--af-card-tint": "transparent",
+  },
+  none: {
+    "--af-card": "transparent",
+    "--af-card-filter": "none",
+    "--af-card-border": "none",
+    "--af-card-rule": "none",
+    "--af-card-shadow": "none",
+    "--af-card-tint": "transparent",
+  },
+};
 interface Overlay {
   ev: EventConfig;
   at: Date;
@@ -161,6 +195,7 @@ export class AfDisplay extends LitElement {
     shift: { state: true },
     preview: { type: Boolean },
     still: { type: Boolean },
+    eink: { type: Boolean, reflect: true },
     fixedPage: { attribute: false },
     speed: { type: Number },
     theme: { reflect: true },
@@ -218,6 +253,8 @@ export class AfDisplay extends LitElement {
   preview = false;
   /** Kleine Vorschau (Stil-Karten, Übersicht): ohne Hintergrund-Animation – viele davon gleichzeitig legen sonst den Browser lahm */
   still = false;
+  /** Stil für E-Ink: keine Animationen, Übergänge, Effekte, Farbverläufe */
+  eink = false;
   fixedPage: string | null = null;
   speed = 1;
   theme = "ruhig";
@@ -378,15 +415,19 @@ export class AfDisplay extends LitElement {
     const d = this.display;
     const design = this.config?.design;
     const resolved = normalizeTheme(d?.theme ?? design?.theme);
+    // „Jahreszeiten“: heute gültige Jahreszeit bzw. Anlass
+    if (resolved.theme === "saisonal") resolved.theme = seasonTheme(new Date());
     this.theme = resolved.theme;
-    if (changed.has("config") || changed.has("preview") || changed.has("still") || changed.has("displayId") || changed.has("streamMode")) {
+    // E-Ink: das ganze Display ohne Bewegung (Stil mit „still“)
+    this.eink = !!THEME_DEFS.find((t) => t.id === resolved.theme)?.still;
+    if (changed.has("config") || changed.has("preview") || changed.has("still") || changed.has("displayId") || changed.has("streamMode") || changed.has("eink")) {
       const a = design?.ambient;
-      const ambient = { type: this.still ? "none" : (a?.type ?? THEMES.find((t) => t.id === resolved.theme)?.ambient ?? "none"), strength: a?.strength ?? 1, speed: a?.speed ?? "slow", color: a?.color, weather: a?.weather };
+      const ambient = { type: this.still || this.eink ? "none" : (a?.type ?? THEME_DEFS.find((t) => t.id === resolved.theme)?.ambient ?? "none"), strength: a?.strength ?? 1, speed: a?.speed ?? "slow", color: a?.color, weather: a?.weather };
       // Laufband: im Videostream steht es (Einzelbilder), auf dem Fernseher ruckelt es – dort ohne eigene Wahl aus
-      const ticker = !this.streamMode && (d?.ticker ?? d?.profile !== "tv");
-      const def = THEMES.find((t) => t.id === resolved.theme);
+      const ticker = !this.streamMode && !this.eink && (d?.ticker ?? d?.profile !== "tv");
+      const def = THEME_DEFS.find((t) => t.id === resolved.theme);
       this.ctx = this.config
-        ? { forecasts: this.forecasts, config: this.config, preview: this.preview, ambient, displayId: d?.id, ticker, tiles: !!def?.tiles, flap: !!def?.flap, still: this.still }
+        ? { forecasts: this.forecasts, config: this.config, preview: this.preview, ambient, displayId: d?.id, ticker, tiles: !!def?.tiles, flap: !!def?.flap, still: this.still || this.eink, gap: this.config.design?.gap }
         : undefined;
       if (changed.has("config")) this.photos.reload();
     }
@@ -462,17 +503,27 @@ export class AfDisplay extends LitElement {
     set("--af-ink-3", mix(ink, high ? 66 : 40));
     set("--af-line", mix(ink, high ? 20 : 12));
     set("--af-surface", mix(c.ink, 5));
-    set("--af-card", c.card ? mix(c.card, Number(c.card_opacity ?? 100)) : undefined);
+    // Kartenstil aller Widgets – eine eigene Kartenfarbe geht vor (außer bei „nur Umriss“ und „ohne Fläche“)
+    const cs = design?.card_style ? CARD_STYLES[design.card_style] : {};
+    const bare = design?.card_style === "outline" || design?.card_style === "none";
+    for (const name of CARD_TOKENS) set(name, cs[name]);
+    set("--af-card", c.card && !bare ? mix(c.card, Number(c.card_opacity ?? 100)) : cs["--af-card"]);
     set("--af-good", c.good);
     set("--af-alert", c.alert);
     set("--af-cold", c.cold);
     set("--af-card-radius", design?.radius != null ? `${design.radius}px` : undefined);
     set("--af-display", fontStack(design?.fonts?.display));
-    set("--af-sans", fontStack(design?.fonts?.text));
+    // Eigene Schriften: Ziffern weiter aus der (eigenen oder Stil-)Titelschrift, wie in den Stilen
+    const def = THEME_DEFS.find((x) => x.id === this.theme);
+    const own = design?.fonts?.display || design?.fonts?.text;
+    const face = def?.shared["num-font"] ? "" : digitFace(fontStack(design?.fonts?.display) || def?.shared.display);
+    set("--af-sans", own ? [face, fontStack(design?.fonts?.text) || def?.shared.sans].filter(Boolean).join(", ") : undefined);
+    set("--af-sans-plain", own ? fontStack(design?.fonts?.text) || def?.shared.sans : undefined);
     // Farben vom Cover zuletzt – sie gehen vor Stil und eigenen Farben, solange Musik läuft
     // Tagesverlauf: wie die Cover-Farben, nur nach der Uhrzeit (Cover geht vor)
-    const hue = design?.palette === "tagesverlauf" ? dayHue(new Date()) : undefined;
-    const pal = this.coverPal ?? (hue === undefined ? undefined : [0, 30, -30].map((d) => ({ h: (hue + d + 360) % 360, s: 0.6, l: 0.5 })));
+    // E-Ink: keine Farben aus Cover oder Tageszeit (Graustufen, kein Überblenden)
+    const hue = design?.palette === "tagesverlauf" && !this.eink ? dayHue(new Date()) : undefined;
+    const pal = this.eink ? undefined : this.coverPal ?? (hue === undefined ? undefined : [0, 30, -30].map((d) => ({ h: (hue + d + 360) % 360, s: 0.6, l: 0.5 })));
     const cover = pal ? coverTokens(pal, this.mode) : {};
     for (const name of ["--af-cover-tint", "--af-cover-1", "--af-cover-2", "--af-cover-3"]) set(name, cover[name]);
     if (cover["--af-accent"]) set("--af-accent", cover["--af-accent"]);
@@ -517,6 +568,8 @@ export class AfDisplay extends LitElement {
   private transitionFor(page: PageConfig): TransitionConfig {
     const t = { ...DEFAULT_TRANSITION, ...this.config?.design.transition, ...this.display?.transition, ...page.transition };
     const duration = Math.max(0.2, Math.min(10, Number(t.duration) || DEFAULT_TRANSITION.duration));
+    // E-Ink: Seitenwechsel ohne Übergang – jedes Zwischenbild wäre ein eigenes Neuzeichnen des Bildschirms
+    if (this.eink) return { type: "fade", duration: 0 };
     return { type: t.type ?? "fade", duration: this.preview ? Math.min(0.5, duration) : duration };
   }
 
@@ -802,6 +855,7 @@ export class AfDisplay extends LitElement {
 
   /** Anlass: Konfetti, Feuerwerk, Herzen … für eine Weile über allem, auf Wunsch mit großem Titel */
   private openEffect(ev: EventConfig): void {
+    if (this.eink) return; // Konfetti & Co. nur als Bewegung sinnvoll
     clearTimeout(this.effectTimer);
     this.effect = { ev, seq: ++this.seq };
     this.effectTimer = window.setTimeout(() => {
@@ -1700,7 +1754,16 @@ export class AfDisplay extends LitElement {
 
   static styles = [
     themeTokens,
+    stillStyles,
     css`
+      /* E-Ink: die alte Seite sofort weg – sonst stünden kurz zwei Seiten übereinander */
+      :host([eink]) .layer.out {
+        display: none;
+      }
+      /* E-Ink: Farben wechseln hart (hell/dunkel), nicht in zwei Sekunden Überblendung */
+      :host([eink]) {
+        transition: none !important;
+      }
       :host {
         position: relative;
         display: block;

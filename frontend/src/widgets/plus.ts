@@ -481,6 +481,8 @@ class AfDepartures extends AfWidget {
         color: var(--af-on-accent, var(--af-bg, #000));
         font-weight: 600;
         font-size: 0.85em;
+        /* Linie ist ein Name (S1, RE5) – ganz in der Textschrift, ohne Ziffern der Titelschrift */
+        font-family: var(--af-sans-plain, var(--af-sans));
       }
       .dest {
         flex: 1;
@@ -725,7 +727,8 @@ class AfRadar extends AfWidget {
   private step(): void {
     clearTimeout(this.anim);
     const count = this.shown.length;
-    if (count < 2) return;
+    // Ohne Bewegung (E-Ink, kleine Vorschau): nur das neueste Bild
+    if (count < 2 || this.ctx?.still) return;
     const last = this.frame >= count - 1;
     // Am neuesten Bild kurz stehen bleiben
     this.anim = window.setTimeout(

@@ -1,0 +1,7 @@
+Beispielfotos / Sample photos
+
+© Chris Gunia. Alle Rechte vorbehalten. Die Fotos in diesem Ordner dürfen nur als Teil von Ambiframe
+verwendet werden. Sie stehen nicht unter der MIT-Lizenz des übrigen Projekts.
+
+© Chris Gunia. All rights reserved. The photos in this folder may only be used as part of Ambiframe.
+They are not covered by the MIT license of the rest of the project.

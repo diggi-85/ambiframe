@@ -2,7 +2,7 @@
 // Die Zeiger drehen per CSS-Animation (ruckelfrei, ohne Rechenlast); jede Minute wird die Phase neu angeglichen.
 import { LitElement, css, html, nothing, svg } from "lit";
 import { keyed } from "lit/directives/keyed.js";
-import { widgetStyles } from "../styles";
+import { stillStyles, widgetStyles } from "../styles";
 import { AfTickingWidget, define } from "./base";
 
 /* ───────── Analoge Uhr ───────── */
@@ -172,7 +172,9 @@ export class AfFlap extends LitElement {
   private cells: Cell[] = [];
   private timer?: number;
 
-  static styles = css`
+  static styles = [
+    stillStyles,
+    css`
     :host {
       display: inline-flex;
       gap: 0.06em;
@@ -263,7 +265,8 @@ export class AfFlap extends LitElement {
         display: none;
       }
     }
-  `;
+  `,
+  ];
 
   disconnectedCallback(): void {
     super.disconnectedCallback();

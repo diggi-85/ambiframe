@@ -39,6 +39,11 @@ class AfClock extends AfTickingWidget {
         line-height: 1;
         color: var(--af-ink-2);
       }
+      /* klein nicht so dünn wie die große Uhr, sonst kaum lesbar */
+      .clock.small.display {
+        font-weight: max(var(--af-clock-weight), 400);
+        letter-spacing: 0;
+      }
       af-flap {
         font-size: min(70cqh, 21cqw);
       }
@@ -66,7 +71,8 @@ class AfClock extends AfTickingWidget {
     const now = new Date();
     const [h, m] = fmtTime(now).split(":");
     const small = this.options.size === "small";
-    const font = this.options.font === "sans" || small ? "" : "display";
+    // Auch die kleine Uhr in der Schrift des Stils für Uhr und Titel – nur „font: sans“ nimmt die Textschrift
+    const font = this.options.font === "sans" ? "" : "display";
     const sec = this.options.seconds ? html`<span class="col">:</span>${String(now.getSeconds()).padStart(2, "0")}` : nothing;
     // Fallblatt: im Fallblatt-Stil oder mit style: flap (style: plain schaltet es ab)
     if (!small && (this.options.style === "flap" || (this.ctx?.flap && this.options.style !== "plain")))

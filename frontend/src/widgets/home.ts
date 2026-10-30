@@ -149,10 +149,16 @@ class AfRooms extends AfWidget {
         font-size: calc(19px * var(--af-fs, 1));
         color: var(--af-ink-2);
       }
+      .grid > div {
+        container-type: inline-size;
+        min-width: 0;
+      }
+      /* passt in die Spalte – breite Schriften (LED-Punkte, Monospace) setzen --af-wide kleiner */
       .v {
-        font-size: 88px;
+        font-size: min(88px, calc(44cqi * var(--af-wide, 1)));
         line-height: 1;
         margin-top: 14px;
+        white-space: nowrap;
       }
       .s {
         font-size: calc(16px * var(--af-fs, 1));

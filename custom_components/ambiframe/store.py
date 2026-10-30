@@ -25,6 +25,7 @@ from .fully import FullyLink
 from .stream import StreamManager
 from .hub import DisplayHub
 from .icloud import ICloudAlbum
+from .photosources import PhotoSources
 from .news import NewsService
 from .summary import SummaryService
 from .validation import validate_config
@@ -73,6 +74,7 @@ class AmbiframeStore:
         self.daily = DailyService(hass)
         self.airplay = AirPlayCaster(hass)
         self.icloud = ICloudAlbum(hass)
+        self.photo_sources = PhotoSources(hass)
         self.summarizer = SummaryService(hass, self)
 
     async def async_load(self) -> None:

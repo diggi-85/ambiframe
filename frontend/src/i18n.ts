@@ -31,7 +31,20 @@ export const setLang = (l: Lang): void => {
 export const locale = (): string => LOCALES[current];
 
 /** Übersetzen; {name} wird durch vars.name ersetzt */
+/** Tastenkürzel: auf dem Mac ⌘ und ⇧, sonst „Strg“/„Ctrl“ und „Umschalt“/„Shift“ */
+const IS_MAC = typeof navigator !== "undefined" && /Mac|iPhone|iPad/i.test(navigator.platform || navigator.userAgent);
+const MOD_KEYS: Record<Lang, [string, string]> = { de: ["Strg", "Umschalt"], en: ["Ctrl", "Shift"], nl: ["Ctrl", "Shift"], fr: ["Ctrl", "Maj"] };
+export const keys = (s: string, mac = IS_MAC, l: Lang = current): string => {
+  if (mac || !/[⌘⇧]/.test(s)) return s;
+  const [ctrl, shift] = MOD_KEYS[l];
+  return s
+    .replace(/⇧⌘(\w)/g, `${ctrl}+${shift}+$1`)
+    .replace(/⌘(\w)/g, `${ctrl}+$1`)
+    .replace(/⌘/g, ctrl)
+    .replace(/⇧/g, shift);
+};
+
 export const t = (de: string, vars?: Record<string, string | number>): string => {
-  const s = current === "de" ? de : (DICTS[current][de] ?? EN[de] ?? de);
+  const s = keys(current === "de" ? de : (DICTS[current][de] ?? EN[de] ?? de));
   return vars ? s.replace(/\{(\w+)\}/g, (_, k: string) => String(vars[k] ?? "")) : s;
 };

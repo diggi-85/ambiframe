@@ -265,3 +265,78 @@ describe("Kamera live", () => {
     expect(el.shadowRoot!.querySelector("img[src*='camera_proxy_stream']")).toBeNull();
   });
 });
+
+describe("Kachel-Stil", () => {
+  it("setzt Karte, Radius, Rahmen, Glas, Schatten, Überschrift und Abstand pro Kachel", async () => {
+    await import("../src/display/page");
+    const el = document.createElement("af-page") as El;
+    el.hass = { states: {} } as unknown as Hass;
+    el.grid = { w: 1280, h: 800, padX: 56, padY: 48, gap: 16, cols: 12, rows: 8 };
+    el.orientation = "landscape";
+    el.ctx = { tiles: false, gap: 32, config: { design: {} } };
+    el.page = {
+      id: "p",
+      name: "P",
+      duration: 30,
+      background: { type: "none" },
+      palette: "normal",
+      widgets: [
+        {
+          id: "t",
+          type: "text",
+          x: 0,
+          y: 0,
+          w: 4,
+          h: 2,
+          options: { text: "Hallo" },
+          look: { card: true, bg: "#123456", bg_opacity: 50, radius: 6, border: "accent", glass: true, shadow: "soft", label: false },
+        },
+      ],
+    };
+    document.body.appendChild(el);
+    await el.updateComplete;
+    const cell = el.shadowRoot!.querySelector(".cell.boxed") as HTMLElement;
+    const style = cell.getAttribute("style")!;
+    expect(style).toContain("--af-card:#123456");
+    expect(style).toContain("--af-card-alpha:50%");
+    expect(style).toContain("--af-card-radius:6px");
+    expect(style).toContain("--af-card-border:1.5px solid var(--af-accent)");
+    expect(style).toContain("--af-card-filter:blur(22px)");
+    expect(style).toContain("--af-card-shadow:0 8px 24px");
+    // Abstand 32 statt 16: 8 px nach innen gerückt
+    expect(style).toContain("left:64px;top:56px");
+    expect(cell.firstElementChild!.hasAttribute("nolabel")).toBe(true);
+    el.remove();
+  });
+});
+
+describe("E-Ink", () => {
+  const eink = () => {
+    const c = config({ ticker: true });
+    c.design = { ...c.design, theme: "eink", ambient: { type: "snow" }, palette: "tagesverlauf" } as AmbiframeConfig["design"];
+    return c;
+  };
+
+  it("stellt das ganze Display still: keine Animation, kein Laufband, Seitenwechsel ohne Übergang", async () => {
+    const el = await mount(eink());
+    expect(el.hasAttribute("eink")).toBe(true);
+    expect(el.ctx.still).toBe(true);
+    expect(el.ctx.ambient.type).toBe("none"); // auch wenn im Design Schnee gewählt ist
+    expect(el.ctx.ticker).toBe(false); // auch wenn das Display es eingeschaltet hat
+    expect(el.transitionFor(el.config.pages[0]).duration).toBe(0);
+  });
+
+  it("zeigt keine Effekte (Konfetti) und keine Tagesverlauf-Farben", async () => {
+    const el = await mount(eink());
+    el.openEffect({ id: "fest", kind: "effect", effect: "confetti", title: "Hurra", enabled: true, where: "" } as EventConfig);
+    expect(el.effect).toBeUndefined();
+    await el.updateComplete;
+    expect(el.style.getPropertyValue("--af-cover-1")).toBe("");
+  });
+
+  it("andere Stile bleiben unverändert in Bewegung", async () => {
+    const el = await mount(config());
+    expect(el.hasAttribute("eink")).toBe(false);
+    expect(el.transitionFor(el.config.pages[0]).duration).toBeGreaterThan(0);
+  });
+});

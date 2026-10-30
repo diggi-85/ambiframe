@@ -14,6 +14,10 @@ from .const import (
     AMBIENTS,
     PALETTES,
     BING_MARKETS,
+    CARD_BORDERS,
+    CARD_SHADOWS,
+    CARD_STYLES,
+    PLACEHOLDERS,
     LANGUAGES,
     CONFIG_VERSION,
     EVENT_KINDS,
@@ -114,6 +118,14 @@ LOOK = vol.Schema(
         vol.Optional("size"): vol.All(vol.Coerce(int), vol.Range(min=25, max=400)),
         vol.Optional("opacity"): _PERCENT,
         vol.Optional("padding"): vol.All(vol.Coerce(int), vol.Range(min=0, max=200)),
+        # Kachel: eigene Kartenfarbe und -deckkraft, Radius, Rahmen, Glas, Schatten, Überschrift
+        vol.Optional("bg"): cv.string,
+        vol.Optional("bg_opacity"): _PERCENT,
+        vol.Optional("radius"): vol.All(vol.Coerce(int), vol.Range(min=0, max=120)),
+        vol.Optional("border"): vol.In(CARD_BORDERS),
+        vol.Optional("glass"): cv.boolean,
+        vol.Optional("shadow"): vol.In(CARD_SHADOWS),
+        vol.Optional("label"): cv.boolean,
     },
     extra=vol.ALLOW_EXTRA,
 )
@@ -275,6 +287,13 @@ _ICLOUD = vol.All(
         msg="Link eines geteilten iCloud-Albums (https://photos.icloud.com/shared/album/… oder https://www.icloud.com/sharedalbum/#…)",
     ),
 )
+_GOOGLE = vol.All(
+    cv.string,
+    vol.Match(
+        r"^https://(photos\.app\.goo\.gl/|photos\.google\.com/(u/\d+/)?share/)",
+        msg="Link eines geteilten Google-Fotos-Albums (https://photos.app.goo.gl/…)",
+    ),
+)
 _AMBIENT = vol.Schema(
     {
         vol.Optional("type"): vol.In(AMBIENTS),
@@ -293,6 +312,8 @@ DISPLAY_DESIGN = vol.Schema(
         vol.Optional("ambient"): _AMBIENT,
         vol.Optional("colors"): vol.Schema({vol.Optional("dark"): _COLORS, vol.Optional("light"): _COLORS}),
         vol.Optional("radius"): vol.All(vol.Coerce(int), vol.Range(min=0, max=120)),
+        vol.Optional("card_style"): vol.In(CARD_STYLES),
+        vol.Optional("gap"): vol.All(vol.Coerce(int), vol.Range(min=0, max=64)),
         vol.Optional("css"): cv.string,
         vol.Optional("language"): vol.In(["auto", *LANGUAGES]),
         vol.Optional("cover_colors"): cv.boolean,
@@ -316,6 +337,9 @@ DISPLAY_PHOTOS = vol.Schema(
         vol.Optional("bing_mix"): cv.boolean,
         vol.Optional("credit"): cv.boolean,
         vol.Optional("icloud"): _ICLOUD,
+        vol.Optional("google"): _GOOGLE,
+        vol.Optional("placeholder"): vol.In(PLACEHOLDERS),
+        vol.Optional("placeholder_mix"): cv.boolean,
     }
 )
 
@@ -414,6 +438,9 @@ CONFIG = vol.Schema(
                 vol.Optional("transition"): TRANSITION,
                 vol.Optional("colors"): vol.Schema({vol.Optional("dark"): _COLORS, vol.Optional("light"): _COLORS}),
                 vol.Optional("radius"): vol.All(vol.Coerce(int), vol.Range(min=0, max=120)),
+                # Karten aller Widgets: wie der Stil, gefüllt, Glas, nur Umriss oder ohne Fläche; Abstand der Kacheln
+                vol.Optional("card_style"): vol.In(CARD_STYLES),
+                vol.Optional("gap"): vol.All(vol.Coerce(int), vol.Range(min=0, max=64)),
                 vol.Optional("text_size"): vol.In(TEXT_SIZES),
                 vol.Optional("contrast"): vol.In(CONTRASTS),
                 vol.Optional("css"): cv.string,
@@ -429,13 +456,18 @@ CONFIG = vol.Schema(
         vol.Optional("photos", default=dict): vol.Schema(
             {
                 vol.Optional("folder", default=DEFAULT_PHOTO_FOLDER): cv.string,
-                vol.Optional("bing", default=True): cv.boolean,
-                # Bing-Bilder auch zwischen eigene Fotos mischen (sonst nur, wenn Ordner und Album leer sind)
-                vol.Optional("bing_mix", default=False): cv.boolean,
+                # Veraltet (bis 0.6), wird beim Laden zu „placeholder“ – hier nur noch erlaubt
+                vol.Optional("bing"): cv.boolean,
+                vol.Optional("bing_mix"): cv.boolean,
                 # Region der Bing-Bilder (z. B. en-GB); fehlt = nach der Sprache von Home Assistant
                 vol.Optional("bing_market"): vol.In(BING_MARKETS),
                 vol.Optional("credit", default=True): cv.boolean,
                 vol.Optional("icloud"): _ICLOUD,
+                # Geteiltes Google-Fotos-Album (inoffiziell: Google bietet dafür keine Schnittstelle mehr)
+                vol.Optional("google"): _GOOGLE,
+                # Platzhalter-Bilder; fehlt = Bing wie bisher (ältere Konfigurationen), sonst die gewählte Quelle
+                vol.Optional("placeholder"): vol.In(PLACEHOLDERS),
+                vol.Optional("placeholder_mix"): cv.boolean,
             },
             extra=vol.ALLOW_EXTRA,
         ),
@@ -521,6 +553,18 @@ def _migrate(raw: Any) -> Any:
         if isinstance(display, dict) and display.get("theme") == "weissgold":
             display["theme"] = "gold"
             display.setdefault("mode", "light")
+    # Bis 0.6: nur Bing an/aus („bing“, „bing_mix“) – seit 0.7 eine Platzhalter-Quelle zur Wahl
+    photo_sets = [raw.get("photos")] + [d.get("photos") for d in raw.get("displays") or [] if isinstance(d, dict)]
+    for index, photos in enumerate(photo_sets):
+        if not isinstance(photos, dict) or "placeholder" in photos:
+            continue
+        # global fehlte „bing“ = an (Standard); beim Display fehlt es = wie alle Displays
+        if "bing" in photos or index == 0:
+            photos["placeholder"] = "none" if photos.get("bing") is False else "bing"
+        if "bing_mix" in photos:
+            photos["placeholder_mix"] = photos["bing_mix"]
+        photos.pop("bing", None)
+        photos.pop("bing_mix", None)
     return raw
 
 

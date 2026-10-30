@@ -176,7 +176,7 @@ def build_default_config(hass: HomeAssistant) -> dict[str, Any]:
         # Frisch angelegt: der Editor startet den Einrichtungsassistenten
         "setup_complete": False,
         "design": {"theme": "ruhig", "evening": "sun"},
-        "photos": {"folder": DEFAULT_PHOTO_FOLDER, "bing": True, "credit": True},
+        "photos": {"folder": DEFAULT_PHOTO_FOLDER, "placeholder": "samples", "credit": True},
         "displays": [
             {
                 # Nicht „ambiframe“ – so heißt schon das Gerät der Integration selbst

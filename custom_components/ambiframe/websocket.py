@@ -13,7 +13,7 @@ from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.event import TrackTemplate, TrackTemplateResult, async_track_template_result
 from homeassistant.helpers.template import Template
 
-from .const import DATA_WS_REGISTERED, DOMAIN, LANGUAGES, SIGNAL_CONFIG_UPDATED
+from .const import DATA_WS_REGISTERED, DOMAIN, LANGUAGES, PLACEHOLDERS, SIGNAL_CONFIG_UPDATED
 from .daily import ARTICLE_LANGUAGES, QUOTE_SOURCES
 from .defaults import build_default_config
 from .lang import resolve_lang
@@ -41,6 +41,8 @@ def async_register_commands(hass: HomeAssistant) -> None:
         ws_news,
         ws_daily,
         ws_icloud_photos,
+        ws_placeholder_photos,
+        ws_google_photos,
         ws_summary_subscribe,
         ws_summary_generate,
         ws_template_subscribe,
@@ -107,6 +109,19 @@ def ws_default_config(hass: HomeAssistant, connection: websocket_api.ActiveConne
 async def ws_bing_photos(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
     if (store := _store(hass, connection, msg)) is not None:
         connection.send_result(msg["id"], await store.async_bing_photos())
+
+
+@websocket_api.websocket_command({vol.Required("type"): "ambiframe/photos/placeholder", vol.Required("source"): vol.In(PLACEHOLDERS)})
+@websocket_api.async_response
+async def ws_placeholder_photos(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
+    """Platzhalter-Bilder (Beispielfotos, Wikimedia, Kunst, NASA, Picsum, Bing)."""
+    if (store := _store(hass, connection, msg)) is not None:
+        source = msg["source"]
+        if source == "bing":
+            photos = await store.async_bing_photos()
+        else:
+            photos = await store.photo_sources.async_photos(source, (hass.config.language or "en").split("-")[0])
+        connection.send_result(msg["id"], photos)
 
 
 @websocket_api.websocket_command({vol.Required("type"): "ambiframe/tibber/prices"})
@@ -259,6 +274,19 @@ async def ws_icloud_photos(hass: HomeAssistant, connection: websocket_api.Active
             connection.send_error(msg["id"], "unknown_album", "Dieses Album ist nicht eingetragen")
             return
         connection.send_result(msg["id"], await store.icloud.async_photos(url) if url else [])
+
+
+@websocket_api.websocket_command({vol.Required("type"): "ambiframe/photos/google", vol.Required("url"): str})
+@websocket_api.async_response
+async def ws_google_photos(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
+    """Fotos eines geteilten Google-Fotos-Albums – nur Alben, die in der Konfiguration eingetragen sind."""
+    if (store := _store(hass, connection, msg)) is not None:
+        config = store.config
+        known = {(config.get("photos") or {}).get("google")} | {(d.get("photos") or {}).get("google") for d in config.get("displays", [])}
+        if msg["url"] not in known - {None}:
+            connection.send_error(msg["id"], "unknown_album", "Dieses Album ist nicht eingetragen")
+            return
+        connection.send_result(msg["id"], await store.photo_sources.async_google(msg["url"]))
 
 
 @websocket_api.websocket_command({vol.Required("type"): "ambiframe/summary/subscribe"})

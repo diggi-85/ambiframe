@@ -1,6 +1,6 @@
 // Gemeinsame Datenquellen eines Displays: Wettervorhersagen und Fotos
 import type { AmbientSettings } from "./display/ambient";
-import type { Hass, Photo, AmbiframeConfig } from "./types";
+import type { Hass, Photo, AmbiframeConfig, PlaceholderSource } from "./types";
 
 export type ForecastType = "hourly" | "daily";
 
@@ -62,7 +62,11 @@ const shuffle = <T>(list: T[]): T[] => {
 
 const RELOAD_MS = 6 * 3600e3;
 
-/** Fotos aus dem HA-Medienordner, ersatzweise Bing-Bilder des Tages. */
+/** Gewählte Platzhalter-Quelle; ältere Konfigurationen kennen nur Bing an/aus */
+export const placeholderOf = (cfg: Partial<AmbiframeConfig["photos"]>): PlaceholderSource =>
+  cfg.placeholder ?? (cfg.bing === false ? "none" : "bing");
+
+/** Fotos aus einer HA-Medienquelle, iCloud- und Google-Alben; ersatzweise Platzhalter-Bilder. */
 export class PhotoProvider {
   private items: PhotoItem[] = [];
   private index = -1;
@@ -101,16 +105,25 @@ export class PhotoProvider {
         const album = await hass.callWS<Photo[]>({ type: "ambiframe/photos/icloud", url: cfg.icloud });
         items = [...items, ...album.map((p) => ({ url: p.url, credit: p.credit }))];
       } catch {
-        // Album nicht erreichbar – Ordner/Bing reichen
+        // Album nicht erreichbar – andere Quellen reichen
       }
     }
-    // Bing: als Ersatz, wenn nichts Eigenes da ist – oder untergemischt
-    if (cfg.bing && (!items.length || cfg.bing_mix)) {
+    if (cfg.google) {
       try {
-        const bing = (await hass.callWS<Photo[]>({ type: "ambiframe/photos/bing" })).map((p) => ({ url: p.url, credit: p.credit }));
-        items = [...items, ...bing];
+        const album = await hass.callWS<Photo[]>({ type: "ambiframe/photos/google", url: cfg.google });
+        items = [...items, ...album.map((p) => ({ url: p.url, credit: p.credit }))];
       } catch {
-        // ohne Bing weiter
+        // Album nicht erreichbar – andere Quellen reichen
+      }
+    }
+    // Platzhalter: als Ersatz, wenn nichts Eigenes da ist – oder untergemischt
+    const source = placeholderOf(cfg);
+    if (source !== "none" && (!items.length || (cfg.placeholder_mix ?? cfg.bing_mix))) {
+      try {
+        const extra = await hass.callWS<Photo[]>({ type: "ambiframe/photos/placeholder", source });
+        items = [...items, ...extra.map((p) => ({ url: p.url, credit: p.credit }))];
+      } catch {
+        // ohne Platzhalter weiter
       }
     }
     this.items = shuffle(items);
@@ -206,4 +219,6 @@ export interface DisplayContext {
   flap?: boolean;
   /** Kleine Vorschau: keine Hintergrund-Animationen, auch nicht die einer Seite */
   still?: boolean;
+  /** Abstand zwischen den Kacheln in px (Raster: 16) */
+  gap?: number;
 }

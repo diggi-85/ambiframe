@@ -7,10 +7,11 @@ import { t, type Lang } from "../i18n";
 import { iconSvg } from "../icons";
 import { SOUNDS, playSound } from "../sound";
 import { THEMES } from "../styles";
-import type { AmbiframeConfig, DisplayConfig, EventConfig, Hass, Theme } from "../types";
+import { placeholderOf } from "../data";
+import type { AmbiframeConfig, DisplayConfig, EventConfig, Hass, PlaceholderSource, Theme } from "../types";
 import { define } from "../widgets/base";
 import { displayFromProfile, PROFILES, profilePlaylist, type Profile } from "./profiles";
-import { EVENT_TEMPLATES, PAGE_TEMPLATES, slug, uniqueId } from "./schemas";
+import { EVENT_TEMPLATES, PAGE_TEMPLATES, PLACEHOLDER_OPTIONS, slug, uniqueId } from "./schemas";
 
 type Step = "welcome" | "place" | "content" | "events" | "photos" | "device" | "done";
 const FIRST: Step[] = ["welcome", "place", "content", "events", "photos", "device", "done"];
@@ -70,7 +71,7 @@ export class AfWizard extends LitElement {
   private doorbell: EventChoice = { on: false, entity: "", camera: "", sound: "klangschale" };
   private motion: EventChoice = { on: false, entity: "", camera: "", sound: "hinweis" };
   private appliances = new Set<string>();
-  private photos = { folder: "", icloud: "", bing: true };
+  private photos = { folder: "", icloud: "", google: "", placeholder: "samples" as PlaceholderSource };
   private control: "embedded" | "screensaver" | "off" = "embedded";
   private dashboard = "/lovelace/0";
   private prepared = false;
@@ -89,7 +90,7 @@ export class AfWizard extends LitElement {
     const c = this.config;
     this.language = c.design.language ?? "auto";
     this.theme = c.design.theme;
-    this.photos = { folder: c.photos.folder ?? "", icloud: c.photos.icloud ?? "", bing: c.photos.bing !== false };
+    this.photos = { folder: c.photos.folder ?? "", icloud: c.photos.icloud ?? "", google: c.photos.google ?? "", placeholder: placeholderOf(c.photos) };
     this.dashboard = c.displays[0]?.control?.dashboard ?? "/lovelace/0";
     this.pickProfile(this.profileId);
     this.detectEvents();
@@ -163,7 +164,8 @@ export class AfWizard extends LitElement {
       c.design.theme = this.theme;
       if (this.language === "auto") delete c.design.language;
       else c.design.language = this.language;
-      c.photos = { ...c.photos, folder: this.photos.folder.trim(), bing: this.photos.bing };
+      c.photos = { ...c.photos, folder: this.photos.folder.trim(), placeholder: this.photos.placeholder };
+      if (this.photos.google.trim()) c.photos.google = this.photos.google.trim();
       if (this.photos.icloud.trim()) c.photos.icloud = this.photos.icloud.trim();
       else delete c.photos.icloud;
       this.addEvents(c);
@@ -462,11 +464,20 @@ export class AfWizard extends LitElement {
           @input=${(e: Event) => (this.photos = { ...p, icloud: (e.target as HTMLInputElement).value })}
       /></label>
       <p class="hint">${t("Fotos-App → Album teilen → „Öffentliche Website“ an → Link kopieren.")}</p>
-      <label class="check"
-        ><input type="checkbox" .checked=${p.bing} @change=${() => (this.photos = { ...p, bing: !p.bing })} /><span
-          >${t("Bing-Bilder, wenn Ordner und Album leer sind")}</span
-        ></label
-      >`;
+      <label class="field"
+        ><span>${t("Google-Fotos-Album")}</span
+        ><input
+          .value=${p.google}
+          placeholder="https://photos.app.goo.gl/…"
+          @input=${(e: Event) => (this.photos = { ...p, google: (e.target as HTMLInputElement).value })}
+      /></label>
+      <label class="field"
+        ><span>${t("Platzhalter-Bilder")}</span
+        ><select @change=${(e: Event) => (this.photos = { ...p, placeholder: (e.target as HTMLSelectElement).value as PlaceholderSource })}>
+          ${PLACEHOLDER_OPTIONS.map(([id, name]) => html`<option value=${id} ?selected=${p.placeholder === id}>${t(name)}</option>`)}
+        </select></label
+      >
+      <p class="hint">${t("Solange keine eigenen Fotos da sind.")}</p>`;
   }
 
   private renderDevice() {

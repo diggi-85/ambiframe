@@ -87,7 +87,20 @@ export interface WidgetLook {
   opacity?: number;
   /** Innenabstand in px */
   padding?: number;
+  /** Kachel: eigene Kartenfarbe und deren Deckkraft in % */
+  bg?: string;
+  bg_opacity?: number;
+  /** Eckenradius dieser Kachel in px */
+  radius?: number;
+  border?: "none" | "line" | "accent";
+  /** Glas: Hintergrund hinter der Kachel verschwimmt */
+  glass?: boolean;
+  shadow?: "none" | "soft" | "strong";
+  /** false: Überschrift (Beschriftung oben) ausblenden */
+  label?: boolean;
 }
+
+export type CardStyle = "solid" | "glass" | "outline" | "none";
 
 export interface WidgetConfig {
   id: string;
@@ -285,12 +298,16 @@ export interface DisplayConfig {
 }
 
 export type DisplayDesign = Partial<
-  Pick<AmbiframeConfig["design"], "accent" | "evening" | "fonts" | "ambient" | "colors" | "radius" | "css" | "language" | "cover_colors" | "cover_players" | "palette">
+  Pick<AmbiframeConfig["design"], "accent" | "evening" | "fonts" | "ambient" | "colors" | "radius" | "card_style" | "gap" | "css" | "language" | "cover_colors" | "cover_players" | "palette">
 >;
 
 export type TextSize = "normal" | "large" | "xlarge";
 
-export type Theme = "ruhig" | "klar" | "gold" | "glass" | "editorial" | "minimal" | "aurora" | "pixel" | "arcade" | "cockpit" | "tonal" | "kacheln" | "klartext" | "fallblatt" | "millennium" | "glanz" | "handheld" | "bauhaus" | "softui" | "boho" | "landhaus" | "natur";
+export type Theme = "ruhig" | "klar" | "gold" | "glass" | "editorial" | "minimal" | "aurora" | "pixel" | "arcade" | "cockpit" | "tonal" | "kacheln" | "klartext" | "fallblatt" | "millennium" | "glanz" | "handheld" | "bauhaus" | "softui" | "boho" | "landhaus" | "natur" | "galerie" | "papier" | "eink" | "zeitung" | "artdeco" | "terminal" | "verspielt" | "saisonal"
+  // „Jahreszeiten“ zur Laufzeit – nicht in der Konfiguration
+  | "saison-weihnachten" | "saison-silvester" | "saison-valentin" | "saison-ostern" | "saison-halloween" | "saison-fruehling" | "saison-sommer" | "saison-herbst" | "saison-winter";
+
+export type PlaceholderSource = "samples" | "bing" | "wikimedia" | "art" | "nasa" | "picsum" | "none";
 
 export interface SoundConfig {
   id: string;
@@ -316,6 +333,10 @@ export interface AmbiframeConfig {
     colors?: { dark?: ColorSet; light?: ColorSet };
     /** Eckenradius der Karten in px */
     radius?: number;
+    /** Karten aller Widgets: fehlt = wie der Stil */
+    card_style?: CardStyle;
+    /** Abstand zwischen den Kacheln in px (fehlt = 16) */
+    gap?: number;
     /** Sprache von Anzeige und Editor: auto (wie der HA-Benutzer), de oder en */
     language?: "auto" | "de" | "en" | "nl" | "fr";
     /** Lesbarkeit: Größe der kleineren Texte und Kontrast der gedämpften Schrift */
@@ -332,7 +353,21 @@ export interface AmbiframeConfig {
     /** Gespeicherte eigene Stile (Momentaufnahme des Designs) */
     presets?: { name: string; design: Record<string, unknown> }[];
   };
-  photos: { folder: string; bing: boolean; bing_mix?: boolean; bing_market?: string; credit: boolean; icloud?: string };
+  photos: {
+    folder: string;
+    /** Veraltet: Bing an/aus – gilt nur, solange `placeholder` fehlt */
+    bing: boolean;
+    bing_mix?: boolean;
+    bing_market?: string;
+    credit: boolean;
+    icloud?: string;
+    /** Geteiltes Google-Fotos-Album (https://photos.app.goo.gl/…) */
+    google?: string;
+    /** Platzhalter-Bilder, solange keine eigenen Fotos da sind; fehlt = Bing (ältere Konfigurationen) */
+    placeholder?: PlaceholderSource;
+    /** Platzhalter auch zwischen die eigenen Fotos mischen */
+    placeholder_mix?: boolean;
+  };
   /** KI-Zusammenfassung (ai_task, bevorzugt Gemini) */
   /** Eigene Töne für Ereignisse: Name und Quelle (Link, /local/… oder media-source://…) */
   sounds?: SoundConfig[];

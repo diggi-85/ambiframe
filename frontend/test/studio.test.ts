@@ -72,6 +72,68 @@ describe("Studio", () => {
     expect(out.events).toEqual(before.events);
     el.remove();
   });
+
+  it("hat unter den Momenten die Tonbibliothek „Eigene Töne“", async () => {
+    await import("../src/panel/studio");
+    const hass = {
+      states: {},
+      callWS: vi.fn(async (msg: { type: string }) => (msg.type === "ambiframe/config" ? config() : {})),
+      connection: { subscribeMessage: vi.fn() },
+      callService: vi.fn(),
+    };
+    const el = document.createElement("ambiframe-studio") as HTMLElement & Record<string, any>;
+    el.hass = hass;
+    document.body.append(el);
+    await vi.waitFor(() => expect(el.draft).toBeTruthy());
+    el.openDisplay("kueche");
+    el.step = "momente";
+    await el.updateComplete;
+    const lib = el.shadowRoot!.querySelector("af-sound-library") as HTMLElement & { updateComplete: Promise<unknown> };
+    expect(lib).toBeTruthy();
+    await lib.updateComplete;
+    // „+ Ton hinzufügen“ landet in der Konfiguration
+    [...lib.shadowRoot!.querySelectorAll("button")].at(-1)!.click();
+    expect(el.draft.sounds).toHaveLength(1);
+    expect(el.draft.sounds[0]).toMatchObject({ id: "ton", url: "" });
+    el.remove();
+  });
+});
+
+describe("Studio: Seiteneditor und Rückgängig", () => {
+  it("gestaltet eine Seite im Studio, macht Änderungen rückgängig und wiederholt sie", async () => {
+    await import("../src/panel/studio");
+    const hass = {
+      states: {},
+      callWS: vi.fn(async (msg: { type: string }) => (msg.type === "ambiframe/config" ? config() : {})),
+      connection: { subscribeMessage: vi.fn() },
+      callService: vi.fn(),
+    };
+    const el = document.createElement("ambiframe-studio") as HTMLElement & Record<string, any>;
+    el.hass = hass;
+    document.body.append(el);
+    await vi.waitFor(() => expect(el.draft).toBeTruthy());
+    el.openDisplay("kueche");
+    el.step = "inhalte";
+    el.openPage("a");
+    await el.updateComplete;
+    const editor = el.shadowRoot!.querySelector("af-page-editor") as HTMLElement & Record<string, any>;
+    expect(editor).toBeTruthy();
+    expect(editor.pageId).toBe("a");
+    await editor.updateComplete;
+    // Widget hinzufügen wie über die Leiste – landet im Entwurf des Studios
+    editor.addWidget("clock");
+    expect(el.draft.pages[0].widgets).toHaveLength(1);
+    expect(el.dirty).toBe(true);
+    el.undo();
+    expect(el.draft.pages[0].widgets).toHaveLength(0);
+    expect(el.dirty).toBe(false);
+    el.redo();
+    expect(el.draft.pages[0].widgets).toHaveLength(1);
+    // Zurück an die Stelle, von der man kam
+    el.view = el.backView;
+    expect(el.view).toBe("display");
+    el.remove();
+  });
 });
 
 describe("Studio: Momente ohne Auslöser", () => {

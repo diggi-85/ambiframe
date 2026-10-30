@@ -4,7 +4,7 @@ import { repeat } from "lit/directives/repeat.js";
 import { html as staticHtml, unsafeStatic } from "lit/static-html.js";
 import type { DisplayContext } from "../data";
 import { fontStack } from "../fonts";
-import { nightTokens, photoTokens } from "../styles";
+import { nightTokens, photoTokens, stillStyles } from "../styles";
 import type { AmbientKind, Hass, PageConfig, Photo, WidgetConfig } from "../types";
 import { templateChanges } from "../template";
 import { checkConditions, customStyle } from "../util";
@@ -22,8 +22,20 @@ const TEXT: Record<string, string> = { start: "left", center: "center", end: "ri
 /** Welche Webcam zuletzt je Seite lief (bleibt über Seitenwechsel erhalten) */
 const camTurns = new Map<string, number>();
 
-/** Diese Widgets haben eine eigene Fläche oder stehen frei – Kachel-Stile setzen sie nicht in eine Kachel */
-const FREE = new Set(["clock", "date", "text", "image", "camera", "card", "infoline", "wordclock", "pixel", "radar", "news", "daily", "pet", "balance"]);
+/** Rahmen und Schatten einer einzelnen Kachel (look.border, look.shadow) */
+const BORDERS: Record<string, string> = {
+  none: "none",
+  line: "1px solid var(--af-line)",
+  accent: "1.5px solid var(--af-accent)",
+};
+const SHADOWS: Record<string, string> = {
+  none: "none",
+  soft: "0 8px 24px rgba(0, 0, 0, 0.14)",
+  strong: "0 18px 48px rgba(0, 0, 0, 0.32)",
+};
+
+/** Diese Widgets haben eine eigene Fläche (Tagesvorschau: eigene Karten) oder stehen frei – Kachel-Stile setzen sie nicht in eine Kachel */
+const FREE = new Set(["clock", "date", "text", "image", "camera", "card", "infoline", "wordclock", "pixel", "radar", "news", "daily", "pet", "balance", "today"]);
 
 /** Als Kachel zeigen: per Widget (look.card) oder automatisch im Kachel-Stil */
 export const boxed = (w: WidgetConfig, tiles?: boolean): boolean =>
@@ -42,6 +54,7 @@ export class AfPage extends LitElement {
   static styles = [
     nightTokens,
     photoTokens,
+    stillStyles,
     css`
       :host {
         position: absolute;
@@ -68,9 +81,13 @@ export class AfPage extends LitElement {
       }
       .photo {
         position: absolute;
-        inset: 0;
+        /* Galerie: Foto im Passepartout (Abstand, Rahmen) und ohne langsames Heranzoomen */
+        inset: var(--af-photo-inset, 0);
         background: #050706 center / cover no-repeat;
-        animation: kb 70s linear both;
+        box-shadow: var(--af-photo-frame, none);
+        /* E-Ink: Graustufen mit mehr Kontrast */
+        filter: var(--af-photo-filter, none);
+        animation: var(--af-photo-motion, kb 70s linear both);
       }
       @keyframes kb {
         from {
@@ -106,7 +123,7 @@ export class AfPage extends LitElement {
       }
       .shade {
         position: absolute;
-        inset: 0;
+        inset: var(--af-photo-inset, 0);
         background: linear-gradient(to top, rgba(6, 8, 7, 0.84) 0%, rgba(6, 8, 7, 0.42) 27%, rgba(6, 8, 7, 0) 54%),
           linear-gradient(to right, rgba(6, 8, 7, 0.4) 0%, rgba(6, 8, 7, 0) 48%);
       }
@@ -132,7 +149,7 @@ export class AfPage extends LitElement {
       .cell.boxed {
         background:
           linear-gradient(var(--af-card-tint, var(--af-cover-tint)), var(--af-card-tint, var(--af-cover-tint))),
-          var(--af-card, var(--af-surface));
+          color-mix(in srgb, var(--af-card, var(--af-surface)) var(--af-card-alpha, 100%), transparent);
         border: var(--af-card-border, 1px solid var(--af-line));
         border-top: var(--af-card-rule, var(--af-card-border, 1px solid var(--af-line)));
         border-radius: var(--af-card-radius, 32px);
@@ -222,7 +239,10 @@ export class AfPage extends LitElement {
 
   private renderWidget(w: WidgetConfig, pos: Pos) {
     const type = WIDGETS[w.type];
-    const r = cellRect(this.grid, pos);
+    // Abstand der Kacheln: das Raster bleibt (Editor), jede Kachel rückt um die Hälfte der Differenz nach innen
+    const inset = this.ctx?.gap != null ? (this.ctx.gap - this.grid.gap) / 2 : 0;
+    const raw = cellRect(this.grid, pos);
+    const r = { left: raw.left + inset, top: raw.top + inset, width: raw.width - 2 * inset, height: raw.height - 2 * inset };
     const o = w.options ?? {};
     const face = fontStack(o.typeface);
     const look = w.look ?? {};
@@ -238,6 +258,13 @@ export class AfPage extends LitElement {
       look.ink ? `--af-ink:${look.ink};--af-ink-2:${mix(look.ink, 66)};--af-ink-3:${mix(look.ink, 40)};color:${look.ink}` : "",
       look.opacity != null ? `opacity:${Math.max(0, Math.min(100, Number(look.opacity))) / 100}` : "",
       look.padding != null ? `padding:${Number(look.padding)}px` : "",
+      // Kachel: Kartenfarbe/-deckkraft, Radius, Rahmen, Glas, Schatten
+      look.bg ? `--af-card:${look.bg}` : "",
+      look.bg_opacity != null ? `--af-card-alpha:${Math.max(0, Math.min(100, Number(look.bg_opacity)))}%` : "",
+      look.radius != null ? `--af-card-radius:${Number(look.radius)}px` : "",
+      look.border ? `--af-card-border:${BORDERS[look.border]};--af-card-rule:${BORDERS[look.border]}` : "",
+      look.glass === true ? "--af-card-filter:blur(22px) saturate(1.4)" : look.glass === false ? "--af-card-filter:none" : "",
+      look.shadow ? `--af-card-shadow:${SHADOWS[look.shadow]}` : "",
     ]
       .filter(Boolean)
       .join(";");
@@ -254,7 +281,7 @@ export class AfPage extends LitElement {
       @pointerleave=${() => clearTimeout(this.holdTimer)}
       @click=${(e: Event) => this.onClick(e, w)}
     >
-      ${staticHtml`<${tag} style=${zoom} .hass=${this.hass} .options=${o} .ctx=${this.ctx}></${tag}>`}
+      ${staticHtml`<${tag} style=${zoom} ?nolabel=${look.label === false} .hass=${this.hass} .options=${o} .ctx=${this.ctx}></${tag}>`}
     </div>`;
   }
 

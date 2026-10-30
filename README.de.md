@@ -24,12 +24,12 @@ Ist die Wäsche fertig, steht es kurz da und bleibt dann als kleine Erinnerung.
   <tr>
     <td width="33%"><img src="https://raw.githubusercontent.com/diggi-85/ambiframe/main/docs/screenshots/wetter-polarlicht.jpg" alt="Wetterseite mit Polarlicht-Animation"></td>
     <td width="33%"><img src="https://raw.githubusercontent.com/diggi-85/ambiframe/main/docs/screenshots/wortuhr.jpg" alt="Wortuhr mit Messing-Front"></td>
-    <td width="33%"><img src="https://raw.githubusercontent.com/diggi-85/ambiframe/main/docs/screenshots/stil-pixel.jpg" alt="Stil Pixel mit LED-Anzeigen"></td>
+    <td width="33%"><img src="https://raw.githubusercontent.com/diggi-85/ambiframe/main/docs/screenshots/stil-galerie.jpg" alt="Stil Galerie: Foto im Passepartout"></td>
   </tr>
   <tr>
     <td align="center"><sub><b>Animierte Hintergründe</b> – hier Polarlicht</sub></td>
     <td align="center"><sub><b>Wortuhr</b> in vier Sprachen</sub></td>
-    <td align="center"><sub><b>22 Stile</b> – hier „Pixel“</sub></td>
+    <td align="center"><sub><b>30 Stile</b> – hier „Galerie“</sub></td>
   </tr>
   <tr>
     <td width="33%"><img src="https://raw.githubusercontent.com/diggi-85/ambiframe/main/docs/screenshots/uhren-fallblatt.jpg" alt="Analoge Uhren und Fallblatt-Anzeigen"></td>
@@ -43,7 +43,7 @@ Ist die Wäsche fertig, steht es kurz da und bleibt dann als kleine Erinnerung.
   </tr>
 </table>
 
-<sub>Bildschirmfotos mit Beispieldaten; Fotos: Bing-Bild des Tages, Haustür: Unsplash. Ambiframe richtet sich nach der Sprache des HA-Benutzers (Deutsch, Englisch, Niederländisch und Französisch).</sub>
+<sub>Bildschirmfotos mit Beispieldaten. Fotos: <a href="https://www.instagram.com/chris.gunia">Chris Gunia</a> (die Beispielfotos ab Werk), Haustür: Unsplash. Ambiframe richtet sich nach der Sprache des HA-Benutzers (Deutsch, Englisch, Niederländisch und Französisch).</sub>
 
 ## Was Ambiframe kann
 
@@ -79,15 +79,22 @@ Ist die Wäsche fertig, steht es kurz da und bleibt dann als kleine Erinnerung.
 - **Mini-Karte „Läuft gerade“:** dauerhaft oder je Titel eine Weile, wie lange nach einer Pause, Bedingungen und
   Ruhezeiten, Ecke, Größe, Cover, Fortschritt und Hintergrund.
 - **Nachtmodus** (gedimmte Uhr, wandert gegen Einbrennen) und **Abendstimmung**.
-- **22 Stile, jeder hell und dunkel:** Ruhig, Klar, Gold, Glas, Aurora, Editorial, Minimal, Pixel (LED-Punktmatrix),
+- **30 Stile, jeder hell und dunkel:** Ruhig, Klar, Gold, Glas, Aurora, Editorial, Minimal, Pixel (LED-Punktmatrix),
   Arcade (Neon), Cockpit, Tonal, Kacheln, Klartext (groß und kontrastreich), Fallblatt, Millennium, Glanz, Handheld,
-  Bauhaus, Soft-UI, Boho, Landhaus und Natur. Kachel-Stile setzen Widgets automatisch in Karten. Hell/Dunkel
-  automatisch nach Sonnenstand (weich überblendet) oder fest, pro Display änderbar.
+  Bauhaus, Soft-UI, Boho, Landhaus, Natur, **Galerie** (Fotos im Passepartout wie im Museum), **Papier** (reines
+  Schwarz-Weiß), **E-Ink** (ganz ohne Bewegung und Überblendungen, kräftige Schrift, Fotos in Graustufen – für
+  E-Paper-Displays), **Zeitung**, **Art déco**, **Terminal**, **Verspielt** – und **Jahreszeiten**, das
+  von selbst wechselt: Frühling, Sommer, Herbst, Winter, dazu Weihnachten, Silvester, Valentinstag, Ostern und
+  Halloween. Kachel-Stile setzen Widgets automatisch in Karten. Hell/Dunkel automatisch nach Sonnenstand (weich
+  überblendet) oder fest, pro Display änderbar.
+- **Kacheln nach Wunsch:** für alle Widgets ein Kartenstil (gefüllt, Glas, nur Umriss oder ohne Fläche), Abstand und
+  Ecken; pro Kachel eigene Kartenfarbe und Deckkraft, Eckenradius, Rahmen, Glas, Schatten und Überschrift an/aus.
 - **Farbpaletten** über jedem Stil (Nordisch, Vampir, Mocha, Retro, Nachtstadt) oder **Tagesverlauf** – die Farben
   wandern mit der Uhrzeit. Auf Wunsch **Farben passend zum Album-Cover**: Läuft Musik, nehmen Hintergrund, Akzent und
   Karten die Cover-Farben an und blenden danach weich zurück.
 - **13 Schriften** lokal mitgeliefert (u. a. Fraunces, Instrument Serif, Playfair, Inter, Geist, Outfit),
-  getrennt für Uhr/Titel und Text, zusätzlich pro Widget.
+  getrennt für Uhr/Titel und Text, zusätzlich pro Widget. Zahlen (Uhrzeiten, Temperaturen, Minuten) erscheinen
+  überall in der Titelschrift des Stils, Wörter in der Textschrift – so passt eine Seite zusammen.
 - **Hintergrund-Animationen** – Stärke, Tempo und Farbe einstellbar, pro Seite wählbar, nachts und bei „Bewegung
   reduzieren“ aus:
   - ruhig: schwebende Partikel, fließender Verlauf, Farbwechsel, Polarlicht, Lichtschimmer, Nebel
@@ -100,13 +107,16 @@ Ist die Wäsche fertig, steht es kurz da und bleibt dann als kleine Erinnerung.
 - **Uhren:** Wortuhr (Deutsch, Englisch, Niederländisch, Französisch; Fronten Schwarz, Weiß, Messing, Kupfer),
   analoge Uhr (Bahnhof, schlicht, elegant, Punkte), Fallblatt-Uhr und -Abfahrten, LED-Pixel-Anzeige mit
   8×8-Symbolen, Schreibmaschinen-Text.
-- **Drei Editoren, eine Konfiguration:** das *Studio* mit Live-Vorschau, der *Seiteneditor* zum Anordnen der
-  Widgets und der *Experten-Editor* mit allen Möglichkeiten – siehe [Die Editoren](#die-editoren).
+- **Das Studio:** ein Editor für alles, immer mit Live-Vorschau – vom Display aus gedacht, mit Seiteneditor zum
+  Anordnen der Widgets, Rückgängig und Hinweisen, was fehlt – siehe [Das Studio](#das-studio).
 - **Bedienmodus:** Tippen holt das HA-Dashboard, nach einer Minute ohne Berührung kehrt Ambiframe zurück.
 - **Kamera nativ** über HAs eigenen Stream (WebRTC/HLS) – alle Displays teilen sich eine Verbindung zur Kamera,
   wichtig bei Kameras, die nur wenige erlauben (z. B. Tapo). Bis das Livebild läuft, steht das letzte Standbild da
   statt einer leeren Fläche; MJPEG nur als Rückfall.
-- **Fotos** aus dem HA-Medienordner `ambiframe`, ersatzweise die Bing-Bilder des Tages (Region wählbar).
+- **Fotos** aus jeder HA-Medienquelle (Ordner `ambiframe`, aber auch Immich, Synology Photos & Co.), aus einem geteilten
+  **iCloud-** oder **Google-Fotos-Album** (Google inoffiziell, bis etwa 300 Fotos). Solange keine eigenen Fotos da
+  sind – oder untergemischt – **Platzhalter-Bilder**: Beispielfotos ab Werk (auch offline), Wikimedia-Bild des Tages,
+  gemeinfreie Gemälde, Weltall-Aufnahmen der NASA, Zufallsfotos (Lorem Picsum) oder Bing.
 - **Nachrichten** aus jedem RSS-, Atom- oder RDF-Feed; Vorschläge auf Deutsch (tagesschau, n-tv, SPIEGEL, ZDFheute,
   Deutschlandfunk, ZEIT, FAZ, SZ, heise, ORF, SRF), Englisch (BBC, Guardian, Sky News, NPR, New York Times, ABC,
   CBC, Al Jazeera, DW), Niederländisch (NOS, NU.nl, VRT NWS) und Französisch (Le Monde, franceinfo, RFI, Le Figaro). Ohne eigene Wahl passend zur Sprache. Großbild mit Schlagzeile, Liste oder Laufband; der
@@ -115,7 +125,6 @@ Ist die Wäsche fertig, steht es kurz da und bleibt dann als kleine Erinnerung.
 - **Webcams und Kameras als Hintergrund:** Seiten können eine HA-Kamera oder einen Webcam-Link (Bild, MJPEG,
   `.m3u8`, YouTube live) als Hintergrund haben; der Editor schlägt öffentliche Webcams vor. Wie stark der
   Hintergrund hinter Uhr und Text abgedunkelt wird, ist pro Seite einstellbar (normal, leicht, kräftig oder aus).
-- **Fotos aus einem geteilten iCloud-Album** (öffentlicher Link), gemischt mit dem Medienordner.
 - **Infozeile mit allen Mülltonnen** im Wechsel („Biotonne und Restmüll morgen“ → „Papier am Freitag“).
 - **KI-Zusammenfassung** (über `ai_task`, bevorzugt Gemini) zu festen Zeiten: Überschrift und 3–5 Punkte aus Wetter,
   Terminen, Müll, Strompreis/PV, Auto und Haus – genau den Daten, die Ambiframe ohnehin zeigt. Widget, Seite
@@ -192,24 +201,23 @@ Ist die Wäsche fertig, steht es kurz da und bleibt dann als kleine Erinnerung.
 Auf iPad oder iPhone ein Dashboard nur mit der Karte `custom:ambiframe-card` anlegen und im Kiosk-Modus der HA-App
 öffnen.
 
-## Die Editoren
+## Das Studio
 
-Alle Editoren arbeiten mit derselben Konfiguration – du kannst jederzeit wechseln, nichts geht verloren. Gespeichert
-wird erst mit **Speichern**; **Verwerfen** holt den letzten Stand zurück.
-
-### Studio (Standard)
+Alles wird im Studio eingerichtet. Gespeichert wird erst mit **Speichern** (⌘S bzw. Strg+S); **Verwerfen** holt den letzten Stand
+zurück, **↶ ↷** (⌘Z, ⇧⌘Z bzw. Strg+Z, Strg+Y) machen einzelne Schritte rückgängig. Oben zeigt Ambiframe, wenn etwas fehlt (z. B. eine
+Entität, die es nicht mehr gibt) – **Zeigen** springt an die Stelle.
 
 ![Studio: Aussehen eines Displays mit Live-Vorschau](https://raw.githubusercontent.com/diggi-85/ambiframe/main/docs/screenshots/studio-display.jpg)
 
-Das Studio denkt vom Display aus. Die **Übersicht** zeigt alle Displays als Live-Vorschau, dazu die Karte **Alle
-Displays**. Ein Display beantwortet in fünf Schritten dieselben Fragen:
+Das Studio denkt vom Display aus. Die **Übersicht** zeigt alle Displays als Live-Vorschau samt der Geräte, die sie
+gerade zeigen, dazu die Karte **Alle Displays**. Ein Display beantwortet in fünf Schritten dieselben Fragen:
 
 | Schritt | Frage | Was du dort einstellst |
 |---|---|---|
-| **Ort & Gerät** | Wo hängt es? | Ort (setzt passende Vorgaben), Gerät (Fully, Browser oder HA-App) mit Adresse zum Kopieren, Seite für die Nacht |
-| **Inhalte** | Was soll es zeigen? | Seiten der Wiedergabeliste, Reihenfolge, Dauer und „Wann?“ (z. B. nur morgens) |
-| **Aussehen** | Wie soll es wirken? | Stil, Hell/Dunkel, Farben, Hintergrund-Animation, Schriften |
-| **Momente** | Wann soll etwas passieren? | Klingel, Bewegung, Wäsche fertig, Musik, Geburtstag … mit **▶ Testen** |
+| **Ort & Gerät** | Wo hängt es? | Ort (setzt passende Vorgaben), Gerät (Fully, Browser oder HA-App) mit Adresse zum Kopieren |
+| **Inhalte** | Was soll es zeigen? | Seiten der Wiedergabeliste, Reihenfolge, Dauer, „Wann?“ (z. B. nur morgens) und die Nacht |
+| **Aussehen** | Wie soll es wirken? | Stil, Hell/Dunkel, Farben, Kacheln, Hintergrund-Animation |
+| **Momente** | Wann soll etwas passieren? | Klingel, Bewegung, Wäsche fertig, Musik, Geburtstag … mit **▶ Testen**, eigene Töne |
 | **Technik** | Steuerung, Ton, Videostream | Bedienmodus, Neustart-Taste und Offline-Meldung, Töne, Videostream zum Fernseher, Fotos |
 
 **Alle Displays** ist die gemeinsame Seite: Aussehen für alle, Momente, die **Seiten-Bibliothek** sowie Fotos & KI.
@@ -217,43 +225,41 @@ Was ein Display nicht selbst festlegt, kommt von dort. Kleine Hinweise zeigen di
 oder *eigener Wert ↺* (ein Klick setzt ihn zurück).
 
 Rechts läuft immer die **Vorschau** mit deinen echten Daten: Seiten durchblättern, Hell/Dunkel/Nacht umschalten, Wetter
-simulieren (Sonne, Regen, Schnee, Wind, klare Nacht) und Momente testen, ohne etwas zu speichern. Fährt die Maus über einen Stil,
-zeigt die Vorschau ihn sofort. Das Häkchen **Erweitert** blendet weitere Felder und den Feinschliff ein (Tempo, Übergänge u. a.).
+simulieren (Sonne, Regen, Schnee, Wind, klare Nacht) und Momente testen, ohne etwas zu speichern. Fährt die Maus über
+einen Stil, zeigt die Vorschau ihn sofort.
+
+**Erweitert** (oben, wird pro Gerät gemerkt) blendet alles Weitere ein: zusätzliche Felder, eigene Bedingungen in der
+Wiedergabeliste, Schriften, Kontrast und Textgröße, eigene Farben je Hell/Dunkel, eigenes CSS, eigene Stile (speichern,
+exportieren, importieren) und unter *Alle Displays → Fotos & KI* die ganze Konfiguration als **YAML**.
 
 ![Studio: Momente eines Displays](https://raw.githubusercontent.com/diggi-85/ambiframe/main/docs/screenshots/studio-momente.jpg)
 
 Momente gelten für alle Displays; pro Display schaltest du nur ein oder aus, welche es zeigt. **Neuer Moment** bietet
 fertige Vorlagen an und schlägt den Auslöser aus deinen Entitäten vor.
 
-### Seiteneditor
+Beim ersten Start führt ein **Einrichtungsassistent** durch Ort, Inhalte, Momente, Fotos und Gerät.
+
+### Seiten gestalten
 
 ![Seiteneditor: Widgets auf dem Raster anordnen](https://raw.githubusercontent.com/diggi-85/ambiframe/main/docs/screenshots/seiteneditor.jpg)
 
-**Gestalten** bei einer Seite (im Studio unter *Inhalte* oder in der Seiten-Bibliothek) öffnet den Seiteneditor:
+**Gestalten** bei einer Seite (unter *Inhalte* oder in der Seiten-Bibliothek) öffnet den Seiteneditor im Studio:
 links alle Seiten, in der Mitte die Seite als Live-Bild, rechts die Einstellungen des gewählten Widgets oder der Seite.
+**Zurück** führt dorthin, wo du herkamst.
 
 - Widgets aus der Leiste unten hinzufügen, ziehen, an der Ecke unten rechts vergrößern; Raster mit halben Zellen und
   Hilfslinien für bündige Kanten.
-- Mehrfachauswahl mit ⇧/⌘-Klick, Pfeiltasten verschieben (mit ⇧ in der Größe), ⌘C/⌘V kopiert als YAML – auch
-  zwischen Seiten und Geräten, ⌘D dupliziert, ⌫ löscht, ⌘Z macht rückgängig.
+- Mehrfachauswahl mit ⇧/⌘-Klick (Windows: Umschalt/Strg), Pfeiltasten verschieben (mit ⇧ in der Größe), ⌘C/⌘V (Strg+C/V) kopiert als YAML – auch
+  zwischen Seiten und Geräten, ⌘D dupliziert, ⌫ löscht.
 - **Quer | Hoch** wechselt zur Hochformat-Anordnung, die sich getrennt anpassen lässt.
-- Pro Seite: Dauer, Hintergrund (Foto, Kamera, Webcam, Farbe), Abdunkeln, Farben, Übergang, Animation, Bedingung.
-
-### Experten-Editor
-
-![Experten-Editor: Ereignisse mit allen Feldern](https://raw.githubusercontent.com/diggi-85/ambiframe/main/docs/screenshots/experten-editor.jpg)
-
-Der Experten-Editor zeigt alles auf einmal, in Tabs: **Seiten** (der Seiteneditor), **Wiedergabe** (Displays,
-Wiedergabelisten, verbundene Geräte), **Ereignisse** (die Momente mit allen Feldern, eigene Töne, Testen), **Design**
-(Stile, eigene Farben, Schriften, CSS, Stile importieren/exportieren) und **YAML**. Oben schaltest du zwischen
-**Einfach** (nur das Nötige) und **Erweitert** (alle Felder und der YAML-Tab) um.
-
-Du erreichst ihn im Studio über **Experten-Editor**; zurück geht es mit **✨ Zur neuen Oberfläche**. Ambiframe merkt
-sich pro Gerät, welche Oberfläche du zuletzt gewählt hast.
+- Pro Seite: Dauer, Hintergrund (Foto, Kamera, Webcam, Farbe), Abdunkeln, Helligkeit, Übergang, Animation, Bedingung.
+- Pro Widget (mit *Erweitert*): Bedingung, Kachel (Karte, Farbe, Radius, Rahmen, Glas, Schatten, Überschrift), Farben,
+  Größe und was beim Antippen passiert; eigene Vorlagen für Widget-Gruppen und ganze Seiten, Seiten als YAML.
 
 ## Konfiguration
 
-Im **Experten-Editor** unter **Erweitert → YAML** (oder per Aktion `ambiframe.import_config`). Eine passende
+Im Studio unter **Alle Displays → Fotos & KI → Für Fortgeschrittene: YAML** (mit **Erweitert**) oder per Aktion
+`ambiframe.import_config`. Eine passende
 Startkonfiguration legt Ambiframe beim ersten Start selbst an; sie lässt sich dort als YAML ansehen und anpassen.
 Ein vollständiges Beispiel steht in [`examples/beispiel.yaml`](examples/beispiel.yaml).
 
@@ -393,8 +399,11 @@ cd frontend && npm install && npm run build      # Bundle nach custom_components
 ```
 
 Tests: `cd frontend && npm test` (Frontend) und `python -m pytest` (Integration, Abhängigkeiten in
-`requirements_test.txt`).
+`requirements_test.txt`). `cd frontend && npm run visual` vergleicht alle Stile als Bild mit Referenzbildern (Chrome
+nötig; Referenzbilder erzeugt `npm run visual:update` beim ersten Lauf). Welche Anforderung durch welchen Test
+abgesichert ist, steht in [`docs/testmatrix.md`](docs/testmatrix.md).
 
 ## Lizenz
 
-MIT. Die mitgelieferten Schriften stehen unter der SIL Open Font License 1.1.
+MIT. Die mitgelieferten Schriften stehen unter der SIL Open Font License 1.1. Die Beispielfotos ab Werk sind von
+[Chris Gunia](https://www.instagram.com/chris.gunia) – alle Rechte vorbehalten, nur zur Nutzung in Ambiframe.

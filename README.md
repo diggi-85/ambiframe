@@ -24,12 +24,12 @@ appears. When the laundry is done, it says so briefly and then stays as a small 
   <tr>
     <td width="33%"><img src="https://raw.githubusercontent.com/diggi-85/ambiframe/main/docs/screenshots/en/weather-aurora.jpg" alt="Weather page with aurora animation"></td>
     <td width="33%"><img src="https://raw.githubusercontent.com/diggi-85/ambiframe/main/docs/screenshots/en/word-clock.jpg" alt="Word clock with brass face"></td>
-    <td width="33%"><img src="https://raw.githubusercontent.com/diggi-85/ambiframe/main/docs/screenshots/en/style-pixel.jpg" alt="Pixel style with LED displays"></td>
+    <td width="33%"><img src="https://raw.githubusercontent.com/diggi-85/ambiframe/main/docs/screenshots/en/style-gallery.jpg" alt="Gallery style: photo in a mount"></td>
   </tr>
   <tr>
     <td align="center"><sub><b>Animated backgrounds</b> – here aurora</sub></td>
     <td align="center"><sub><b>Word clock</b> in four languages</sub></td>
-    <td align="center"><sub><b>22 styles</b> – here “Pixel”</sub></td>
+    <td align="center"><sub><b>30 styles</b> – here “Gallery”</sub></td>
   </tr>
   <tr>
     <td width="33%"><img src="https://raw.githubusercontent.com/diggi-85/ambiframe/main/docs/screenshots/en/clocks-split-flap.jpg" alt="Analogue clocks and split-flap displays"></td>
@@ -43,7 +43,7 @@ appears. When the laundry is done, it says so briefly and then stays as a small 
   </tr>
 </table>
 
-<sub>Screenshots with sample data; photos: Bing image of the day, front door: Unsplash. Ambiframe follows the language of the Home Assistant user (English, German,
+<sub>Screenshots with sample data. Photos: <a href="https://www.instagram.com/chris.gunia">Chris Gunia</a> (the built-in sample photos), front door: Unsplash. Ambiframe follows the language of the Home Assistant user (English, German,
 Dutch and French).</sub>
 
 ## Features
@@ -79,15 +79,22 @@ Dutch and French).</sub>
 - **Now playing mini card:** permanent or per track for a while, how long after pausing, conditions and quiet hours,
   corner, size, cover, progress and background.
 - **Night mode** (dimmed clock that drifts to prevent burn-in) and **evening mood**.
-- **22 styles, each light and dark:** Calm, Clear, Gold, Glass, Aurora, Editorial, Minimal, Pixel (LED dot matrix),
+- **30 styles, each light and dark:** Calm, Clear, Gold, Glass, Aurora, Editorial, Minimal, Pixel (LED dot matrix),
   Arcade (neon), Cockpit, Tonal, Tiles, Clear text (large and high contrast), Split-flap, Millennium, Gloss, Handheld,
-  Bauhaus, Soft UI, Boho, Country house and Nature. Tile styles put widgets into cards automatically. Light/dark
-  automatically by the sun (with a soft fade) or fixed, adjustable per display.
+  Bauhaus, Soft UI, Boho, Country house, Nature, **Gallery** (photos in a mount like in a museum), **Paper** (pure black
+  and white), **E-Ink** (no motion or fades at all, bold type, greyscale photos – for e-paper displays),
+  **Newspaper**, **Art Deco**, **Terminal**, **Playful** – and **Seasons**, which changes by
+  itself: spring, summer, autumn, winter, plus Christmas, New Year's Eve, Valentine's Day, Easter and Halloween. Tile
+  styles put widgets into cards automatically. Light/dark automatically by the sun (with a soft fade) or fixed,
+  adjustable per display.
+- **Tiles your way:** one card style for all widgets (filled, glass, outline only or no surface), spacing and corners;
+  per tile its own card colour and opacity, corner radius, border, glass, shadow and heading on/off.
 - **Colour palettes** on top of any style (Nordic, Vampire, Mocha, Retro, Night city) or **Course of the day** – the
   colours drift with the time. Optionally **colours from the album cover**: while music plays, background, accent and
   cards take on the cover's colours and fade back afterwards.
 - **13 fonts** bundled locally (including Fraunces, Instrument Serif, Playfair, Inter, Geist, Outfit), separately
-  for clock/titles and text, and per widget.
+  for clock/titles and text, and per widget. Numbers (times, temperatures, minutes) always use the style's title
+  font, words the text font – so a page looks of a piece.
 - **Background animations** – strength, speed and colour adjustable, per page, off at night and with "reduce motion":
   - calm: floating particles, flowing gradient, colour shift, aurora, light shimmer, fog
   - nature & weather: snow, raindrops on the window (lens-like), wind, drifting clouds, starry sky, fireflies, falling
@@ -98,14 +105,16 @@ Dutch and French).</sub>
   per page.
 - **Clocks:** word clock (German, English, Dutch, French; faces black, white, brass, copper), analogue clock (station,
   plain, elegant, dots), split-flap clock and departures, LED pixel display with 8×8 icons, typewriter text.
-- **Three editors, one configuration:** the *Studio* with a live preview, the *page editor* for arranging widgets and
-  the *expert editor* with every option – see [The editors](#the-editors).
+- **The Studio:** one editor for everything, always with a live preview – built around the display, with a page
+  editor for arranging widgets, undo and hints about what's missing – see [The Studio](#the-studio).
 - **Control mode:** a tap brings up the HA dashboard; after a minute without touch Ambiframe returns.
 - **Native camera** via Home Assistant's own stream (WebRTC/HLS) – all displays share one connection to the camera,
   which matters for cameras that allow only a few (e.g. Tapo). Until the live picture runs, the latest snapshot is shown
   instead of an empty area; MJPEG only as a fallback.
-- **Photos** from the HA media folder `ambiframe` or a **shared iCloud album** (public link), optionally mixed with
-  Bing's pictures of the day (region selectable).
+- **Photos** from any HA media source (the `ambiframe` folder, but also Immich, Synology Photos & co.), from a shared
+  **iCloud** or **Google Photos album** (Google unofficial, up to about 300 photos). As long as there are no photos of
+  your own – or mixed in – **placeholder images**: built-in sample photos (also offline), the Wikimedia picture of the
+  day, public-domain paintings, NASA space images, random photos (Lorem Picsum) or Bing.
 - **News** from any RSS, Atom or RDF feed; suggestions in English (BBC, Guardian, Sky News, NPR, New York Times, ABC,
   CBC, Al Jazeera, DW), German (tagesschau, n-tv, SPIEGEL, ZDFheute, Deutschlandfunk, ZEIT, FAZ, SZ, heise, ORF,
   SRF), Dutch (NOS, NU.nl, VRT NWS) and French (Le Monde, franceinfo, RFI, Le Figaro). Without a choice, sources match the display language. Large image with headline, list or ticker; the server
@@ -184,24 +193,23 @@ Copy `custom_components/ambiframe` to `/config/custom_components/`, restart, add
 On an iPad or iPhone, create a dashboard with only the `custom:ambiframe-card` card and open it in the HA app's kiosk
 mode.
 
-## The editors
+## The Studio
 
-All editors work on the same configuration – you can switch at any time and nothing is lost. Changes are only stored
-with **Save**; **Discard** brings back the last saved state.
-
-### Studio (default)
+Everything is set up in the Studio. Changes are only stored with **Save** (⌘S or Ctrl+S); **Discard** brings back the last saved
+state, **↶ ↷** (⌘Z, ⇧⌘Z or Ctrl+Z, Ctrl+Y) undo and redo single steps. At the top Ambiframe shows when something is missing (e.g. an
+entity that no longer exists) – **Show** jumps to the spot.
 
 ![Studio: the look of a display with live preview](https://raw.githubusercontent.com/diggi-85/ambiframe/main/docs/screenshots/en/studio-display.jpg)
 
-The Studio starts from the display. The **overview** shows every display as a live preview, plus the **All displays**
-card. Each display answers the same questions in five steps:
+The Studio starts from the display. The **overview** shows every display as a live preview together with the devices
+currently showing it, plus the **All displays** card. Each display answers the same questions in five steps:
 
 | Step | Question | What you set there |
 |---|---|---|
-| **Location & device** | Where is it? | Location (sets sensible defaults), device (Fully, browser or HA app) with the address to copy, page for the night |
-| **Contents** | What should it show? | Pages of the playlist, order, duration and “When?” (e.g. only in the morning) |
-| **Look** | How should it feel? | Style, light/dark, colours, background animation, fonts |
-| **Moments** | When should something happen? | Doorbell, motion, laundry done, music, birthday … with **▶ Test** |
+| **Location & device** | Where is it? | Location (sets sensible defaults), device (Fully, browser or HA app) with the address to copy |
+| **Contents** | What should it show? | Pages of the playlist, order, duration, “When?” (e.g. only in the morning) and the night |
+| **Look** | How should it feel? | Style, light/dark, colours, tiles, background animation |
+| **Moments** | When should something happen? | Doorbell, motion, laundry done, music, birthday … with **▶ Test**, custom sounds |
 | **Technical** | Control, sound, video stream | Control mode, restart button and offline notification, sounds, video stream to the TV, photos |
 
 **All displays** is the shared page: look for all, moments, the **page library** and photos & AI. Whatever a display
@@ -210,42 +218,40 @@ does not set itself comes from there. Small labels show where a value comes from
 
 On the right the **preview** always runs with your real data: flip through pages, switch light/dark/night, simulate
 weather (sun, rain, snow, wind, clear night) and test moments without saving anything. Hovering over a style shows it
-in the preview right away. The **Advanced** checkbox reveals more fields and the fine-tuning (speed, transitions etc.).
+in the preview right away.
+
+**Advanced** (at the top, remembered per device) reveals everything else: more fields, custom conditions in the
+playlist, fonts, contrast and text size, custom colours for light and dark, custom CSS, custom styles (save, export,
+import) and, under *All displays → Photos & AI*, the whole configuration as **YAML**.
 
 ![Studio: the moments of a display](https://raw.githubusercontent.com/diggi-85/ambiframe/main/docs/screenshots/en/studio-moments.jpg)
 
 Moments apply to all displays; per display you only switch on or off which ones it shows. **New moment** offers ready
 templates and suggests the trigger from your entities.
 
-### Page editor
+On first start a **setup wizard** guides you through location, contents, moments, photos and device.
+
+### Designing pages
 
 ![Page editor: arranging widgets on the grid](https://raw.githubusercontent.com/diggi-85/ambiframe/main/docs/screenshots/en/page-editor.jpg)
 
-**Design** on a page (in the Studio under *Contents* or in the page library) opens the page editor: all pages on the
-left, the page as a live picture in the middle, the settings of the selected widget or page on the right.
+**Design** on a page (under *Contents* or in the page library) opens the page editor inside the Studio: all pages on
+the left, the page as a live picture in the middle, the settings of the selected widget or page on the right. **Back**
+returns to where you came from.
 
 - Add widgets from the bar at the bottom, drag them, resize at the bottom-right corner; a grid with half cells and
   guides for aligned edges.
-- Multi-select with ⇧/⌘-click, arrow keys move (with ⇧ resize), ⌘C/⌘V copies as YAML – also between pages and
-  devices, ⌘D duplicates, ⌫ deletes, ⌘Z undoes.
+- Multi-select with ⇧/⌘-click (Windows: Shift/Ctrl), arrow keys move (with ⇧ resize), ⌘C/⌘V (Ctrl+C/V) copies as YAML – also between pages and
+  devices, ⌘D duplicates, ⌫ deletes.
 - **Landscape | Portrait** switches to the portrait layout, which can be adjusted separately.
-- Per page: duration, background (photo, camera, webcam, colour), darken, colours, transition, animation, condition.
-
-### Expert editor
-
-![Expert editor: events with every field](https://raw.githubusercontent.com/diggi-85/ambiframe/main/docs/screenshots/en/expert-editor.jpg)
-
-The expert editor shows everything at once, in tabs: **Pages** (the page editor), **Playback** (displays, playlists,
-connected devices), **Events** (the moments with every field, custom sounds, testing), **Design** (styles, custom
-colours, fonts, CSS, style import/export) and **YAML**. At the top you switch between **Simple** (only what's needed)
-and **Advanced** (every field and the YAML tab).
-
-Open it from the Studio with **Expert editor**; go back with **✨ To the new interface**. Ambiframe remembers per device
-which interface you chose last.
+- Per page: duration, background (photo, camera, webcam, colour), darken, brightness, transition, animation, condition.
+- Per widget (with *Advanced*): condition, tile (card, colour, radius, border, glass, shadow, heading), colours, size
+  and what a tap does; custom templates for widget groups and whole pages, pages as YAML.
 
 ## Configuration
 
-In the **expert editor** under **Advanced → YAML** (or with the action `ambiframe.import_config`). Ambiframe creates a matching starter
+In the Studio under **All displays → Photos & AI → For advanced users: YAML** (with **Advanced**) or with the action
+`ambiframe.import_config`. Ambiframe creates a matching starter
 configuration on first start; you can view and adjust it there as YAML. A complete example is in
 [`examples/beispiel.yaml`](examples/beispiel.yaml).
 
@@ -385,8 +391,11 @@ cd frontend && npm install && npm run build      # bundle into custom_components
 ```
 
 Tests: `cd frontend && npm test` (frontend) and `python -m pytest` (integration, dependencies in
-`requirements_test.txt`).
+`requirements_test.txt`). `cd frontend && npm run visual` compares every style as an image against reference images
+(needs Chrome; on the first run create them with `npm run visual:update`). Which requirement is covered by which test
+is listed in [`docs/testmatrix.md`](docs/testmatrix.md) (German).
 
 ## License
 
-MIT. The bundled fonts are licensed under the SIL Open Font License 1.1.
+MIT. The bundled fonts are licensed under the SIL Open Font License 1.1. The built-in sample photos are by
+[Chris Gunia](https://www.instagram.com/chris.gunia) – all rights reserved, for use within Ambiframe only.

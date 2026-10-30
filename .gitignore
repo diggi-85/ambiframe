@@ -16,3 +16,6 @@ __pycache__/
 
 # Bildschirmfotos vom Tablet (lokal)
 /screenshots/
+
+# Bildvergleiche: Abweichungen eines Laufs (Referenzbilder werden eingecheckt)
+frontend/test/visual/_diff/

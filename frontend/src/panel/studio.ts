@@ -1,16 +1,23 @@
 // Studio: Einrichtung „Display zuerst“ mit rotem Faden. Jedes Display hat eine eigene Seite mit denselben
 // Fragen (Ort & Gerät · Inhalte · Aussehen · Momente · Technik), dazu eine Seite „Alle Displays“ für das Gemeinsame
 // (Aussehen für alle, Momente, Seiten-Bibliothek, Fotos & KI). Rechts immer die echte Vorschau.
-// Arbeitet auf derselben Konfiguration wie der bisherige Editor – nach einem Update geht nichts verloren.
+// Gestalten einer Seite (Raster, Widgets) öffnet den Seiteneditor im Studio. Rückgängig, Speichern, Hinweise der
+// Prüfung, eigene Farben, Stile, YAML und der Einrichtungsassistent beim ersten Start gehören ebenfalls hierher.
+import { dump, load } from "js-yaml";
 import { LitElement, css, html, nothing, type PropertyValues } from "lit";
 import "../display/display";
 import type { AfDisplay } from "../display/display";
-import { lang, t } from "../i18n";
-import { iconSvg } from "../icons";
-import { PALETTES, THEME_DEFS } from "../styles";
-import type { AmbiframeConfig, AmbientKind, Condition, DisplayConfig, EventConfig, Hass, HassEntity, PageConfig } from "../types";
+import { lang, locale, t } from "../i18n";
+import { anyIcon, iconSvg } from "../icons";
+import { PALETTES, THEME_DEFS, seasonTheme } from "../styles";
+import type { AmbiframeConfig, AmbientKind, Condition, DisplayConfig, EventConfig, Hass, HassEntity, PageConfig, SoundConfig } from "../types";
 import { formContext, type Field } from "../editor/form";
 import "../editor/form";
+import "../editor/sounds";
+import "../editor/page-editor";
+import "../editor/wizard";
+import type { Note } from "../editor/page-editor";
+import { checkHealth, type HealthGo, type PhotoHealth } from "../editor/health";
 import { PROFILES, displayFromProfile, profilePlaylist } from "../editor/profiles";
 import {
   AMBIENT_OPTIONS,
@@ -19,7 +26,10 @@ import {
   DISPLAY_PHOTO_FIELDS,
   DISPLAY_SOUND_FIELDS,
   DISPLAY_STREAM_FIELDS,
+  LOOK_FIELDS,
   MOTION_FIELDS,
+  SHAPE_FIELDS,
+  colorFields,
   PAGE_TEMPLATES,
   SUMMARY_FIELDS,
   displayFields,
@@ -27,10 +37,32 @@ import {
   slug,
   uniqueId,
 } from "../editor/schemas";
+import { define } from "../widgets/base";
 import { WIDGETS } from "../widgets/registry";
 
 /** Seite „Alle Displays“ */
 const ALL = "__all";
+
+/** Was ein Display gerade tut (ambiframe/displays/status) */
+interface DisplayStatus {
+  online?: boolean;
+  last_seen?: string | null;
+  paused?: boolean;
+  until?: string | null;
+  clients?: { name: string; page: string | null; version: string | null; hidden: boolean; safe?: string | null; last_seen: string }[];
+}
+
+const toYaml = (c: unknown) => dump(c, { lineWidth: 120, noRefs: true });
+
+/** „Erweitert“ pro Gerät merken */
+const ADVANCED_KEY = "ambiframe-editor-advanced";
+const readAdvanced = (): boolean => {
+  try {
+    return localStorage.getItem(ADVANCED_KEY) === "1";
+  } catch {
+    return false;
+  }
+};
 
 type Step = "ort" | "inhalte" | "aussehen" | "momente" | "technik";
 const DISPLAY_STEPS: [Step, string, string][] = [
@@ -46,6 +78,13 @@ const ALL_STEPS: [Step, string, string][] = [
   ["inhalte", "Seiten-Bibliothek", "Alle Seiten, die Displays zeigen können"],
   ["technik", "Fotos & KI", "Gemeinsame Quellen und Dienste"],
 ];
+
+/** Technik → Display: ohne Name (Ort & Gerät), Stil und Hell/Dunkel (Aussehen) – Nacht steht bei den Inhalten */
+const ELSEWHERE = new Set(["name", "theme", "mode"]);
+
+/** Feinschliff ohne das, was oben schon als Karten/Knöpfe steht (Palette, Animation, Cover-Farben, Kacheln) */
+const SHOWN_ABOVE = new Set(["design.palette", "design.ambient.type", "design.cover_colors", "design.card_style", "design.gap", "design.radius"]);
+const notShownAbove = (fields: Field[]): Field[] => fields.filter((f) => !SHOWN_ABOVE.has(f.key));
 
 /** „Wann?“ als einfache Sätze – jede Wahl ist eine ganz normale Bedingung (show_if) */
 const WHEN: { id: string; name: string; show_if: Condition[] }[] = [
@@ -141,11 +180,48 @@ export class AmbiframeStudio extends LitElement {
     saving: { state: true },
     status: { state: true },
     advanced: { state: true },
+    narrow: { attribute: false },
+    editPage: { state: true },
+    note: { state: true },
+    healthOpen: { state: true },
+    photoHealth: { state: true },
+    yaml: { state: true },
+    importText: { state: true },
+    presetName: { state: true },
+    condOpen: { state: true },
+    summaryNote: { state: true },
+    canUndo: { state: true },
+    canRedo: { state: true },
   };
 
   hass?: Hass;
   draft?: AmbiframeConfig;
-  view: "overview" | "display" = "overview";
+  view: "overview" | "display" | "page" = "overview";
+  narrow = false;
+  /** Seiteneditor: welche Seite, und wohin „Zurück“ führt */
+  editPage = "";
+  private backView: "overview" | "display" = "overview";
+  note: Note | null = null;
+  private noteTimer?: number;
+  healthOpen = false;
+  photoHealth?: PhotoHealth;
+  /** YAML-Ansicht (Technik für alle, erweitert) und Stil-Import */
+  yaml = "";
+  importText: string | null = null;
+  presetName = "";
+  /** Wiedergabeliste: Eintrag mit aufgeklappter eigener Bedingung */
+  condOpen = -1;
+  summaryNote = "";
+  canUndo = false;
+  canRedo = false;
+  private history: string[] = [];
+  private future: string[] = [];
+  private coalesceKey = "";
+  /** Formular, das gerade ändert – aufeinanderfolgende Eingaben ergeben einen Rückgängig-Schritt */
+  private formKey = "";
+  private statusTimer?: number;
+  /** Einrichtungsassistent beim ersten Start übersprungen */
+  private wizardSkipped = false;
   /** Display-ID oder ALL für die Seite „Alle Displays“ */
   displayId = "";
   step: Step = "ort";
@@ -158,13 +234,48 @@ export class AmbiframeStudio extends LitElement {
   openEvent = "";
   dirty = false;
   saving = false;
-  advanced = false;
-  status: Record<string, { online?: boolean }> = {};
+  advanced = readAdvanced();
+  status: Record<string, DisplayStatus> = {};
   private saved = "";
 
   connectedCallback(): void {
     super.connectedCallback();
     void this.load();
+    window.addEventListener("keydown", this.onKey);
+    this.statusTimer = window.setInterval(() => void this.loadStatus(), 15e3);
+  }
+
+  disconnectedCallback(): void {
+    super.disconnectedCallback();
+    window.removeEventListener("keydown", this.onKey);
+    clearInterval(this.statusTimer);
+  }
+
+  /** ⌘S speichert, ⌘Z / ⇧⌘Z macht rückgängig bzw. wiederholt (nicht beim Tippen in Feldern) */
+  private onKey = (e: KeyboardEvent): void => {
+    const typing = (e.composedPath()[0] as HTMLElement)?.matches?.("input, textarea, select, [contenteditable]");
+    const mod = e.metaKey || e.ctrlKey;
+    if (mod && e.key.toLowerCase() === "s") {
+      e.preventDefault();
+      if (this.dirty) void this.save();
+    } else if (mod && e.key.toLowerCase() === "z" && !typing) {
+      e.preventDefault();
+      if (e.shiftKey) this.redo();
+      else this.undo();
+    } else if (mod && e.key.toLowerCase() === "y" && !typing) {
+      // Wiederholen wie unter Windows üblich (Strg+Y)
+      e.preventDefault();
+      this.redo();
+    }
+  };
+
+  private async loadStatus(): Promise<void> {
+    if (!this.hass) return;
+    try {
+      this.status = await this.hass.callWS({ type: "ambiframe/displays/status" });
+    } catch {
+      /* ältere Fassung ohne Gerätestatus */
+    }
   }
 
   private async load(): Promise<void> {
@@ -186,6 +297,11 @@ export class AmbiframeStudio extends LitElement {
     this.saved = JSON.stringify(config);
     this.draft = structuredClone(config);
     this.dirty = false;
+    this.history = [];
+    this.future = [];
+    this.coalesceKey = "";
+    this.yaml = "";
+    this.syncUndo();
     // Direkt auf ein Display und einen Schritt springen: ?studio=<display|__all>&step=<schritt>
     const q = new URLSearchParams(location.search);
     const target = q.get("studio");
@@ -194,11 +310,7 @@ export class AmbiframeStudio extends LitElement {
       const step = q.get("step") as Step | null;
       if (step) this.step = step;
     }
-    try {
-      this.status = await this.hass.callWS({ type: "ambiframe/displays/status" });
-    } catch {
-      this.status = {};
-    }
+    await this.loadStatus();
   }
 
   protected willUpdate(changed: PropertyValues): void {
@@ -222,13 +334,53 @@ export class AmbiframeStudio extends LitElement {
     return this.all ? this.draft?.displays[0] : this.display;
   }
 
-  /** Änderung am Entwurf – immer als Kopie, damit die Vorschau sicher neu zeichnet */
-  private mutate(fn: (c: AmbiframeConfig) => void): void {
+  /** Änderung am Entwurf – immer als Kopie, damit die Vorschau sicher neu zeichnet; mit Verlauf für Rückgängig */
+  private mutate(fn: (c: AmbiframeConfig) => void, coalesce = ""): void {
     if (!this.draft) return;
+    const key = coalesce || this.formKey;
+    if (!key || key !== this.coalesceKey) {
+      this.history.push(JSON.stringify(this.draft));
+      if (this.history.length > 100) this.history.shift();
+      this.future = [];
+    }
+    this.coalesceKey = key;
     const next = structuredClone(this.draft);
     fn(next);
     this.draft = next;
     this.dirty = JSON.stringify(next) !== this.saved;
+    this.syncUndo();
+  }
+
+  private undo(): void {
+    const prev = this.history.pop();
+    if (!prev || !this.draft) return;
+    this.future.push(JSON.stringify(this.draft));
+    this.draft = JSON.parse(prev);
+    this.coalesceKey = "";
+    this.dirty = prev !== this.saved;
+    this.syncUndo();
+  }
+
+  private redo(): void {
+    const next = this.future.pop();
+    if (!next || !this.draft) return;
+    this.history.push(JSON.stringify(this.draft));
+    this.draft = JSON.parse(next);
+    this.coalesceKey = "";
+    this.dirty = next !== this.saved;
+    this.syncUndo();
+  }
+
+  private syncUndo(): void {
+    this.canUndo = this.history.length > 0;
+    this.canRedo = this.future.length > 0;
+  }
+
+  /** Hinweis oben in der Leiste, verschwindet nach ein paar Sekunden */
+  private showNote(note: Note): void {
+    this.note = note;
+    clearTimeout(this.noteTimer);
+    this.noteTimer = window.setTimeout(() => (this.note = null), note.kind === "error" ? 12e3 : 6e3);
   }
 
   private mutateDisplay(fn: (d: DisplayConfig) => void): void {
@@ -255,6 +407,7 @@ export class AmbiframeStudio extends LitElement {
       await this.hass.callWS({ type: "ambiframe/config/save", config: this.draft, language: lang() });
       this.saved = JSON.stringify(this.draft);
       this.dirty = false;
+      this.showNote({ kind: "ok", text: t("Gespeichert – alle Displays zeigen es sofort.") });
     } catch (e) {
       const err = e as { message?: unknown; code?: unknown };
       alert(t("Speichern fehlgeschlagen: {msg}", { msg: typeof err?.message === "string" ? err.message : String(err?.code ?? e) }));
@@ -263,10 +416,11 @@ export class AmbiframeStudio extends LitElement {
     }
   }
 
-  /** Experten-Editor öffnen; mit Seite direkt in deren Gestaltung */
-  private toClassic(page?: string): void {
-    if (this.dirty && !confirm(t("Ungespeicherte Änderungen verwerfen?"))) return;
-    this.dispatchEvent(new CustomEvent("open-classic", { detail: { page }, bubbles: true, composed: true }));
+  /** Seite gestalten: Seiteneditor im Studio, „Zurück“ führt dorthin, wo man herkam */
+  private openPage(page: string): void {
+    if (this.view !== "page") this.backView = this.view;
+    this.editPage = page;
+    this.view = "page";
   }
 
   /* ───────── Vorschau ───────── */
@@ -388,10 +542,36 @@ export class AmbiframeStudio extends LitElement {
               </div>
               <span class="pill ${st?.online ? "ok" : ""}">${st?.online ? t("verbunden") : t("nicht verbunden")}</span>
             </div>
+            ${this.renderDevices(st)}
           </article>`;
         })}
       </div>
     </div>`;
+  }
+
+  /** Welche Geräte dieses Display gerade zeigen (Name, Seite, zuletzt gesehen) */
+  private renderDevices(st?: DisplayStatus) {
+    if (!st?.clients?.length) return nothing;
+    const pageName = (id?: string | null) => this.draft?.pages.find((p) => p.id === id)?.name ?? id ?? "–";
+    const ago = (iso?: string | null) => {
+      if (!iso) return t("nie");
+      const sec = Math.round((Date.now() - new Date(iso).getTime()) / 1000);
+      return sec < 60 ? t("gerade eben") : sec < 3600 ? t("vor {n} min", { n: Math.round(sec / 60) }) : t("vor {n} h", { n: Math.round(sec / 3600) });
+    };
+    return html`<ul class="devices">
+      ${st.clients.map(
+        (c) => html`<li>
+          <span class="dot ${c.hidden ? "sleep" : "on"}"></span>
+          <b>${c.name}</b>
+          <span class="muted"
+            >${c.safe ? `${t("Notfallmodus")} (${t(c.safe)})` : c.hidden ? t("Bildschirm aus") : pageName(c.page)} · ${ago(c.last_seen)}${c.version && c.version !== __WB_VERSION__ ? ` · ${t("ältere Version")}` : ""}</span
+          >
+        </li>`,
+      )}
+      ${st.paused
+        ? html`<li class="muted">${t("Pausiert")}${st.until ? ` ${t("bis {when}", { when: new Date(st.until).toLocaleTimeString(locale(), { hour: "2-digit", minute: "2-digit" }) })}` : ""}</li>`
+        : nothing}
+    </ul>`;
   }
 
   private openDisplay(id: string, wizard = false): void {
@@ -483,7 +663,7 @@ export class AmbiframeStudio extends LitElement {
             </div>
             <select title=${t("Wann?")} @click=${(ev: Event) => ev.stopPropagation()} @change=${(ev: Event) => this.setWhen(i, (ev.target as HTMLSelectElement).value)}>
               ${WHEN.map((w) => html`<option value=${w.id} ?selected=${when === w.id}>${t(w.name)}</option>`)}
-              ${when === "custom" ? html`<option value="custom" selected>${t("eigene Bedingung")}</option>` : nothing}
+              ${when === "custom" || this.advanced ? html`<option value="custom" ?selected=${when === "custom"}>${t("eigene Bedingung …")}</option>` : nothing}
             </select>
             <input
               class="dur"
@@ -500,11 +680,21 @@ export class AmbiframeStudio extends LitElement {
               })}
             />
             <span class="btns" @click=${(ev: Event) => ev.stopPropagation()}>
-              <button class="small ghost" title=${t("Widgets der Seite anordnen und einstellen")} @click=${() => this.toClassic(e.page)}>${t("Gestalten")}</button>
+              <button class="small ghost" title=${t("Widgets der Seite anordnen und einstellen")} @click=${() => this.openPage(e.page)}>${t("Gestalten")}</button>
               <button class="icon" ?disabled=${i === 0} title=${t("nach oben")} @click=${() => this.move(i, -1)}>↑</button>
               <button class="icon" ?disabled=${i === d.playlist.length - 1} title=${t("nach unten")} @click=${() => this.move(i, 1)}>↓</button>
               <button class="icon" title=${t("entfernen")} @click=${() => this.mutateDisplay((x) => x.playlist.splice(i, 1))}>✕</button>
             </span>
+            ${this.condOpen === i || (when === "custom" && this.advanced)
+              ? html`<div class="cond" @click=${(ev: Event) => ev.stopPropagation()}>
+                  ${this.form([{ key: "show_if", label: "Nur zeigen, wenn …", type: "conditions" }], { show_if: e.show_if ?? [] }, (v) =>
+                    this.mutateDisplay((x) => {
+                      if (v.show_if?.length) x.playlist[i].show_if = v.show_if;
+                      else delete x.playlist[i].show_if;
+                    }),
+                  )}
+                </div>`
+              : nothing}
           </li>`;
         })}
       </ol>
@@ -526,13 +716,11 @@ export class AmbiframeStudio extends LitElement {
           : nothing}
       </div>
       <h3>${t("Nachts")}</h3>
-      <label class="field"
-        >${t("Seite in der Nacht")}
-        <select @change=${(e: Event) => this.mutateDisplay((x) => (x.night = { ...(x.night ?? {}), page: (e.target as HTMLSelectElement).value || undefined }))}>
-          <option value="">${t("keine")}</option>
-          ${c.pages.map((p) => html`<option value=${p.id} ?selected=${d.night?.page === p.id}>${p.name}</option>`)}
-        </select>
-      </label>
+      ${this.form(
+        displayFields(c).filter((f) => f.key.startsWith("night.")),
+        d,
+        (v) => this.replaceDisplay(v),
+      )}
     `;
   }
 
@@ -557,7 +745,7 @@ export class AmbiframeStudio extends LitElement {
               <span class="types">${this.widgetTags(p)}</span>
             </div>
             <span class="muted users">${users.length ? users.join(", ") : t("von keinem Display gezeigt")}</span>
-            <button class="small ghost" title=${t("Widgets der Seite anordnen und einstellen")} @click=${(ev: Event) => (ev.stopPropagation(), this.toClassic(p.id))}>${t("Gestalten")}</button>
+            <button class="small ghost" title=${t("Widgets der Seite anordnen und einstellen")} @click=${(ev: Event) => (ev.stopPropagation(), this.openPage(p.id))}>${t("Gestalten")}</button>
           </li>`;
         })}
       </ol>
@@ -575,6 +763,8 @@ export class AmbiframeStudio extends LitElement {
   }
 
   private setWhen(i: number, id: string): void {
+    // „eigene Bedingung …“: Bedingungen unter dem Eintrag aufklappen
+    this.condOpen = id === "custom" ? i : -1;
     const w = WHEN.find((x) => x.id === id);
     if (!w) return;
     this.mutateDisplay((x) => {
@@ -620,6 +810,9 @@ export class AmbiframeStudio extends LitElement {
     const palette = d?.design?.palette ?? c.design.palette;
     const cover = d?.design?.cover_colors ?? c.design.cover_colors;
     const mode = d?.mode ?? c.design.mode ?? "auto";
+    const cardStyle = d?.design?.card_style ?? c.design.card_style;
+    const gap = d?.design?.gap ?? c.design.gap;
+    const radius = d?.design?.radius ?? c.design.radius;
     return html`
       <div class="row-head">
         <h3>${t("Stil")}</h3>
@@ -627,11 +820,13 @@ export class AmbiframeStudio extends LitElement {
       </div>
       <p class="muted">${t("Mit der Maus über einen Stil fahren zeigt ihn rechts mit deinen Inhalten – Klicken übernimmt ihn.")}</p>
       <div class="themes" @mouseleave=${() => (this.hoverTheme = "")}>
-        ${THEME_DEFS.map((td) => {
-          const tok = td.dark;
+        ${THEME_DEFS.filter((td) => !td.hidden).map((td) => {
+          // „Jahreszeiten“ zeigt die Farben von heute
+          const look = td.id === "saisonal" ? (THEME_DEFS.find((x) => x.id === seasonTheme(new Date())) ?? td) : td;
+          const tok = look.dark;
           return html`<button
             class="theme ${theme === td.id ? "on" : ""}"
-            style="--bg:${tok.bg};--ink:${tok.ink};--acc:${tok.accent};--font:${td.shared.display}"
+            style="--bg:${tok.bg};--ink:${tok.ink};--acc:${tok.accent};--font:${look.shared.display}"
             @mouseenter=${() => (this.hoverTheme = td.id)}
             @focus=${() => (this.hoverTheme = td.id)}
             @click=${() => {
@@ -675,6 +870,30 @@ export class AmbiframeStudio extends LitElement {
       </div>
 
       <div class="row-head">
+        <h3>${t("Kacheln")}</h3>
+        ${this.origin(d?.design?.card_style ?? d?.design?.gap ?? d?.design?.radius, () =>
+          this.mutateDisplay((x) => (delete x.design?.card_style, delete x.design?.gap, delete x.design?.radius)),
+        )}
+      </div>
+      <p class="muted">${t("Wie die Karten der Widgets aussehen – einzelne Kacheln stellst du beim Gestalten einer Seite ein.")}</p>
+      ${(
+        [
+          ["Karten", "card_style", cardStyle, [[undefined, "wie der Stil"], ["solid", "gefüllt"], ["glass", "Glas"], ["outline", "nur Umriss"], ["none", "ohne Fläche"]]],
+          ["Abstand", "gap", gap, [[8, "eng"], [undefined, "normal"], [28, "luftig"]]],
+          ["Ecken", "radius", radius, [[0, "eckig"], [12, "leicht rund"], [undefined, "wie der Stil"], [40, "rund"]]],
+        ] as [string, string, unknown, [unknown, string][]][]
+      ).map(
+        ([group, key, current, choices]) => html`<div class="group">
+          <span class="glabel">${t(group)}</span>
+          <div class="chips">
+            ${choices.map(
+              ([value, name]) => html`<button class="chip ${current === value ? "on" : ""}" @click=${() => this.setDesign(key, value)}>${t(name)}</button>`,
+            )}
+          </div>
+        </div>`,
+      )}
+
+      <div class="row-head">
         <h3>${t("Atmosphäre")}</h3>
         ${this.origin(d?.design?.ambient?.type, () => this.mutateDisplay((x) => delete x.design?.ambient))}
       </div>
@@ -697,8 +916,11 @@ export class AmbiframeStudio extends LitElement {
       ${this.advanced
         ? html`<h3>${t("Feinschliff")}</h3>
             ${this.all
-              ? this.form([...MOTION_FIELDS], c, (v) => this.mutate((cc) => (cc.design = (v as AmbiframeConfig).design)))
-              : this.form(DISPLAY_DESIGN_FIELDS, d!, (v) => this.replaceDisplay(v))}`
+              ? html`${this.form(notShownAbove(LOOK_FIELDS.filter((f) => f.key !== "design.mode")), c, (v) => this.mutate((cc) => (cc.design = (v as AmbiframeConfig).design)))}
+                  ${this.form(notShownAbove(MOTION_FIELDS), c, (v) => this.mutate((cc) => (cc.design = (v as AmbiframeConfig).design)))}`
+              : this.form(notShownAbove(DISPLAY_DESIGN_FIELDS.filter((f) => f.key !== "design.css")), d!, (v) => this.replaceDisplay(v))}
+            ${this.renderOwnColors()}
+            ${this.all ? html`<h3>${t("Eigene Stile")}</h3>${this.renderPresets()}` : nothing}`
         : nothing}
     `;
   }
@@ -723,6 +945,187 @@ export class AmbiframeStudio extends LitElement {
   }
 
   /* ───────── Momente ───────── */
+
+  /** Eigene Farben je Hell/Dunkel und eigenes CSS – für alle oder nur dieses Display */
+  private renderOwnColors() {
+    const c = this.draft!;
+    const d = this.all ? undefined : this.display;
+    const target = (d ?? c) as object;
+    const set = (v: Record<string, any>) =>
+      d ? this.replaceDisplay(v) : this.mutate((cc) => (cc.design = (v as AmbiframeConfig).design));
+    const own = d ? d.design?.colors : c.design.colors;
+    return html`<details>
+        <summary>${t("Eigene Farben · Dunkel")}</summary>
+        ${this.form(colorFields("dark"), target, set)}
+      </details>
+      <details>
+        <summary>${t("Eigene Farben · Hell")}</summary>
+        ${this.form(colorFields("light"), target, set)}
+      </details>
+      ${own
+        ? html`<p><button class="small ghost" @click=${() => (d ? this.mutateDisplay((x) => delete x.design?.colors) : this.mutate((cc) => delete cc.design.colors))}>
+            ${t("Eigene Farben zurücksetzen")}
+          </button></p>`
+        : nothing}
+      <details>
+        <summary>${t("Eigenes CSS")}</summary>
+        ${this.form(
+          d ? DISPLAY_DESIGN_FIELDS.filter((f) => f.key === "design.css") : SHAPE_FIELDS.filter((f) => f.key === "design.css"),
+          target,
+          set,
+        )}
+      </details>`;
+  }
+
+  /** Gespeicherte Stile: anwenden, löschen, aktuellen speichern, exportieren, importieren */
+  private renderPresets() {
+    const c = this.draft!;
+    const presets = c.design.presets ?? [];
+    const snapshot = () => {
+      const { presets: _skip, ...rest } = structuredClone(c.design);
+      return rest as Record<string, unknown>;
+    };
+    const apply = (design: Record<string, unknown>) =>
+      this.mutate((cc) => {
+        const { presets: _skip, ...rest } = design as Record<string, unknown> & { presets?: unknown };
+        cc.design = { ...(structuredClone(rest) as unknown as AmbiframeConfig["design"]), presets: cc.design.presets };
+      });
+    return html`${presets.length
+        ? html`<div class="presets">
+            ${presets.map(
+              (p, i) => html`<div class="preset">
+                <span>${p.name}</span>
+                <button class="small ghost" @click=${() => apply(p.design)}>${t("Anwenden")}</button>
+                <button class="icon" title=${t("Löschen")} @click=${() => this.mutate((cc) => cc.design.presets!.splice(i, 1))}>✕</button>
+              </div>`,
+            )}
+          </div>`
+        : html`<p class="muted">${t("Noch keine eigenen Stile – stelle Stil, Farben und Schriften ein und speichere sie hier.")}</p>`}
+      <div class="preset-new">
+        <input placeholder=${t("Name, z. B. Herbst")} .value=${this.presetName} @input=${(e: Event) => (this.presetName = (e.target as HTMLInputElement).value)} />
+        <button
+          class="small"
+          ?disabled=${!this.presetName.trim()}
+          @click=${() => {
+            const name = this.presetName.trim();
+            this.mutate((cc) => {
+              const list = (cc.design.presets ??= []);
+              const existing = list.find((p) => p.name === name);
+              if (existing) existing.design = snapshot();
+              else list.push({ name, design: snapshot() });
+            });
+            this.presetName = "";
+          }}
+        >
+          ${t("Aktuellen Stil speichern")}
+        </button>
+      </div>
+      <p>
+        <button
+          class="small ghost"
+          @click=${async () => {
+            const text = dump({ ambiframe_style: snapshot() }, { lineWidth: 120 });
+            try {
+              await navigator.clipboard.writeText(text);
+              this.showNote({ kind: "ok", text: t("Stil als YAML in die Zwischenablage kopiert.") });
+            } catch {
+              this.importText = text;
+              this.showNote({ kind: "ok", text: t("Stil unten als YAML – zum Kopieren markieren.") });
+            }
+          }}
+        >
+          ${t("Exportieren")}
+        </button>
+        <button class="small ghost" @click=${() => (this.importText = this.importText === null ? "" : null)}>${t("Importieren …")}</button>
+      </p>
+      ${this.importText !== null
+        ? html`<textarea
+              class="code"
+              rows="8"
+              placeholder="ambiframe_style: …"
+              .value=${this.importText}
+              @input=${(e: Event) => (this.importText = (e.target as HTMLTextAreaElement).value)}
+            ></textarea>
+            <p>
+              <button
+                class="small"
+                @click=${() => {
+                  try {
+                    const raw = load(this.importText ?? "") as Record<string, unknown> | null;
+                    const design = (raw?.ambiframe_style ?? raw?.design ?? raw) as Record<string, unknown> | null;
+                    if (!design || typeof design !== "object" || Array.isArray(design)) throw new Error(t("kein Stil gefunden"));
+                    apply(design);
+                    this.importText = null;
+                    this.showNote({ kind: "ok", text: t("Stil übernommen – mit „Speichern“ dauerhaft machen.") });
+                  } catch (err) {
+                    this.showNote({ kind: "error", text: t("Import fehlgeschlagen: {error}", { error: String((err as Error)?.message ?? err) }) });
+                  }
+                }}
+              >
+                ${t("Übernehmen")}
+              </button>
+            </p>`
+        : nothing}`;
+  }
+
+  /** Die ganze Konfiguration als YAML – ansehen, ändern, übernehmen (Technik für alle, nur „Erweitert“) */
+  private renderYaml() {
+    if (!this.yaml && this.draft) this.yaml = toYaml(this.draft);
+    return html`<textarea class="code yaml" spellcheck="false" .value=${this.yaml} @input=${(e: Event) => (this.yaml = (e.target as HTMLTextAreaElement).value)}></textarea>
+      <p class="actions">
+        <button
+          class="small"
+          @click=${() => {
+            try {
+              const parsed = load(this.yaml) as AmbiframeConfig;
+              if (!parsed || typeof parsed !== "object" || !Array.isArray(parsed.displays)) throw new Error(t("keine Ambiframe-Konfiguration"));
+              this.mutate((cc) => Object.assign(cc, parsed));
+              this.showNote({ kind: "ok", text: t("Übernommen – mit „Speichern“ dauerhaft machen.") });
+            } catch (err) {
+              this.showNote({ kind: "error", text: t("YAML ist nicht lesbar: {error}", { error: (err as Error).message }) });
+            }
+          }}
+        >
+          ${t("In den Editor übernehmen")}
+        </button>
+        <button class="small ghost" @click=${() => (this.yaml = toYaml(this.draft))}>${t("Neu laden")}</button>
+        <button
+          class="small ghost"
+          @click=${async () => {
+            const c = await this.hass?.callWS<AmbiframeConfig>({ type: "ambiframe/config/default" });
+            if (c) this.yaml = toYaml(c);
+          }}
+        >
+          ${t("Startkonfiguration anzeigen")}
+        </button>
+        <button
+          class="small ghost"
+          title=${t("Die Fassung vor dem letzten Speichern in den Editor holen (danach „Speichern“)")}
+          @click=${async () => {
+            const c = await this.hass?.callWS<AmbiframeConfig | null>({ type: "ambiframe/config/previous" }).catch(() => null);
+            if (!c) {
+              this.showNote({ kind: "error", text: t("Es gibt noch keine vorherige Fassung.") });
+              return;
+            }
+            this.yaml = toYaml(c);
+            this.showNote({ kind: "ok", text: t("Vorherige Fassung geladen – mit „In den Editor übernehmen“ und „Speichern“ wiederherstellen.") });
+          }}
+        >
+          ${t("Vorherige Fassung laden")}
+        </button>
+      </p>`;
+  }
+
+  /** KI-Zusammenfassung jetzt erstellen (zählt nur Gespeichertes) */
+  private async generateSummary(): Promise<void> {
+    this.summaryNote = t("Gemini schreibt …");
+    try {
+      const s = await this.hass!.callWS<{ headline: string }>({ type: "ambiframe/summary/generate" });
+      this.summaryNote = `Fertig: „${s.headline}“`;
+    } catch (err) {
+      this.summaryNote = (err as { message?: string }).message ?? t("Fehlgeschlagen");
+    }
+  }
 
   private renderMomente() {
     const c = this.draft!;
@@ -790,6 +1193,11 @@ export class AmbiframeStudio extends LitElement {
           </button>`,
         )}
       </div>
+      <af-sound-library
+        .hass=${this.hass}
+        .sounds=${c.sounds ?? []}
+        @sounds-changed=${(e: CustomEvent<{ sounds: SoundConfig[] }>) => this.mutate((cc) => void (cc.sounds = e.detail.sounds))}
+      ></af-sound-library>
     `;
   }
 
@@ -840,12 +1248,19 @@ export class AmbiframeStudio extends LitElement {
     if (this.all)
       return html`
         <details open><summary>${t("Fotos")}</summary>${this.form(DESIGN_FIELDS, c, (v) => this.mutate((cc) => (cc.photos = (v as AmbiframeConfig).photos)))}</details>
-        <details><summary>${t("KI-Zusammenfassung")}</summary>${this.form(SUMMARY_FIELDS, c, (v) => this.mutate((cc) => (cc.summary = (v as AmbiframeConfig).summary)))}</details>
+        <details>
+          <summary>${t("KI-Zusammenfassung")}</summary>
+          ${this.form(SUMMARY_FIELDS, c, (v) => this.mutate((cc) => (cc.summary = (v as AmbiframeConfig).summary)))}
+          ${c.summary?.enabled
+            ? html`<p><button class="small ghost" @click=${() => void this.generateSummary()}>${t("Jetzt erstellen")}</button> <span class="muted">${this.summaryNote}</span></p>`
+            : nothing}
+        </details>
+        ${this.advanced ? html`<details><summary>${t("Für Fortgeschrittene: YAML")}</summary>${this.renderYaml()}</details>` : nothing}
       `;
     const d = this.display!;
     return html`
       <p class="muted">${t("Einmal einrichten und vergessen: Bedienung, Neustart, Ton, Videostream und Fotos.")}</p>
-      <details open><summary>${t("Display")}</summary>${this.form(displayFields(c), d, (v) => this.replaceDisplay(v))}</details>
+      <details open><summary>${t("Display")}</summary>${this.form(displayFields(c).filter((f) => !ELSEWHERE.has(f.key) && !f.key.startsWith("night.")), d, (v) => this.replaceDisplay(v))}</details>
       <details><summary>${t("Töne")}</summary>${this.form(DISPLAY_SOUND_FIELDS, d, (v) => this.replaceDisplay(v))}</details>
       <details><summary>${t("Videostream")}</summary>${this.form(DISPLAY_STREAM_FIELDS, d, (v) => this.replaceDisplay(v))}</details>
       <details><summary>${t("Fotos")}</summary>${this.form(DISPLAY_PHOTO_FIELDS, d, (v) => this.replaceDisplay(v))}</details>
@@ -861,13 +1276,17 @@ export class AmbiframeStudio extends LitElement {
 
   /** Vorhandene Formulare wiederverwenden – dieselben Felder wie im bisherigen Editor */
   private form(fields: Field[], value: object, onChange: (v: Record<string, any>) => void) {
+    const key = `form-${fields.map((f) => f.key).join(",")}`;
     return html`<af-form
       .hass=${this.hass}
       .advanced=${this.advanced}
       .fields=${fields}
       .value=${value}
       @value-changed=${(e: CustomEvent) => {
-        if (e.target === e.currentTarget && e.detail?.value && typeof e.detail.value === "object") onChange(e.detail.value);
+        if (e.target !== e.currentTarget || !e.detail?.value || typeof e.detail.value !== "object") return;
+        this.formKey = key;
+        onChange(e.detail.value);
+        this.formKey = "";
       }}
     ></af-form>`;
   }
@@ -937,20 +1356,163 @@ export class AmbiframeStudio extends LitElement {
     </div>`;
   }
 
+  /** Fotos zählen (Ordner, iCloud) – für „Bilderrahmen ohne Fotos“ */
+  private async checkPhotos(): Promise<void> {
+    const hass = this.hass;
+    const photos = this.draft?.photos;
+    if (!hass || !photos) return;
+    let folder: number | null = null;
+    let icloud: number | null = null;
+    if (photos.folder) {
+      try {
+        const res = await hass.callWS<{ children?: { media_class: string; title: string }[] }>({ type: "media_source/browse_media", media_content_id: photos.folder });
+        folder = (res.children ?? []).filter((c) => c.media_class === "image" || /\.(jpe?g|png|webp|avif)$/i.test(c.title)).length;
+      } catch {
+        folder = 0;
+      }
+    }
+    if (photos.icloud) {
+      try {
+        icloud = (await hass.callWS<unknown[]>({ type: "ambiframe/photos/icloud", url: photos.icloud })).length;
+      } catch {
+        icloud = 0;
+      }
+    }
+    this.photoHealth = { folder, icloud };
+  }
+
+  /** „Zeigen“ bei einem Hinweis: an die passende Stelle im Studio */
+  private goTo(go?: HealthGo): void {
+    if (!go) return;
+    this.healthOpen = false;
+    if (go.tab === "seiten" && go.pageId) return this.openPage(go.pageId);
+    if (go.tab === "ereignisse") {
+      this.openDisplay(ALL);
+      this.step = "momente";
+      this.openEvent = go.eventId ?? "";
+      return;
+    }
+    if (go.tab === "wiedergabe") {
+      this.openDisplay(go.displayId ?? this.draft?.displays[0]?.id ?? ALL);
+      this.step = "inhalte";
+      return;
+    }
+    // Fotos und KI
+    this.openDisplay(ALL);
+    this.step = "technik";
+  }
+
+  private renderHealth() {
+    const issues = checkHealth(this.draft!, this.hass, this.status as never, this.photoHealth, __WB_VERSION__);
+    const serious = issues.filter((i) => i.level !== "info").length;
+    const bad = issues.some((i) => i.level === "error");
+    const icons = { error: "warning", warn: "info", info: "info" } as const;
+    return html`<span class="rel">
+      <button
+        class="ghost health ${bad ? "bad" : serious ? "warn" : "ok"}"
+        title=${t("Gesundheitscheck: fehlende Entitäten, Geräte, Fotos")}
+        @click=${() => {
+          this.healthOpen = !this.healthOpen;
+          if (this.healthOpen) void this.checkPhotos();
+        }}
+      >
+        ${anyIcon(serious ? "warning" : "check")}<span>${serious ? (serious === 1 ? t("1 Hinweis") : t("{n} Hinweise", { n: serious })) : t("Alles gut")}</span>
+      </button>
+      ${this.healthOpen
+        ? html`<div class="healthpanel">
+            <div class="hhead">
+              <b>${t("Gesundheitscheck")}</b>
+              <button class="icon" title=${t("Schließen")} @click=${() => (this.healthOpen = false)}>✕</button>
+            </div>
+            ${issues.length
+              ? html`<ul>
+                  ${issues.map(
+                    (i) => html`<li class=${i.level}>
+                      ${anyIcon(icons[i.level])}<span class="htext">${i.text}</span>
+                      ${i.go ? html`<button class="small ghost" @click=${() => this.goTo(i.go)}>${t("Zeigen")}</button>` : nothing}
+                    </li>`,
+                  )}
+                </ul>`
+              : html`<p class="muted">${anyIcon("check")} ${t("Alles in Ordnung: alle Entitäten da, Geräte verbunden, Fotos vorhanden.")}</p>`}
+            ${this.photoHealth === undefined ? html`<p class="muted">${t("Fotos werden gezählt …")}</p>` : nothing}
+          </div>`
+        : nothing}
+    </span>`;
+  }
+
+  /** Erster Start: Einrichtungsassistent (Ort, Inhalte, Momente, Fotos, Gerät) */
+  private renderWizard() {
+    const c = this.draft;
+    if (!c || c.setup_complete !== false || this.wizardSkipped) return nothing;
+    return html`<af-wizard
+      .hass=${this.hass}
+      .config=${c}
+      mode="first"
+      @wizard-done=${(e: CustomEvent<{ config: AmbiframeConfig; displayId: string }>) => {
+        this.mutate((cc) => Object.assign(cc, e.detail.config));
+        this.wizardSkipped = true;
+        void this.save().then(() => this.openDisplay(e.detail.displayId));
+      }}
+      @wizard-close=${() => {
+        // Nicht wieder fragen – „+ Display hinzufügen“ führt später ebenso durch die Schritte
+        this.wizardSkipped = true;
+        this.mutate((cc) => (cc.setup_complete = true));
+        void this.save();
+      }}
+    ></af-wizard>`;
+  }
+
+  /** Seite gestalten: Seitenliste, Raster und Eigenschaften – Änderungen landen im selben Entwurf */
+  private renderPageView() {
+    const back = this.backView === "display" ? (this.all ? t("Alle Displays") : (this.display?.name ?? t("Zurück"))) : t("Übersicht");
+    return html`<div class="pageview">
+      <div class="pagehead">
+        <button class="back" @click=${() => (this.view = this.backView)}>${iconSvg("back")} ${back}</button>
+        <span class="muted">${t("Seiten gestalten – Widgets anordnen und einstellen")}</span>
+      </div>
+      <af-page-editor
+        .hass=${this.hass}
+        .config=${this.draft}
+        .pageId=${this.editPage}
+        .displayId=${(this.all ? this.draft?.displays[0]?.id : this.displayId) ?? ""}
+        .advanced=${this.advanced}
+        @change=${(e: CustomEvent<{ fn: (c: AmbiframeConfig) => void; coalesce: string }>) => this.mutate(e.detail.fn, e.detail.coalesce)}
+        @change-end=${() => (this.coalesceKey = "")}
+        @note=${(e: CustomEvent<Note>) => this.showNote(e.detail)}
+      ></af-page-editor>
+    </div>`;
+  }
+
+  private setAdvanced(on: boolean): void {
+    this.advanced = on;
+    try {
+      localStorage.setItem(ADVANCED_KEY, on ? "1" : "0");
+    } catch {
+      /* privater Modus */
+    }
+  }
+
   render() {
     if (!this.draft) return html`<div class="loading">${t("Lädt …")}</div>`;
     return html`<div class="app">
       <div class="bar">
+        <ha-menu-button .hass=${this.hass} .narrow=${this.narrow}></ha-menu-button>
         <b>Ambiframe</b>
+        ${this.note ? html`<span class="note ${this.note.kind}" @click=${() => (this.note = null)}>${this.note.text}</span>` : nothing}
         <span class="spacer"></span>
-        <button class="ghost" title=${t("Alle Möglichkeiten in der bisherigen Ansicht")} @click=${() => this.toClassic()}>${t("Experten-Editor")}</button>
-        <label class="inline"><input type="checkbox" .checked=${this.advanced} @change=${(e: Event) => (this.advanced = (e.target as HTMLInputElement).checked)} />${t("Erweitert")}</label>
+        ${this.renderHealth()}
+        <label class="inline" title=${t("Weitere Einstellungen, eigene Bedingungen, Farben, CSS und YAML")}
+          ><input type="checkbox" .checked=${this.advanced} @change=${(e: Event) => this.setAdvanced((e.target as HTMLInputElement).checked)} />${t("Erweitert")}</label
+        >
+        <button class="icon" title=${t("Rückgängig (⌘Z)")} ?disabled=${!this.canUndo} @click=${() => this.undo()}>↶</button>
+        <button class="icon" title=${t("Wiederholen (⇧⌘Z)")} ?disabled=${!this.canRedo} @click=${() => this.redo()}>↷</button>
         <button class="ghost" ?disabled=${!this.dirty} @click=${() => this.load()}>${t("Verwerfen")}</button>
         <button class="primary" ?disabled=${!this.dirty || this.saving} @click=${() => this.save()}>
           ${this.saving ? t("Speichert …") : this.dirty ? t("Speichern") : t("Gespeichert")}
         </button>
       </div>
-      ${this.view === "overview" ? this.renderOverview() : this.renderDisplay()}
+      ${this.view === "overview" ? this.renderOverview() : this.view === "page" ? this.renderPageView() : this.renderDisplay()}
+      ${this.renderWizard()}
     </div>`;
   }
 
@@ -1589,7 +2151,174 @@ export class AmbiframeStudio extends LitElement {
         grid-template-columns: auto 1fr;
       }
     }
+    /* Hinweis oben (gespeichert, kopiert, Fehler) */
+    .note {
+      font-size: 13px;
+      padding: 5px 12px;
+      border-radius: 999px;
+      cursor: pointer;
+      max-width: 46vw;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .note.ok {
+      background: color-mix(in srgb, #4caf50 18%, transparent);
+    }
+    .note.error {
+      background: color-mix(in srgb, #f44336 20%, transparent);
+    }
+    .rel {
+      position: relative;
+    }
+    .health {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+    }
+    .health .ic,
+    .healthpanel .ic {
+      width: 16px;
+      height: 16px;
+      flex: none;
+    }
+    .health.bad {
+      color: var(--error-color, #e57373);
+    }
+    .health.warn {
+      color: var(--warning-color, #ffb74d);
+    }
+    .health.ok .ic {
+      color: var(--success-color, #81c784);
+    }
+    .healthpanel {
+      position: absolute;
+      z-index: 20;
+      top: calc(100% + 8px);
+      right: 0;
+      width: min(520px, calc(100vw - 24px));
+      max-height: 70vh;
+      overflow: auto;
+      padding: 14px 16px;
+      border-radius: 14px;
+      background: var(--s-card);
+      border: 1px solid var(--s-line);
+      box-shadow: 0 18px 60px rgba(0, 0, 0, 0.4);
+    }
+    .hhead {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .healthpanel ul {
+      list-style: none;
+      margin: 10px 0 0;
+      padding: 0;
+    }
+    .healthpanel li {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 0;
+      border-top: 1px solid var(--s-line);
+      font-size: 14px;
+    }
+    .healthpanel li.error .ic {
+      color: var(--error-color, #e57373);
+    }
+    .healthpanel li.warn .ic {
+      color: var(--warning-color, #ffb74d);
+    }
+    .htext {
+      flex: 1;
+      min-width: 0;
+      overflow-wrap: anywhere;
+    }
+    /* Geräte unter einer Display-Karte */
+    .devices {
+      list-style: none;
+      margin: 0;
+      padding: 8px 14px 12px;
+      display: grid;
+      gap: 4px;
+      font-size: 12.5px;
+    }
+    .devices li {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      min-width: 0;
+    }
+    .devices .muted {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .devices .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex: none;
+      background: var(--s-mute);
+    }
+    .devices .dot.on {
+      background: #4caf50;
+    }
+    /* Eigene Stile, YAML */
+    .presets {
+      display: grid;
+      gap: 6px;
+      margin-bottom: 8px;
+    }
+    .preset,
+    .preset-new {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    .preset span {
+      flex: 1;
+    }
+    .preset-new input {
+      flex: 1;
+    }
+    textarea.code {
+      width: 100%;
+      font: 12.5px/1.5 ui-monospace, Menlo, monospace;
+      color: var(--s-ink);
+      background: color-mix(in srgb, var(--s-ink) 5%, transparent);
+      border: 1px solid var(--s-line);
+      border-radius: 10px;
+      padding: 10px 12px;
+    }
+    textarea.code.yaml {
+      min-height: 55vh;
+    }
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    /* Wiedergabeliste: eigene Bedingung unter dem Eintrag */
+    .playlist li .cond {
+      grid-column: 1 / -1;
+      cursor: default;
+    }
+    /* Seiteneditor im Studio */
+    .pageview {
+      flex: 1;
+      min-height: 0;
+      overflow: auto;
+      padding: 12px 18px 40px;
+    }
+    .pagehead {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 12px;
+    }
   `;
 }
 
-customElements.define("ambiframe-studio", AmbiframeStudio);
+define("ambiframe-studio", AmbiframeStudio);

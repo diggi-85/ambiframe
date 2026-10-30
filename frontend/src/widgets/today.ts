@@ -88,8 +88,10 @@ class AfToday extends AfTickingWidget {
         border-bottom: 0;
       }
       .ev .when {
-        width: calc(78px * var(--af-fs, 1));
+        /* Breit genug für „ganztags“ – Stile mit breiter Schrift (Terminal) setzen --af-time-col */
+        width: var(--af-time-col, calc(78px * var(--af-fs, 1)));
         flex: none;
+        white-space: nowrap;
         font-size: calc(19px * var(--af-fs, 1));
         color: var(--af-ink-2);
       }

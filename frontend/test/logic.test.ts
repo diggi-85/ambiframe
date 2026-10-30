@@ -7,6 +7,8 @@ import type { AmbiframeConfig, Condition, EventConfig, Hass, HassEntity, WidgetC
 import { batteryOverview, checkCondition, checkConditions, effectiveConfig } from "../src/util";
 import { PROFILES, profilePlaylist } from "../src/editor/profiles";
 import { checkHealth } from "../src/editor/health";
+import { PhotoProvider, placeholderOf } from "../src/data";
+import { THEMES, digitFace, easter, seasonTheme } from "../src/styles";
 
 const ent = (entity_id: string, state: string, attributes: Record<string, unknown> = {}, changedMinutesAgo = 0): HassEntity => {
   const t = new Date(Date.now() - changedMinutesAgo * 60e3).toISOString();
@@ -284,5 +286,72 @@ describe("Feines Raster", () => {
     const a = cellRect(g, { x: 1, y: 0, w: 1, h: 1 }).left;
     const b = cellRect(g, { x: 2, y: 0, w: 1, h: 1 }).left;
     expect(cellRect(g, { x: 1.5, y: 0, w: 1, h: 1 }).left).toBeCloseTo((a + b) / 2);
+  });
+});
+
+describe("Fotoquellen", () => {
+  it("nimmt eigene Fotos und Alben, Platzhalter nur ersatzweise oder untergemischt", async () => {
+    const calls: string[] = [];
+    const hass = {
+      callWS: async (msg: { type: string; source?: string; url?: string }) => {
+        calls.push(msg.source ? `${msg.type}:${msg.source}` : msg.type);
+        if (msg.type === "ambiframe/photos/google") return [{ url: "https://lh3/g1", credit: "" }];
+        if (msg.type === "ambiframe/photos/placeholder") return [{ url: "/ambiframe_static/photos/beispiel-01.jpg", credit: "" }];
+        return { children: [] };
+      },
+    } as unknown as Hass;
+    let photos: Partial<AmbiframeConfig["photos"]> = { folder: "media-source://x", google: "https://photos.app.goo.gl/a", placeholder: "samples", credit: true };
+    const provider = new PhotoProvider(() => hass, () => photos as AmbiframeConfig["photos"]);
+    expect((await provider.next())?.url).toBe("https://lh3/g1");
+    // Album liefert Fotos → keine Platzhalter
+    expect(calls).not.toContain("ambiframe/photos/placeholder:samples");
+    photos = { ...photos, placeholder_mix: true };
+    provider.reload();
+    await provider.next();
+    expect(calls).toContain("ambiframe/photos/placeholder:samples");
+    // ältere Konfigurationen: nur Bing an/aus
+    expect(placeholderOf({ bing: true })).toBe("bing");
+    expect(placeholderOf({ bing: false })).toBe("none");
+    expect(placeholderOf({ bing: true, placeholder: "art" })).toBe("art");
+  });
+});
+
+describe("Jahreszeiten", () => {
+  const at = (y: number, m: number, d: number) => seasonTheme(new Date(y, m - 1, d));
+  it("berechnet Ostern und wählt Anlässe vor der Jahreszeit", () => {
+    expect(easter(2026).toDateString()).toBe(new Date(2026, 3, 5).toDateString());
+    expect(easter(2027).toDateString()).toBe(new Date(2027, 2, 28).toDateString());
+    expect(at(2026, 12, 24)).toBe("saison-weihnachten");
+    expect(at(2026, 12, 31)).toBe("saison-silvester");
+    expect(at(2027, 1, 1)).toBe("saison-silvester");
+    expect(at(2027, 1, 2)).toBe("saison-winter");
+    expect(at(2027, 2, 14)).toBe("saison-valentin");
+    expect(at(2026, 3, 29)).toBe("saison-ostern");
+    expect(at(2026, 4, 6)).toBe("saison-ostern");
+    expect(at(2026, 4, 7)).toBe("saison-fruehling");
+    expect(at(2026, 7, 15)).toBe("saison-sommer");
+    expect(at(2026, 10, 23)).toBe("saison-herbst");
+    expect(at(2026, 10, 31)).toBe("saison-halloween");
+    // Jahreszeiten-Fassungen tauchen in keiner Auswahl auf
+    expect(THEMES.some((t) => t.id.startsWith("saison-"))).toBe(false);
+    expect(THEMES.some((t) => t.id === "saisonal")).toBe(true);
+  });
+});
+
+describe("Tastenkürzel", () => {
+  it("zeigt auf Windows/Linux Strg und Umschalt statt ⌘ und ⇧", async () => {
+    const { keys } = await import("../src/i18n");
+    expect(keys("Rückgängig (⌘Z)", true, "de")).toBe("Rückgängig (⌘Z)");
+    expect(keys("Rückgängig (⌘Z)", false, "de")).toBe("Rückgängig (Strg+Z)");
+    expect(keys("Redo (⇧⌘Z)", false, "en")).toBe("Redo (Ctrl+Shift+Z)");
+    expect(keys("⇧/⌘-Klick wählt mehrere", false, "de")).toBe("Umschalt/Strg-Klick wählt mehrere");
+  });
+});
+
+describe("Zahlen in der Titelschrift", () => {
+  it("nimmt die Ziffern aus der Titelschrift des Stils, bei Systemschriften nichts", () => {
+    expect(digitFace('"Ambiframe Fraunces", Georgia, serif')).toBe('"Ambiframe Fraunces Ziffern"');
+    expect(digitFace("ui-monospace, monospace")).toBe("");
+    expect(digitFace(undefined)).toBe("");
   });
 });

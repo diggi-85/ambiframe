@@ -5,7 +5,7 @@ import { PALETTES, THEMES } from "../styles";
 import { WEBCAM_PRESETS } from "../widgets/media";
 import { NEWS_PRESETS, defaultFeeds } from "../widgets/news";
 import { PIXEL_ICONS } from "../widgets/pixel";
-import type { EventConfig, Hass, PageConfig, AmbiframeConfig, WidgetConfig } from "../types";
+import type { EventConfig, Hass, PageConfig, AmbiframeConfig, PlaceholderSource, WidgetConfig } from "../types";
 import { SOUNDS } from "../sound";
 import { formContext, type Field } from "./form";
 
@@ -925,6 +925,31 @@ export const WIDGET_LOOK_FIELDS: Field[] = [
     options: [[undefined, "automatisch (wie der Stil)"], [true, "ja"], [false, "nein"]],
     help: "Fläche, Rand und Radius des Stils. Kachel-Stile (Kacheln, Tonal, Cockpit) zeigen Widgets automatisch als Karte.",
   },
+  { key: "look.bg", label: "Kartenfarbe", type: "color", when: (v) => v.look?.card !== false },
+  { key: "look.bg_opacity", label: "Karten-Deckkraft (%)", type: "number", min: 0, max: 100, step: 5, placeholder: "100", when: (v) => v.look?.card !== false },
+  { key: "look.radius", label: "Eckenradius (px)", type: "number", min: 0, max: 120, placeholder: "wie der Stil", when: (v) => v.look?.card !== false },
+  {
+    key: "look.border",
+    label: "Rahmen",
+    type: "select",
+    options: [[undefined, "wie der Stil"], ["none", "keiner"], ["line", "dünne Linie"], ["accent", "in Akzentfarbe"]],
+    when: (v) => v.look?.card !== false,
+  },
+  {
+    key: "look.glass",
+    label: "Glas",
+    type: "select",
+    options: [[undefined, "wie der Stil"], [true, "an – Hintergrund verschwimmt"], [false, "aus"]],
+    when: (v) => v.look?.card !== false,
+  },
+  {
+    key: "look.shadow",
+    label: "Schatten",
+    type: "select",
+    options: [[undefined, "wie der Stil"], ["none", "keiner"], ["soft", "weich"], ["strong", "kräftig"]],
+    when: (v) => v.look?.card !== false,
+  },
+  { key: "look.label", label: "Überschrift zeigen", type: "boolean", default: true },
   { key: "look.accent", label: "Akzentfarbe", type: "color" },
   { key: "look.ink", label: "Schriftfarbe", type: "color" },
   { key: "look.size", label: "Größe (%)", type: "number", min: 50, max: 200, step: 5, placeholder: "100" },
@@ -944,8 +969,19 @@ export const colorFields = (mode: "dark" | "light"): Field[] => [
   { key: `design.colors.${mode}.cold`, label: "Kühl (blau)", type: "color" },
 ];
 
+/** Karten aller Widgets (design.card_style) */
+const CARD_STYLE_OPTIONS: [string | undefined, string][] = [
+  [undefined, "wie der Stil"],
+  ["solid", "gefüllt"],
+  ["glass", "Glas"],
+  ["outline", "nur Umriss"],
+  ["none", "ohne Fläche"],
+];
+
 export const SHAPE_FIELDS: Field[] = [
   { key: "design.radius", label: "Eckenradius der Karten (px)", type: "number", min: 0, max: 80, placeholder: "wie Stil" },
+  { key: "design.card_style", label: "Karten", type: "select", options: CARD_STYLE_OPTIONS },
+  { key: "design.gap", label: "Abstand der Kacheln (px)", type: "number", min: 0, max: 64, placeholder: "16" },
   {
     key: "design.css",
     label: "Eigenes CSS (alle Displays)",
@@ -963,7 +999,7 @@ export const ACTION_FORM: Field[] = [
 export const ALIGN_FIELDS: Field[] = [
   { key: "align", label: "Waagerecht", type: "select", options: [[undefined, "links"], ["center", "mittig"], ["end", "rechts"]] },
   { key: "valign", label: "Senkrecht", type: "select", options: [[undefined, "oben"], ["center", "mittig"], ["end", "unten"]] },
-  { key: "typeface", label: "Schrift", type: "select", options: [[undefined, "wie Design"], ...FONT_OPTIONS.slice(1)] },
+  { key: "typeface", label: "Schrift", type: "select", options: [[undefined, "wie das Display"], ...FONT_OPTIONS.slice(1)] },
 ];
 
 export const PAGE_FIELDS: Field[] = [
@@ -1023,16 +1059,16 @@ export const PAGE_FIELDS: Field[] = [
     help: "Dunkler Verlauf unten links, damit Uhr und Text auf hellen Bildern lesbar bleiben.",
     when: (v) => v.background?.type === "photo" || v.background?.type === "camera",
   },
-  { key: "palette", label: "Farben", type: "select", options: [["normal", "Normal"], ["night", "Nacht (gedimmt)"]] },
+  { key: "palette", label: "Helligkeit", type: "select", options: [["normal", "normal"], ["night", "gedimmt (wie nachts)"]] },
   {
     key: "background.ambient",
     label: "Animation",
     type: "select",
-    options: [[undefined, "wie Design"], ...AMBIENT_OPTIONS],
+    options: [[undefined, "wie das Display"], ...AMBIENT_OPTIONS],
     when: (v) => v.palette !== "night",
   },
-  { key: "transition.type", label: "Übergang", type: "select", options: [[undefined, "wie Design"], ...TRANSITION_OPTIONS], advanced: true },
-  { key: "transition.duration", label: "Übergang (s)", type: "number", min: 0.2, max: 10, step: 0.1, placeholder: "wie Design", advanced: true },
+  { key: "transition.type", label: "Übergang", type: "select", options: [[undefined, "wie das Display"], ...TRANSITION_OPTIONS], advanced: true },
+  { key: "transition.duration", label: "Übergang (s)", type: "number", min: 0.2, max: 10, step: 0.1, placeholder: "wie das Display", advanced: true },
   { key: "show_if", label: "Nur anzeigen wenn …", type: "conditions" },
   {
     key: "css",
@@ -1225,7 +1261,7 @@ export const eventFields = (config: AmbiframeConfig): Field[] => [
     placeholder: "kein Ton",
     // Eigene Töne aus der Tonbibliothek zuerst, dann die mitgelieferten
     suggestions: [...(config.sounds ?? []).map((s) => [s.id, `${s.name} · ${t("eigener Ton")}`] as [string, string]), ...SOUNDS],
-    help: "Klick ins Feld für eigene und mitgelieferte Töne – oder ein Link (/local/ton.mp3, media-source://…). Eigene Töne legst du links unter „Eigene Töne“ an.",
+    help: "Klick ins Feld für eigene und mitgelieferte Töne – oder ein Link (/local/ton.mp3, media-source://…). Eigene Töne legst du unter „Eigene Töne“ an – im Studio unter den Momenten, im Experten-Editor links bei den Ereignissen.",
     when: (v) => v.kind !== "media",
   },
   {
@@ -1254,7 +1290,7 @@ export const eventFields = (config: AmbiframeConfig): Field[] => [
     when: (v) => !!v.sound && v.kind !== "media" && !!v.sound_repeat && v.sound_repeat !== "once",
   },
   { key: "volume", label: "Lautstärke (%)", type: "number", min: 5, max: 100, placeholder: "70", when: (v) => !!v.sound && v.kind !== "media", help: "Nur im Browser – Fully nutzt die Medienlautstärke des Tablets." },
-  { key: "quiet.after", label: "Ruhezeit ab", type: "text", placeholder: "22:00" },
+  { key: "quiet.after", label: "Ruhezeit ab", type: "text", placeholder: "22:00", help: "Nur für diesen Moment – zusätzlich zur Ruhezeit des Displays (Technik → Töne)." },
   { key: "quiet.before", label: "Ruhezeit bis", type: "text", placeholder: "07:00" },
   {
     key: "quiet_action",
@@ -1276,17 +1312,17 @@ export const displayFields = (config: AmbiframeConfig): Field[] => [
     key: "theme",
     label: "Stil",
     type: "select",
-    options: [[undefined, "wie Design"], ...THEMES.map((t) => [t.id, t.name] as [string, string])],
+    options: [[undefined, "wie alle Displays"], ...THEMES.map((t) => [t.id, t.name] as [string, string])],
   },
-  { key: "mode", label: "Hell/Dunkel", type: "select", options: [[undefined, "wie Design"], ...MODE_OPTIONS] },
+  { key: "mode", label: "Hell/Dunkel", type: "select", options: [[undefined, "wie alle Displays"], ...MODE_OPTIONS] },
   {
     key: "orientation",
     label: "Ausrichtung",
     type: "select",
     options: [[undefined, "Automatisch (nach Gerät, auch beim Drehen)"], ["landscape", "Immer quer"], ["portrait", "Immer hoch"]],
   },
-  { key: "transition.type", label: "Übergang", type: "select", options: [[undefined, "wie Design"], ...TRANSITION_OPTIONS], advanced: true },
-  { key: "transition.duration", label: "Übergang (s)", type: "number", min: 0.2, max: 10, step: 0.1, placeholder: "wie Design", advanced: true },
+  { key: "transition.type", label: "Übergang", type: "select", options: [[undefined, "wie alle Displays"], ...TRANSITION_OPTIONS], advanced: true },
+  { key: "transition.duration", label: "Übergang (s)", type: "number", min: 0.2, max: 10, step: 0.1, placeholder: "wie alle Displays", advanced: true },
   { key: "night.entity", label: "Nacht, wenn an", type: "entity", domains: ["input_boolean", "binary_sensor", "switch", "schedule"] },
   { key: "night.page", label: "Nachtseite", type: "select", options: [[undefined, "eingebaut"], ...config.pages.map((p) => [p.id, p.name] as [string, string])] },
   { key: "control.enabled", label: "Bedienmodus", type: "boolean", default: true },
@@ -1309,7 +1345,7 @@ export const displayFields = (config: AmbiframeConfig): Field[] => [
     help: "Bildschirmschoner: Fully zeigt das Dashboard, nach der Wartezeit ohne Berührung erscheint Ambiframe. Klingel und Kamera holen Ambiframe sofort nach vorn. Fully wird automatisch umgestellt.",
     when: (v) => v.control?.enabled !== false,
   },
-  { key: "control.dashboard", label: "Dashboard", type: "text", placeholder: "/lovelace/0", when: (v) => v.control?.enabled !== false },
+  { key: "control.dashboard", label: "Dashboard", type: "text", placeholder: "/lovelace/0", help: "Erscheint beim Antippen des Displays.", when: (v) => v.control?.enabled !== false },
   {
     key: "control.idle",
     label: "Zurück nach (s)",
@@ -1326,7 +1362,7 @@ export const displayFields = (config: AmbiframeConfig): Field[] => [
     domains: ["button", "input_button"],
     help: "Wird gedrückt, wenn sich das Display nicht mehr meldet – z. B. Fully „Start-URL laden“.",
   },
-  { key: "watchdog.after", label: "Neustart nach (s)", type: "number", min: 60, placeholder: "120", when: (v) => !!v.watchdog?.button },
+  { key: "watchdog.after", label: "Neustart nach (s)", type: "number", min: 60, placeholder: "120", help: "So lange ohne Lebenszeichen, dann wird die Neustart-Taste gedrückt.", when: (v) => !!v.watchdog?.button },
   {
     key: "watchdog.notify",
     label: "Melden, wenn offline (Minuten)",
@@ -1387,7 +1423,7 @@ export const displayFields = (config: AmbiframeConfig): Field[] => [
     label: "Textgröße",
     type: "select",
     options: [
-      [undefined, "wie Design"],
+      [undefined, "wie alle Displays"],
       ["normal", "normal"],
       ["large", "groß (+15 %)"],
       ["xlarge", "sehr groß (+30 %)"],
@@ -1398,7 +1434,7 @@ export const displayFields = (config: AmbiframeConfig): Field[] => [
     label: "Kontrast",
     type: "select",
     options: [
-      [undefined, "wie Design"],
+      [undefined, "wie alle Displays"],
       ["normal", "normal"],
       ["high", "hoch"],
     ],
@@ -1407,33 +1443,34 @@ export const displayFields = (config: AmbiframeConfig): Field[] => [
 
 /** Display: eigenes Design – leer = wie Design */
 export const DISPLAY_DESIGN_FIELDS: Field[] = [
-  { key: "design.accent", label: "Akzentfarbe", type: "color", help: "Leer = wie Design" },
+  { key: "design.accent", label: "Akzentfarbe", type: "color", help: "Leer = wie alle Displays" },
   {
     key: "design.palette",
     label: "Farbpalette",
     type: "select",
-    options: [[undefined, "wie Design"], ...Object.entries(PALETTES).map(([id, p]): [string, string] => [id, p.name]), ["tagesverlauf", "Tagesverlauf"]],
+    options: [[undefined, "wie alle Displays"], ...Object.entries(PALETTES).map(([id, p]): [string, string] => [id, p.name]), ["tagesverlauf", "Tagesverlauf"]],
   },
-  { key: "design.fonts.display", label: "Schrift Uhr & Titel", type: "select", options: [[undefined, "wie Design"], ...FONT_OPTIONS.slice(1)] },
-  { key: "design.fonts.text", label: "Schrift Text", type: "select", options: [[undefined, "wie Design"], ...FONT_OPTIONS.slice(1)] },
-  { key: "design.ambient.type", label: "Animation", type: "select", options: [[undefined, "wie Design"], ...AMBIENT_OPTIONS] },
-  { key: "design.cover_colors", label: "Farben passend zum Cover", type: "select", options: [[undefined, "wie Design"], [true, "an"], [false, "aus"]] },
+  { key: "design.fonts.display", label: "Schrift Uhr & Titel", type: "select", options: [[undefined, "wie alle Displays"], ...FONT_OPTIONS.slice(1)] },
+  { key: "design.fonts.text", label: "Schrift Text", type: "select", options: [[undefined, "wie alle Displays"], ...FONT_OPTIONS.slice(1)] },
+  { key: "design.ambient.type", label: "Animation", type: "select", options: [[undefined, "wie alle Displays"], ...AMBIENT_OPTIONS] },
+  { key: "design.cover_colors", label: "Farben passend zum Cover", type: "select", options: [[undefined, "wie alle Displays"], [true, "an"], [false, "aus"]] },
   {
     key: "design.evening",
     label: "Abendstimmung",
     type: "select",
     options: [
-      [undefined, "wie Design"],
-      ["sun", "dunkel: nach Sonnenuntergang wärmer"],
+      [undefined, "wie alle Displays"],
+      ["sun", "an: nach Sonnenuntergang wärmere Farben"],
       ["off", "aus"],
     ],
+    help: "Wirkt nur im dunklen Modus.",
   },
   {
     key: "design.language",
     label: "Sprache",
     type: "select",
     options: [
-      [undefined, "wie Design"],
+      [undefined, "wie alle Displays"],
       ["auto", "automatisch (wie der HA-Benutzer)"],
       ["de", "Deutsch"],
       ["en", "English"],
@@ -1441,7 +1478,9 @@ export const DISPLAY_DESIGN_FIELDS: Field[] = [
       ["fr", "Français"],
     ],
   },
-  { key: "design.radius", label: "Eckenradius der Karten (px)", type: "number", min: 0, max: 80, placeholder: "wie Design", advanced: true },
+  { key: "design.radius", label: "Eckenradius der Karten (px)", type: "number", min: 0, max: 80, placeholder: "wie alle Displays", advanced: true },
+  { key: "design.card_style", label: "Karten", type: "select", options: [[undefined, "wie alle Displays"], ...CARD_STYLE_OPTIONS.slice(1)] },
+  { key: "design.gap", label: "Abstand der Kacheln (px)", type: "number", min: 0, max: 64, placeholder: "wie alle Displays" },
   {
     key: "design.css",
     label: "Eigenes CSS (nur dieses Display)",
@@ -1479,7 +1518,7 @@ export const DISPLAY_STREAM_FIELDS: Field[] = [
     help: "Legt den Schalter „Auf dem Fernseher“ an – schickt das Display per AirPlay aufs Apple TV",
     when: (v) => !!v.stream?.enabled,
   },
-  { key: "stream.interval", label: "Neues Bild alle (s)", type: "number", min: 0.2, max: 60, step: 0.1, placeholder: "0.2", when: (v) => !!v.stream?.enabled, advanced: true },
+  { key: "stream.interval", label: "Neues Bild alle (s)", type: "number", min: 0.2, max: 60, step: 0.1, placeholder: "0.2", help: "0,2 = flüssig; höher entlastet einen langsamen Home-Assistant-Rechner.", when: (v) => !!v.stream?.enabled, advanced: true },
   {
     key: "stream.renderer",
     label: "Puppet-Adresse",
@@ -1504,30 +1543,33 @@ export const DISPLAY_SOUND_FIELDS: Field[] = [
     help: "Skaliert die Lautstärke der Ereignisse; in Fully die Medienlautstärke des Tablets",
     when: (v) => !v.sound?.mute,
   },
-  { key: "sound.quiet.after", label: "Ruhezeit ab", type: "text", placeholder: "22:00", when: (v) => !v.sound?.mute },
+  { key: "sound.quiet.after", label: "Ruhezeit ab", type: "text", placeholder: "22:00", help: "In dieser Zeit spielt dieses Display keine Töne – Momente erscheinen trotzdem.", when: (v) => !v.sound?.mute },
   { key: "sound.quiet.before", label: "Ruhezeit bis", type: "text", placeholder: "07:00", when: (v) => !v.sound?.mute },
+];
+
+/** Platzhalter-Bilder, solange keine eigenen Fotos da sind */
+export const PLACEHOLDER_OPTIONS: [PlaceholderSource, string][] = [
+  ["samples", "Beispielfotos (ab Werk, auch offline)"],
+  ["wikimedia", "Wikimedia – Bild des Tages"],
+  ["art", "Kunst – gemeinfreie Gemälde"],
+  ["nasa", "Weltall – NASA"],
+  ["picsum", "Zufallsfotos – Lorem Picsum"],
+  ["bing", "Bing – Bild des Tages"],
+  ["none", "keine"],
 ];
 
 /** Display: eigene Fotoquelle – leer = wie Design */
 export const DISPLAY_PHOTO_FIELDS: Field[] = [
-  { key: "photos.folder", label: "Fotoordner", type: "text", placeholder: "wie Design", help: "Z. B. media-source://media_source/local/kueche" },
-  { key: "photos.icloud", label: "iCloud-Album", type: "text", placeholder: "wie Design" },
+  { key: "photos.folder", label: "Fotos aus Home Assistant", type: "text", placeholder: "wie alle Displays", help: "Z. B. media-source://media_source/local/kueche" },
+  { key: "photos.icloud", label: "iCloud-Album", type: "text", placeholder: "wie alle Displays" },
+  { key: "photos.google", label: "Google-Fotos-Album", type: "text", placeholder: "wie alle Displays" },
+  { key: "photos.placeholder", label: "Platzhalter-Bilder", type: "select", options: [[undefined, "wie alle Displays"], ...PLACEHOLDER_OPTIONS] },
   {
-    key: "photos.bing",
-    label: "Bing-Bilder",
+    key: "photos.placeholder_mix",
+    label: "Platzhalter untermischen",
     type: "select",
     options: [
-      [undefined, "wie Design"],
-      [true, "ja"],
-      [false, "nein"],
-    ],
-  },
-  {
-    key: "photos.bing_mix",
-    label: "Bing-Bilder untermischen",
-    type: "select",
-    options: [
-      [undefined, "wie Design"],
+      [undefined, "wie alle Displays"],
       [true, "ja"],
       [false, "nein – nur, wenn nichts Eigenes da ist"],
     ],
@@ -1580,7 +1622,14 @@ export const LOOK_FIELDS: Field[] = [
       ["high", "hoch (gedämpfte Schrift kräftiger)"],
     ],
   },
-  { key: "design.evening", label: "Abendstimmung", type: "select", options: [["sun", "dunkel: nach Sonnenuntergang wärmer"], ["off", "aus"]] },
+  {
+    key: "design.evening",
+    label: "Abendstimmung",
+    type: "select",
+    options: [["sun", "an: nach Sonnenuntergang wärmere Farben"], ["off", "aus"]],
+    help: "Wirkt nur im dunklen Modus.",
+    when: (v) => v.design?.mode !== "light",
+  },
 ];
 
 /** Design-Reiter, Abschnitt „KI-Zusammenfassung“ */
@@ -1624,7 +1673,13 @@ export const MOTION_FIELDS: Field[] = [
 ];
 
 export const DESIGN_FIELDS: Field[] = [
-  { key: "photos.folder", label: "Fotoordner", type: "text", help: "HA → Medien → Lokale Medien → Ordner „ambiframe“" },
+  {
+    key: "photos.folder",
+    label: "Fotos aus Home Assistant",
+    type: "text",
+    placeholder: "media-source://media_source/local/ambiframe",
+    help: "Ordner oder Album aus HA → Medien – auch Immich, Synology Photos & Co., wenn sie in HA eingebunden sind.",
+  },
   {
     key: "photos.icloud",
     label: "iCloud-Album",
@@ -1632,8 +1687,21 @@ export const DESIGN_FIELDS: Field[] = [
     placeholder: "https://photos.icloud.com/shared/album/…",
     help: "Fotos-App → Album teilen → „Öffentliche Website“ an → Link kopieren. Wird mit dem Ordner gemischt.",
   },
-  { key: "photos.bing", label: "Bing-Bilder", type: "boolean", help: "Wenn Ordner und Album leer sind" },
-  { key: "photos.bing_mix", label: "Bing-Bilder untermischen", type: "boolean", help: "Bing-Bilder des Tages auch zwischen die eigenen Fotos", when: (v) => v.photos?.bing !== false },
+  {
+    key: "photos.google",
+    label: "Google-Fotos-Album",
+    type: "text",
+    placeholder: "https://photos.app.goo.gl/…",
+    help: "Album → Teilen → Link erstellen. Inoffiziell (Google bietet dafür keine Schnittstelle mehr) und bis etwa 300 Fotos.",
+  },
+  { key: "photos.placeholder", label: "Platzhalter-Bilder", type: "select", options: PLACEHOLDER_OPTIONS, help: "Solange keine eigenen Fotos da sind." },
+  {
+    key: "photos.placeholder_mix",
+    label: "Platzhalter untermischen",
+    type: "boolean",
+    help: "Auch zwischen die eigenen Fotos",
+    when: (v) => (v.photos?.placeholder ?? "bing") !== "none",
+  },
   {
     key: "photos.bing_market",
     label: "Bing-Region",
@@ -1657,10 +1725,10 @@ export const DESIGN_FIELDS: Field[] = [
       ["pt-BR", "Brasil"],
     ],
     help: "Bilder und Bildunterschriften der Bing-Bilder des Tages",
-    when: (v) => v.photos?.bing !== false,
+    when: (v) => (v.photos?.placeholder ?? "bing") === "bing",
     advanced: true,
   },
-  { key: "photos.credit", label: "Bildunterschrift", type: "boolean" },
+  { key: "photos.credit", label: "Bildunterschrift", type: "boolean", help: "Ort oder Titel und Urheber, soweit die Quelle sie liefert" },
 ];
 
 /* ───────── Vorlagen und Standardwerte ───────── */

@@ -1,5 +1,6 @@
 // Gesundheitscheck für den Editor: Was fehlt, was hängt, was wird nie gezeigt?
 // Reine Logik – der Editor zeigt die Liste und springt mit „Zeigen“ an die richtige Stelle.
+import { placeholderOf } from "../data";
 import { t } from "../i18n";
 import type { AmbiframeConfig, Hass } from "../types";
 
@@ -150,8 +151,8 @@ export const checkHealth = (
   const photoPage = config.pages.some((p) => p.background.type === "photo" && used.has(p.id));
   if (photoPage && photos) {
     const total = (photos.folder ?? 0) + (photos.icloud ?? 0);
-    if (!total && !config.photos.bing) {
-      issues.push({ level: "error", text: t("Der Bilderrahmen hat keine Fotos (Ordner und Album leer, Bing aus)"), go: { tab: "design" } });
+    if (!total && !config.photos.google && placeholderOf(config.photos) === "none") {
+      issues.push({ level: "error", text: t("Der Bilderrahmen hat keine Fotos (eigene Quellen leer, keine Platzhalter)"), go: { tab: "design" } });
     } else if (config.photos.folder && photos.folder === 0) {
       issues.push({ level: "warn", text: t("Der Fotoordner ist leer oder fehlt"), go: { tab: "design" } });
     }

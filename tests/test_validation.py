@@ -261,6 +261,8 @@ def test_display_own_design_sound_and_photos() -> None:
     )
     display = validate_config(config)["displays"][0]
     assert display["sound"]["volume"] == 40
+    # „bing: false“ (bis 0.6) wird zur Platzhalter-Wahl „keine“
+    assert display["photos"]["placeholder"] == "none" and "bing" not in display["photos"]
     assert display["design"]["ambient"]["type"] == "mist"
     bad = minimal_config()
     bad["displays"][0]["sound"] = {"quiet": {"after": "25:00"}}
@@ -450,3 +452,38 @@ def test_palettes_effects_and_transitions() -> None:
     assert validate_config(minimal_config(events=[event]))["events"][0]["effect"] == "confetti"
     with pytest.raises(vol.Invalid):
         validate_config(minimal_config(design={"palette": "regenbogen"}))
+
+
+def test_placeholder_sources_and_migration() -> None:
+    """Platzhalter-Quelle statt Bing an/aus; ältere Konfigurationen behalten Bing, Google-Album nur als Freigabe-Link."""
+    old = validate_config(minimal_config(photos={"folder": "media-source://media_source/local/x", "bing": True, "bing_mix": True}))
+    assert old["photos"]["placeholder"] == "bing" and old["photos"]["placeholder_mix"] is True
+    assert validate_config(minimal_config(photos={"folder": "x"}))["photos"]["placeholder"] == "bing"
+    assert validate_config(minimal_config(photos={"folder": "x", "bing": False}))["photos"]["placeholder"] == "none"
+    for source in ("samples", "wikimedia", "art", "nasa", "picsum"):
+        assert validate_config(minimal_config(photos={"placeholder": source}))["photos"]["placeholder"] == source
+    out = validate_config(minimal_config(photos={"google": "https://photos.app.goo.gl/AbCdEf123"}))
+    assert out["photos"]["google"].startswith("https://photos.app.goo.gl/")
+    # Display ohne Angabe bleibt „wie alle Displays“
+    assert "placeholder" not in validate_config(minimal_config())["displays"][0].get("photos", {})
+    with pytest.raises(vol.Invalid):
+        validate_config(minimal_config(photos={"placeholder": "flickr"}))
+    with pytest.raises(vol.Invalid):
+        validate_config(minimal_config(photos={"google": "https://example.com/album"}))
+
+
+def test_tile_look_card_style_and_gap() -> None:
+    """Kachel-Stil pro Widget, Kartenstil und Abstand global und pro Display."""
+    config = minimal_config(design={"card_style": "glass", "gap": 24})
+    config["displays"][0]["design"] = {"card_style": "outline", "gap": 8}
+    look = {"card": True, "bg": "#112233", "bg_opacity": 60, "radius": 0, "border": "accent", "glass": False, "shadow": "strong", "label": False}
+    config["pages"][0]["widgets"] = [{"id": "w", "type": "text", "x": 0, "y": 0, "w": 2, "h": 1, "options": {}, "look": look}]
+    out = validate_config(config)
+    assert out["design"]["card_style"] == "glass" and out["displays"][0]["design"]["gap"] == 8
+    assert out["pages"][0]["widgets"][0]["look"]["border"] == "accent"
+    with pytest.raises(vol.Invalid):
+        validate_config(minimal_config(design={"card_style": "bubbles"}))
+    bad = minimal_config()
+    bad["pages"][0]["widgets"] = [{"id": "w", "type": "text", "x": 0, "y": 0, "w": 2, "h": 1, "options": {}, "look": {"shadow": "riesig"}}]
+    with pytest.raises(vol.Invalid):
+        validate_config(bad)

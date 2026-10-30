@@ -1,6 +1,6 @@
 // Design-Tokens: sieben Stile, jeder hell und dunkel, dazu Abend, Nacht, Fotos und gemeinsame Widget-Stile
 import { css, unsafeCSS } from "lit";
-import { fontStack } from "./fonts";
+import { digitFamily, fontStack } from "./fonts";
 import type { AmbientKind, ColorSet, Theme } from "./types";
 
 type Tokens = Record<string, string>;
@@ -15,6 +15,10 @@ interface ThemeDef {
   tiles?: boolean;
   /** Uhr und Abfahrten als Fallblatt-Anzeige */
   flap?: boolean;
+  /** Nur intern (Jahreszeiten) – nicht in der Auswahl */
+  hidden?: boolean;
+  /** Ganz ohne Bewegung (E-Ink): keine Animationen, Übergänge, Effekte, Farbverläufe */
+  still?: boolean;
   /** Schriften und Formen – gelten hell wie dunkel */
   shared: Tokens;
   dark: Tokens;
@@ -24,7 +28,8 @@ interface ThemeDef {
 const SERIF = fontStack("fraunces");
 const SANS = fontStack("inter");
 /** Schrift wie auf Desktops um 2001 (auf Tablets ohne Tahoma: Verdana oder Systemschrift) */
-const TAHOMA = 'Tahoma, Verdana, "Segoe UI", system-ui, sans-serif';
+// Tablets (Android, iPad) haben weder Tahoma noch Verdana – dann die mitgelieferte Inter statt einer Systemschrift
+const TAHOMA = `Tahoma, Verdana, "Segoe UI", ${fontStack("inter")}`;
 
 /** Grundwerte dunkel/hell („Ruhig“); die übrigen Stile überschreiben nur, was sie anders machen. */
 const DARK: Tokens = {
@@ -89,6 +94,123 @@ const RULED: Tokens = {
 
 const blobs = (a: string, b: string, c: string) =>
   `radial-gradient(60% 70% at 12% 18%, ${a}, transparent 62%), radial-gradient(55% 65% at 88% 26%, ${b}, transparent 62%), radial-gradient(75% 70% at 58% 100%, ${c}, transparent 64%)`;
+
+/** Schreibmaschinen-/Monitorschrift: auf jedem Gerät vorhanden */
+const MONO = 'ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, "Liberation Mono", monospace';
+
+/** Eine Jahreszeit oder ein Anlass für „Jahreszeiten“ – nicht einzeln wählbar */
+const season = (id: Theme, name: string, ambient: AmbientKind, dark: Tokens, light: Tokens): ThemeDef => ({
+  id,
+  name,
+  hint: "",
+  ambient,
+  hidden: true,
+  shared: { ...SHARED, "label-case": "none", "label-track": "0.02em", "label-weight": "600", "label-color": "var(--af-accent)" },
+  dark: { ...DARK, ...dark },
+  light: { ...LIGHT, ...light },
+});
+const ink = (rgb: string): Tokens => ({ ink: `rgb(${rgb})`, "ink-2": `rgba(${rgb}, 0.72)`, "ink-3": `rgba(${rgb}, 0.48)`, line: `rgba(${rgb}, 0.12)` });
+
+const SEASONS: ThemeDef[] = [
+  season(
+    "saison-weihnachten",
+    "Weihnachten",
+    "snow",
+    { bg: "#0f1d17", "bg-art": blobs("rgba(168, 50, 42, 0.32)", "rgba(212, 169, 79, 0.2)", "rgba(40, 110, 70, 0.32)"), ...ink("245, 239, 228"), accent: "#d4a94f", "accent-soft": "rgba(212, 169, 79, 0.15)", alert: "#d0574a" },
+    { bg: "#f6f1e7", "bg-art": blobs("rgba(190, 60, 50, 0.16)", "rgba(212, 169, 79, 0.2)", "rgba(60, 120, 80, 0.16)"), ...ink("35, 52, 43"), accent: "#a8322a", "accent-soft": "rgba(168, 50, 42, 0.12)" },
+  ),
+  season(
+    "saison-silvester",
+    "Silvester",
+    "fireworks",
+    { bg: "#08090f", "bg-art": blobs("rgba(120, 80, 200, 0.26)", "rgba(232, 198, 107, 0.18)", "rgba(40, 80, 180, 0.26)"), ...ink("244, 240, 230"), accent: "#e8c66b", "accent-soft": "rgba(232, 198, 107, 0.15)" },
+    { bg: "#f5f0e6", "bg-art": blobs("rgba(168, 129, 47, 0.18)", "rgba(120, 90, 180, 0.12)", "rgba(80, 110, 190, 0.12)"), ...ink("30, 28, 40"), accent: "#a8812f", "accent-soft": "rgba(168, 129, 47, 0.12)" },
+  ),
+  season(
+    "saison-valentin",
+    "Valentinstag",
+    "hearts",
+    { bg: "#1f0f16", "bg-art": blobs("rgba(255, 107, 139, 0.3)", "rgba(180, 60, 120, 0.24)", "rgba(255, 160, 140, 0.18)"), ...ink("255, 236, 240"), accent: "#ff6b8b", "accent-soft": "rgba(255, 107, 139, 0.16)" },
+    { bg: "#fff1f3", "bg-art": blobs("rgba(255, 150, 170, 0.35)", "rgba(240, 120, 160, 0.22)", "rgba(255, 200, 180, 0.3)"), ...ink("70, 30, 45"), accent: "#d94a6a", "accent-soft": "rgba(217, 74, 106, 0.12)" },
+  ),
+  season(
+    "saison-ostern",
+    "Ostern",
+    "blossoms",
+    { bg: "#1b1d26", "bg-art": blobs("rgba(201, 182, 255, 0.24)", "rgba(250, 220, 120, 0.18)", "rgba(140, 220, 180, 0.2)"), ...ink("243, 241, 250"), accent: "#c9b6ff", "accent-soft": "rgba(201, 182, 255, 0.15)" },
+    { bg: "#f7f5ec", "bg-art": blobs("rgba(250, 225, 120, 0.4)", "rgba(170, 225, 190, 0.38)", "rgba(205, 185, 245, 0.4)"), ...ink("50, 45, 70"), accent: "#8a6fd1", "accent-soft": "rgba(138, 111, 209, 0.12)" },
+  ),
+  season(
+    "saison-halloween",
+    "Halloween",
+    "fireflies",
+    { bg: "#120d14", "bg-art": blobs("rgba(255, 138, 42, 0.26)", "rgba(110, 50, 140, 0.3)", "rgba(80, 140, 60, 0.14)"), ...ink("243, 231, 214"), accent: "#ff8a2a", "accent-soft": "rgba(255, 138, 42, 0.15)" },
+    { bg: "#f6ece0", "bg-art": blobs("rgba(240, 140, 60, 0.26)", "rgba(140, 90, 170, 0.18)", "rgba(200, 160, 90, 0.2)"), ...ink("45, 30, 40"), accent: "#d4641c", "accent-soft": "rgba(212, 100, 28, 0.12)" },
+  ),
+  season(
+    "saison-fruehling",
+    "Frühling",
+    "blossoms",
+    { bg: "#13181a", "bg-art": blobs("rgba(244, 166, 192, 0.24)", "rgba(140, 200, 130, 0.22)", "rgba(250, 230, 150, 0.14)"), ...ink("240, 244, 236"), accent: "#f4a6c0", "accent-soft": "rgba(244, 166, 192, 0.15)" },
+    { bg: "#f4f6ee", "bg-art": blobs("rgba(244, 180, 200, 0.35)", "rgba(160, 210, 150, 0.35)", "rgba(250, 235, 160, 0.3)"), ...ink("38, 50, 36"), accent: "#4f9a5c", "accent-soft": "rgba(79, 154, 92, 0.12)" },
+  ),
+  season(
+    "saison-sommer",
+    "Sommer",
+    "none",
+    { bg: "#1a1410", "bg-art": blobs("rgba(255, 170, 70, 0.28)", "rgba(255, 220, 110, 0.2)", "rgba(60, 170, 180, 0.2)"), ...ink("252, 242, 226"), accent: "#ffb54d", "accent-soft": "rgba(255, 181, 77, 0.15)" },
+    { bg: "#fdf6e8", "bg-art": blobs("rgba(255, 190, 110, 0.38)", "rgba(255, 230, 140, 0.4)", "rgba(110, 200, 210, 0.3)"), ...ink("55, 40, 25"), accent: "#e07a2f", "accent-soft": "rgba(224, 122, 47, 0.12)" },
+  ),
+  season(
+    "saison-herbst",
+    "Herbst",
+    "leaves",
+    { bg: "#1a120c", "bg-art": blobs("rgba(200, 90, 40, 0.3)", "rgba(220, 160, 60, 0.2)", "rgba(120, 70, 40, 0.28)"), ...ink("245, 234, 220"), accent: "#e0913a", "accent-soft": "rgba(224, 145, 58, 0.15)" },
+    { bg: "#f5ece0", "bg-art": blobs("rgba(210, 120, 60, 0.28)", "rgba(230, 180, 90, 0.3)", "rgba(160, 100, 60, 0.2)"), ...ink("58, 38, 24"), accent: "#b45a24", "accent-soft": "rgba(180, 90, 36, 0.12)" },
+  ),
+  season(
+    "saison-winter",
+    "Winter",
+    "snow",
+    { bg: "#0d131c", "bg-art": blobs("rgba(120, 170, 220, 0.24)", "rgba(200, 220, 240, 0.12)", "rgba(80, 110, 170, 0.24)"), ...ink("236, 242, 248"), accent: "#9cc9f0", "accent-soft": "rgba(156, 201, 240, 0.15)" },
+    { bg: "#eef3f7", "bg-art": blobs("rgba(150, 190, 230, 0.35)", "rgba(220, 230, 245, 0.5)", "rgba(130, 160, 210, 0.25)"), ...ink("30, 42, 56"), accent: "#3f7bb3", "accent-soft": "rgba(63, 123, 179, 0.12)" },
+  ),
+];
+
+/** Ostersonntag (gregorianisch, Algorithmus nach Meeus/Jones/Butcher) */
+export const easter = (year: number): Date => {
+  const a = year % 19;
+  const b = Math.floor(year / 100);
+  const c = year % 100;
+  const d = Math.floor(b / 4);
+  const e = b % 4;
+  const f = Math.floor((b + 8) / 25);
+  const g = Math.floor((b - f + 1) / 3);
+  const h = (19 * a + b - d - g + 15) % 30;
+  const i = Math.floor(c / 4);
+  const k = c % 4;
+  const l = (32 + 2 * e + 2 * i - h - k) % 7;
+  const m = Math.floor((a + 11 * h + 22 * l) / 451);
+  const month = Math.floor((h + l - 7 * m + 114) / 31);
+  return new Date(year, month - 1, ((h + l - 7 * m + 114) % 31) + 1);
+};
+
+/** Welcher Stil „Jahreszeiten“ heute ist: Anlässe zuerst, sonst die Jahreszeit (meteorologisch) */
+export const seasonTheme = (date: Date): Theme => {
+  const m = date.getMonth() + 1;
+  const d = date.getDate();
+  if ((m === 12 && d === 31) || (m === 1 && d === 1)) return "saison-silvester";
+  if (m === 12 && d <= 26) return "saison-weihnachten";
+  if (m === 2 && d === 14) return "saison-valentin";
+  if (m === 10 && d >= 24) return "saison-halloween";
+  const day = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+  const sunday = easter(date.getFullYear()).getTime();
+  if (day >= sunday - 7 * 864e5 && day <= sunday + 864e5) return "saison-ostern";
+  if (m >= 3 && m <= 5) return "saison-fruehling";
+  if (m >= 6 && m <= 8) return "saison-sommer";
+  if (m >= 9 && m <= 11) return "saison-herbst";
+  return "saison-winter";
+};
 
 export const THEME_DEFS: ThemeDef[] = [
   {
@@ -377,6 +499,8 @@ export const THEME_DEFS: ThemeDef[] = [
     hint: "LED-Punktmatrix wie eine Pixel-Uhr – kräftige Farben auf Schwarz",
     ambient: "none",
     shared: {
+      "num-font": "var(--af-sans)",
+      wide: "0.7",
       ...SHARED,
       display: fontStack("doto"),
       sans: fontStack("geist"),
@@ -441,6 +565,8 @@ export const THEME_DEFS: ThemeDef[] = [
     hint: "Neon wie in der Spielhalle: Magenta, Türkis, Leuchtschrift, Raster am Horizont",
     ambient: "stars",
     shared: {
+      "num-font": "var(--af-sans)",
+      wide: "0.7",
       ...SHARED,
       display: fontStack("doto"),
       sans: fontStack("space-grotesk"),
@@ -914,6 +1040,8 @@ export const THEME_DEFS: ThemeDef[] = [
     ambient: "none",
     tiles: true,
     shared: {
+      "num-font": "var(--af-sans)",
+      wide: "0.7",
       ...SHARED,
       display: fontStack("doto"),
       sans: fontStack("space-grotesk"),
@@ -1203,6 +1331,405 @@ export const THEME_DEFS: ThemeDef[] = [
       "card-filter": "blur(12px)",
     },
   },
+  {
+    id: "galerie",
+    name: "Galerie",
+    hint: "Fotos im Passepartout wie im Museum, still und ohne Zoom – kleine Schilder statt Kacheln",
+    ambient: "none",
+    shared: {
+      ...SHARED,
+      display: fontStack("instrument"),
+      sans: fontStack("geist"),
+      "clock-weight": "400",
+      "clock-track": "-0.01em",
+      "label-track": "0.24em",
+      "label-weight": "500",
+      ...RULED,
+      // Foto mit weißem Passepartout und schmalem Rahmen; ohne langsames Heranzoomen
+      "photo-inset": "34px 40px",
+      "photo-motion": "none",
+    },
+    dark: {
+      ...DARK,
+      bg: "#1b1b1a",
+      ink: "#f1eee8",
+      "ink-2": "rgba(241, 238, 232, 0.7)",
+      "ink-3": "rgba(241, 238, 232, 0.46)",
+      line: "rgba(241, 238, 232, 0.14)",
+      accent: "#c8b89a",
+      "accent-soft": "rgba(200, 184, 154, 0.14)",
+      "card-rule": "1px solid rgba(241, 238, 232, 0.22)",
+      "photo-frame": "0 0 0 22px #f4f1ea, 0 0 0 23px rgba(0, 0, 0, 0.6), 0 30px 70px rgba(0, 0, 0, 0.55)",
+    },
+    light: {
+      ...LIGHT,
+      bg: "#f3f2ef",
+      ink: "#1c1c1b",
+      "ink-2": "rgba(28, 28, 27, 0.66)",
+      "ink-3": "rgba(28, 28, 27, 0.44)",
+      line: "rgba(28, 28, 27, 0.12)",
+      accent: "#7d6a4f",
+      "accent-soft": "rgba(125, 106, 79, 0.12)",
+      "card-rule": "1px solid rgba(28, 28, 27, 0.2)",
+      "photo-frame": "0 0 0 22px #ffffff, 0 0 0 23px rgba(40, 35, 25, 0.35), 0 26px 60px rgba(40, 35, 25, 0.22)",
+    },
+  },
+  {
+    id: "papier",
+    name: "Papier",
+    hint: "Reines Schwarz-Weiß ohne Verläufe – klar wie gedruckt, mit feiner Serifenschrift",
+    ambient: "none",
+    tiles: true,
+    shared: {
+      ...SHARED,
+      display: fontStack("newsreader"),
+      sans: fontStack("inter"),
+      "clock-weight": "400",
+      "clock-track": "-0.02em",
+      "card-radius": "0",
+      "label-weight": "700",
+      "label-track": "0.14em",
+      "photo-motion": "none",
+    },
+    dark: {
+      ...DARK,
+      bg: "#000000",
+      ink: "#ffffff",
+      "ink-2": "rgba(255, 255, 255, 0.82)",
+      "ink-3": "rgba(255, 255, 255, 0.62)",
+      line: "rgba(255, 255, 255, 0.45)",
+      surface: "transparent",
+      accent: "#ffffff",
+      "accent-soft": "rgba(255, 255, 255, 0.12)",
+      cold: "#ffffff",
+      alert: "#ffffff",
+      good: "#ffffff",
+      card: "transparent",
+      "card-tint": "transparent",
+      "card-border": "2px solid #ffffff",
+      "card-shadow": "none",
+      "card-filter": "none",
+      "colon-opacity": "1",
+    },
+    light: {
+      ...LIGHT,
+      bg: "#ffffff",
+      ink: "#000000",
+      "ink-2": "rgba(0, 0, 0, 0.78)",
+      "ink-3": "rgba(0, 0, 0, 0.58)",
+      line: "rgba(0, 0, 0, 0.4)",
+      surface: "transparent",
+      accent: "#000000",
+      "accent-soft": "rgba(0, 0, 0, 0.08)",
+      cold: "#000000",
+      alert: "#000000",
+      good: "#000000",
+      card: "transparent",
+      "card-tint": "transparent",
+      "card-border": "2px solid #000000",
+      "card-shadow": "none",
+      "card-filter": "none",
+      "colon-opacity": "1",
+    },
+  },
+  {
+    id: "eink",
+    name: "E-Ink",
+    hint: "Für E-Ink-Displays: ohne Bewegung und Übergänge, kräftige Schrift, Schwarz-Weiß mit wenigen Graustufen, Fotos in Graustufen",
+    ambient: "none",
+    tiles: true,
+    still: true,
+    shared: {
+      ...SHARED,
+      display: fontStack("inter"),
+      sans: fontStack("inter"),
+      // Dünne Striche verschwimmen auf E-Ink – alles etwas kräftiger
+      "clock-weight": "600",
+      "clock-track": "-0.03em",
+      "card-radius": "6px",
+      "label-weight": "700",
+      "label-track": "0.12em",
+      "photo-motion": "none",
+      "photo-filter": "grayscale(1) contrast(1.3)",
+      still: "1",
+    },
+    light: {
+      ...LIGHT,
+      bg: "#ffffff",
+      "bg-art": "none",
+      ink: "#000000",
+      "ink-2": "#333333",
+      "ink-3": "#666666",
+      line: "#999999",
+      surface: "#ffffff",
+      accent: "#000000",
+      "accent-soft": "#e6e6e6",
+      cold: "#000000",
+      alert: "#000000",
+      good: "#000000",
+      card: "#ffffff",
+      "card-tint": "transparent",
+      "card-border": "2px solid #000000",
+      "card-shadow": "none",
+      "card-filter": "none",
+      panel: "#ffffff",
+      chip: "#ffffff",
+      shadow: "none",
+      veil: "rgba(255, 255, 255, 0.85)",
+      mist: "transparent",
+      "colon-opacity": "1",
+    },
+    dark: {
+      ...DARK,
+      bg: "#000000",
+      "bg-art": "none",
+      ink: "#ffffff",
+      "ink-2": "#cccccc",
+      "ink-3": "#999999",
+      line: "#666666",
+      surface: "#000000",
+      accent: "#ffffff",
+      "accent-soft": "#333333",
+      cold: "#ffffff",
+      alert: "#ffffff",
+      good: "#ffffff",
+      card: "#000000",
+      "card-tint": "transparent",
+      "card-border": "2px solid #ffffff",
+      "card-shadow": "none",
+      "card-filter": "none",
+      panel: "#000000",
+      chip: "#000000",
+      shadow: "none",
+      veil: "rgba(0, 0, 0, 0.85)",
+      mist: "transparent",
+      "colon-opacity": "1",
+    },
+  },
+  {
+    id: "zeitung",
+    name: "Zeitung",
+    hint: "Schlagzeilen-Serifen, Doppellinien und Spalten – wie die Titelseite am Morgen",
+    ambient: "none",
+    shared: {
+      ...SHARED,
+      display: fontStack("playfair"),
+      sans: fontStack("newsreader"),
+      "clock-weight": "800",
+      "clock-track": "-0.02em",
+      "label-font": fontStack("inter"),
+      "label-weight": "700",
+      "label-track": "0.2em",
+      ...RULED,
+      "card-pad": "22px 0 0",
+    },
+    dark: {
+      ...DARK,
+      bg: "#171614",
+      ink: "#ece6d8",
+      "ink-2": "rgba(236, 230, 216, 0.74)",
+      "ink-3": "rgba(236, 230, 216, 0.5)",
+      line: "rgba(236, 230, 216, 0.18)",
+      accent: "#d4553f",
+      "accent-soft": "rgba(212, 85, 63, 0.14)",
+      "card-rule": "3px double rgba(236, 230, 216, 0.55)",
+    },
+    light: {
+      ...LIGHT,
+      bg: "#f3efe6",
+      ink: "#141414",
+      "ink-2": "rgba(20, 20, 20, 0.74)",
+      "ink-3": "rgba(20, 20, 20, 0.52)",
+      line: "rgba(20, 20, 20, 0.2)",
+      accent: "#8b1e1e",
+      "accent-soft": "rgba(139, 30, 30, 0.1)",
+      "card-rule": "3px double rgba(20, 20, 20, 0.7)",
+    },
+  },
+  {
+    id: "artdeco",
+    name: "Art déco",
+    hint: "Gold auf Schwarz, Strahlen und doppelte Rahmen – Glanz der Zwanziger",
+    ambient: "none",
+    tiles: true,
+    shared: {
+      ...SHARED,
+      display: fontStack("cormorant"),
+      sans: fontStack("outfit"),
+      "clock-weight": "300",
+      "clock-track": "0.03em",
+      "card-radius": "0",
+      "label-weight": "500",
+      "label-track": "0.32em",
+      "label-color": "var(--af-accent)",
+    },
+    dark: {
+      ...DARK,
+      bg: "#0d0c0a",
+      "bg-art":
+        "repeating-conic-gradient(from -90deg at 50% 118%, rgba(201, 164, 92, 0.07) 0deg 1.2deg, transparent 1.2deg 7deg), " +
+        "radial-gradient(70% 60% at 50% 115%, rgba(201, 164, 92, 0.12), transparent 70%)",
+      ink: "#efe6d2",
+      "ink-2": "rgba(239, 230, 210, 0.72)",
+      "ink-3": "rgba(239, 230, 210, 0.48)",
+      line: "rgba(201, 164, 92, 0.22)",
+      surface: "rgba(201, 164, 92, 0.04)",
+      accent: "#c9a45c",
+      "accent-soft": "rgba(201, 164, 92, 0.14)",
+      card: "rgba(13, 12, 10, 0.72)",
+      "card-border": "1px solid rgba(201, 164, 92, 0.6)",
+      "card-shadow": "inset 0 0 0 5px #0d0c0a, inset 0 0 0 6px rgba(201, 164, 92, 0.35)",
+      glow: "0 0 22px rgba(201, 164, 92, 0.25)",
+      colon: "var(--af-accent)",
+      "colon-opacity": "1",
+    },
+    light: {
+      ...LIGHT,
+      bg: "#f1eadb",
+      "bg-art":
+        "repeating-conic-gradient(from -90deg at 50% 118%, rgba(150, 110, 40, 0.08) 0deg 1.2deg, transparent 1.2deg 7deg), " +
+        "radial-gradient(70% 60% at 50% 115%, rgba(150, 110, 40, 0.1), transparent 70%)",
+      ink: "#1a1712",
+      "ink-2": "rgba(26, 23, 18, 0.72)",
+      "ink-3": "rgba(26, 23, 18, 0.5)",
+      line: "rgba(156, 122, 52, 0.3)",
+      surface: "rgba(255, 255, 255, 0.4)",
+      accent: "#9c7a34",
+      "accent-soft": "rgba(156, 122, 52, 0.12)",
+      card: "rgba(250, 246, 236, 0.8)",
+      "card-border": "1px solid rgba(156, 122, 52, 0.7)",
+      "card-shadow": "inset 0 0 0 5px #f1eadb, inset 0 0 0 6px rgba(156, 122, 52, 0.4)",
+      colon: "var(--af-accent)",
+      "colon-opacity": "1",
+    },
+  },
+  {
+    id: "terminal",
+    name: "Terminal",
+    hint: "Grüne Monitorschrift mit feinen Zeilen – wie ein Rechner aus den Achtzigern",
+    ambient: "none",
+    tiles: true,
+    shared: {
+      ...SHARED,
+      display: MONO,
+      sans: MONO,
+      // Monospace läuft breiter: Spalte für Uhrzeiten („ganztags“) breiter
+      "time-col": "calc(104px * var(--af-fs, 1))",
+      wide: "0.72",
+      "clock-weight": "500",
+      "clock-track": "0",
+      "card-radius": "0",
+      "label-weight": "500",
+      "label-track": "0.12em",
+    },
+    dark: {
+      ...DARK,
+      bg: "#030805",
+      "bg-art":
+        "repeating-linear-gradient(0deg, rgba(80, 255, 140, 0.035) 0 1px, transparent 1px 3px), radial-gradient(120% 90% at 50% 50%, transparent 58%, rgba(0, 0, 0, 0.65))",
+      ink: "#7dff9b",
+      "ink-2": "rgba(125, 255, 155, 0.72)",
+      "ink-3": "rgba(125, 255, 155, 0.48)",
+      line: "rgba(125, 255, 155, 0.2)",
+      surface: "rgba(125, 255, 155, 0.04)",
+      accent: "#c6ff7d",
+      "accent-soft": "rgba(198, 255, 125, 0.12)",
+      cold: "#7de0ff",
+      alert: "#ffb35c",
+      good: "#7dff9b",
+      card: "rgba(3, 8, 5, 0.6)",
+      "card-border": "1px solid rgba(125, 255, 155, 0.35)",
+      "card-shadow": "0 0 24px rgba(125, 255, 155, 0.06)",
+      glow: "0 0 10px rgba(125, 255, 155, 0.45)",
+      "colon-opacity": "1",
+    },
+    light: {
+      ...LIGHT,
+      bg: "#eeeee4",
+      "bg-art": "repeating-linear-gradient(0deg, rgba(30, 80, 40, 0.04) 0 1px, transparent 1px 3px)",
+      ink: "#173a22",
+      "ink-2": "rgba(23, 58, 34, 0.74)",
+      "ink-3": "rgba(23, 58, 34, 0.52)",
+      line: "rgba(23, 58, 34, 0.22)",
+      surface: "rgba(23, 58, 34, 0.04)",
+      accent: "#2f7d3c",
+      "accent-soft": "rgba(47, 125, 60, 0.12)",
+      card: "rgba(255, 255, 255, 0.45)",
+      "card-border": "1px solid rgba(23, 58, 34, 0.35)",
+      "card-shadow": "none",
+      "colon-opacity": "1",
+    },
+  },
+  {
+    id: "verspielt",
+    name: "Verspielt",
+    hint: "Runde Formen, fröhliche Farben, dicke Schrift – fürs Kinderzimmer und die Familienküche",
+    ambient: "none",
+    tiles: true,
+    shared: {
+      ...SHARED,
+      display: fontStack("nunito"),
+      sans: fontStack("nunito"),
+      "clock-weight": "800",
+      "clock-track": "-0.02em",
+      "card-radius": "34px",
+      "label-case": "none",
+      "label-track": "0",
+      "label-weight": "800",
+      "label-color": "var(--af-accent)",
+    },
+    dark: {
+      ...DARK,
+      bg: "#1d1a33",
+      "bg-art": blobs("rgba(255, 111, 145, 0.32)", "rgba(80, 200, 190, 0.26)", "rgba(255, 179, 71, 0.24)"),
+      ink: "#f6f1ff",
+      "ink-2": "rgba(246, 241, 255, 0.74)",
+      "ink-3": "rgba(246, 241, 255, 0.5)",
+      line: "rgba(246, 241, 255, 0.12)",
+      surface: "rgba(255, 255, 255, 0.06)",
+      accent: "#ffb347",
+      "accent-soft": "rgba(255, 179, 71, 0.16)",
+      cold: "#6fc8ff",
+      good: "#6ee7a8",
+      alert: "#ff7a8a",
+      card: "rgba(255, 255, 255, 0.08)",
+      "card-border": "0 solid transparent",
+      "card-shadow": "0 10px 0 rgba(0, 0, 0, 0.22)",
+      colon: "var(--af-accent)",
+      "colon-opacity": "1",
+    },
+    light: {
+      ...LIGHT,
+      bg: "#fff7ef",
+      "bg-art": blobs("rgba(255, 170, 150, 0.45)", "rgba(140, 220, 200, 0.45)", "rgba(190, 170, 255, 0.4)"),
+      ink: "#3a2f4a",
+      "ink-2": "rgba(58, 47, 74, 0.74)",
+      "ink-3": "rgba(58, 47, 74, 0.5)",
+      line: "rgba(58, 47, 74, 0.1)",
+      surface: "rgba(255, 255, 255, 0.7)",
+      accent: "#ff6f61",
+      "accent-soft": "rgba(255, 111, 97, 0.14)",
+      cold: "#4aa3df",
+      good: "#3fbf7f",
+      alert: "#e5484d",
+      card: "#ffffff",
+      "card-border": "0 solid transparent",
+      "card-shadow": "0 10px 0 rgba(58, 47, 74, 0.08)",
+      colon: "var(--af-accent)",
+      "colon-opacity": "1",
+    },
+  },
+  {
+    id: "saisonal",
+    name: "Jahreszeiten",
+    hint: "Wechselt von selbst: Frühling, Sommer, Herbst, Winter – und zu Weihnachten, Silvester, Valentinstag, Ostern und Halloween",
+    ambient: "none",
+    // Die Farben kommen zur Laufzeit aus der passenden Jahreszeit (seasonTheme); diese hier nur als Rückfall
+    shared: { ...SHARED },
+    dark: { ...DARK },
+    light: { ...LIGHT },
+  },
+  ...SEASONS,
 ];
 
 /** Fertige Farbpaletten – liegen über dem Stil, eigene Farben gehen vor. „tagesverlauf“ rechnet das Display selbst. */
@@ -1257,7 +1784,7 @@ export const dayHue = (d: Date): number => {
 };
 
 /** Für Editor-Auswahl und Vorschauen */
-export const THEMES = THEME_DEFS.map(({ id, name, hint, ambient, tiles, flap }) => ({ id, name, hint, ambient, tiles, flap }));
+export const THEMES = THEME_DEFS.filter((t) => !t.hidden).map(({ id, name, hint, ambient, tiles, flap }) => ({ id, name, hint, ambient, tiles, flap }));
 
 /** Alte Stilnamen: „Weißgold“ ist jetzt „Gold“ in hell. */
 export const normalizeTheme = (theme?: string): { theme: Theme; light: boolean } =>
@@ -1270,13 +1797,29 @@ const decl = (t: Tokens) =>
     .map(([k, v]) => `--af-${k}: ${v};`)
     .join("\n    ");
 
+/** Ziffern-Schrift zur Titelschrift eines Stapels („"Ambiframe Fraunces", …“) – leer bei Systemschriften */
+export const digitFace = (displayStack?: string): string => {
+  const m = /^"(Ambiframe [^"]+)"/.exec(displayStack ?? "");
+  return m ? `"${digitFamily(m[1])}"` : "";
+};
+
+/**
+ * Zahlen überall gleich: In der Textschrift kommen die Ziffern aus der Titelschrift (Uhr, Werte, Daten, Diagramme),
+ * Wörter bleiben in der Textschrift. Stile mit eigener Zahlenschrift (LED) bleiben, wie sie sind.
+ */
+const withNum = (t: Tokens): Tokens => {
+  if (t["num-font"]) return t;
+  const face = digitFace(t.display);
+  return face ? { ...t, sans: `${face}, ${t.sans}`, "sans-plain": t.sans } : t;
+};
+
 const themeCss = THEME_DEFS.map(
   (t) => `
   :host([theme="${t.id}"]) {
-    ${decl({ ...t.shared, ...t.dark })}
+    ${decl(withNum({ ...t.shared, ...t.dark }))}
   }
   :host([theme="${t.id}"][mode="light"]) {
-    ${decl({ ...t.shared, ...t.light })}
+    ${decl(withNum({ ...t.shared, ...t.light }))}
   }`,
 ).join("\n");
 
@@ -1288,7 +1831,7 @@ export const themeTokens = [
       --af-ease-soft: cubic-bezier(0.45, 0, 0.25, 1);
     }
   `,
-  unsafeCSS(`:host { ${decl({ ...SHARED, ...DARK })} }`),
+  unsafeCSS(`:host { ${decl(withNum({ ...SHARED, ...DARK }))} }`),
   unsafeCSS(themeCss),
   css`
     /* Abendstimmung: dunkle Stile werden nach Sonnenuntergang etwas wärmer */
@@ -1341,7 +1884,20 @@ export const nightTokens = css`
   }
 `;
 
-export const widgetStyles = css`
+/** E-Ink (--af-still: 1): keine Animationen und Übergänge – in Anzeige, Seite und allen Widgets */
+export const stillStyles = css`
+/* E-Ink (--af-still: 1): keine Animationen und Übergänge – jedes Zwischenbild zeichnet den Bildschirm neu */
+@container style(--af-still: 1) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+`;
+
+export const widgetStyles = [stillStyles, css`
   :host {
     display: block;
     box-sizing: border-box;
@@ -1351,7 +1907,9 @@ export const widgetStyles = css`
     font-family: var(--af-sans);
     -webkit-font-smoothing: antialiased;
   }
+  /* Ziffern in der Schrift des Stils für Uhr und Titel, Wörter in der Textschrift (LED-Stile: ganz Textschrift) */
   .num {
+    font-family: var(--af-num-font, var(--af-sans));
     font-variant-numeric: tabular-nums lining-nums;
   }
   .display {
@@ -1370,6 +1928,10 @@ export const widgetStyles = css`
     color: var(--af-label-color, var(--af-ink-3));
     font-weight: var(--af-label-weight, 500);
     font-family: var(--af-label-font, inherit);
+  }
+  /* Kachel ohne Überschrift (look.label: false) */
+  :host([nolabel]) .label {
+    display: none !important;
   }
   .muted {
     color: var(--af-ink-2);
@@ -1410,7 +1972,7 @@ export const widgetStyles = css`
     background: var(--af-ink-3);
     flex: none;
   }
-`;
+`];
 
 /** Für einfache Widgets: Ausrichtung kommt von der Rasterzelle (align / valign). */
 export const alignStyles = css`

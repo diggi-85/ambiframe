@@ -130,7 +130,7 @@ class AfWeather extends AfWidget {
       }
       .day {
         display: grid;
-        grid-template-columns: 78px 30px 52px 44px 1fr 44px;
+        grid-template-columns: calc(100px * var(--af-fs, 1)) 30px 52px 44px 1fr 44px;
         align-items: center;
         column-gap: 12px;
         height: 50px;

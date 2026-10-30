@@ -247,3 +247,40 @@ async def test_offline_notification_off_or_sleeping(hass: HomeAssistant, setup_a
     rt.asleep = True
     hub._check_offline({"id": "kueche", "name": "Küche", "watchdog": {"notify": 5}}, rt, hub.started + timedelta(hours=3))
     assert "ambiframe_offline_kueche" not in _async_get_or_create_notifications(hass)
+
+
+async def test_google_album_only_when_configured(hass: HomeAssistant, setup_ambiframe: MockConfigEntry, hass_ws_client: Any, aioclient_mock: Any) -> None:
+    """Sicherheitsgrenze: Displays dürfen nur eingetragene Alben abrufen lassen (kein beliebiger Abruf über HA)."""
+    client = await hass_ws_client(hass)
+    await client.send_json_auto_id({"type": "ambiframe/photos/google", "url": "https://photos.app.goo.gl/Fremd"})
+    msg = await client.receive_json()
+    assert not msg["success"] and msg["error"]["code"] == "unknown_album"
+    aioclient_mock.get("https://photos.app.goo.gl/Mein", text='["https://lh3.googleusercontent.com/pw/AbC",400,300')
+    await client.send_json_auto_id({"type": "ambiframe/config/save", "config": minimal_config(photos={"google": "https://photos.app.goo.gl/Mein"})})
+    assert (await client.receive_json())["success"]
+    await client.send_json_auto_id({"type": "ambiframe/photos/google", "url": "https://photos.app.goo.gl/Mein"})
+    msg = await client.receive_json()
+    assert msg["success"] and msg["result"][0]["url"].endswith("=w2560-h1440")
+
+
+async def test_placeholder_rejects_unknown_source(hass: HomeAssistant, setup_ambiframe: MockConfigEntry, hass_ws_client: Any) -> None:
+    client = await hass_ws_client(hass)
+    await client.send_json_auto_id({"type": "ambiframe/photos/placeholder", "source": "flickr"})
+    assert not (await client.receive_json())["success"]
+    await client.send_json_auto_id({"type": "ambiframe/photos/placeholder", "source": "samples"})
+    msg = await client.receive_json()
+    assert msg["success"] and len(msg["result"]) >= 6
+
+
+async def test_older_config_loads_unchanged_after_update(hass: HomeAssistant, setup_ambiframe: MockConfigEntry, hass_ws_client: Any, example_config: dict) -> None:
+    """Nach dem Update muss niemand neu anfangen: eine Konfiguration aus 0.6 lädt, Bing bleibt Bing."""
+    old = {**example_config, "photos": {"folder": "media-source://media_source/local/ambiframe", "bing": True, "bing_mix": False, "credit": True}}
+    client = await hass_ws_client(hass)
+    await client.send_json_auto_id({"type": "ambiframe/config/save", "config": old})
+    msg = await client.receive_json()
+    assert msg["success"], msg
+    await client.send_json_auto_id({"type": "ambiframe/config"})
+    cfg = (await client.receive_json())["result"]
+    assert cfg["photos"]["placeholder"] == "bing" and cfg["photos"]["placeholder_mix"] is False
+    assert [p["id"] for p in cfg["pages"]] == [p["id"] for p in example_config["pages"]]
+    assert [e["id"] for e in cfg["events"]] == [e["id"] for e in example_config["events"]]

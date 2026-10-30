@@ -24,6 +24,10 @@ export const fontStack = (id?: string): string => {
   return f ? `"${family(f)}", ${FALLBACK[f.kind]}` : "";
 };
 
+/** Nur die Ziffern einer Schrift (dazu , . - : ° % +): „Zahlen in der Titelschrift, Wörter in der Textschrift“ */
+export const digitFamily = (family: string): string => `${family} Ziffern`;
+const DIGITS = "U+0030-0039, U+002B-002E, U+003A, U+00B0, U+0025, U+2212";
+
 /** Schriften müssen im Dokument stehen, damit sie auch in Shadow-DOMs greifen. Geladen wird nur, was benutzt wird. */
 export const registerFonts = (): void => {
   if (document.getElementById("ambiframe-fonts")) return;
@@ -32,7 +36,9 @@ export const registerFonts = (): void => {
   style.textContent = FONTS.map((f) => {
     const url = new URL(`./fonts/${f.file}`, import.meta.url).href;
     const format = f.weight.includes(" ") ? "woff2-variations" : "woff2";
-    return `@font-face { font-family: "${family(f)}"; font-style: normal; font-display: swap; font-weight: ${f.weight}; src: url("${url}") format("${format}"); }`;
+    const face = (name: string, extra = "") =>
+      `@font-face { font-family: "${name}"; font-style: normal; font-display: swap; font-weight: ${f.weight}; src: url("${url}") format("${format}");${extra} }`;
+    return face(family(f)) + "\n" + face(digitFamily(family(f)), ` unicode-range: ${DIGITS};`);
   }).join("\n");
   document.head.appendChild(style);
 };

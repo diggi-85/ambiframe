@@ -100,7 +100,7 @@ class AfAgenda extends AfTickingWidget {
       }
       /* Breit genug für „ganztags“, auch bei großer Schrift */
       .time {
-        width: calc(92px * var(--af-fs, 1));
+        width: max(calc(92px * var(--af-fs, 1)), var(--af-time-col, 0px));
         flex: none;
         font-size: calc(19px * var(--af-fs, 1));
         color: var(--af-ink-2);

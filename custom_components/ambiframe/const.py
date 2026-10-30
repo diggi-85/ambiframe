@@ -35,6 +35,12 @@ BING_CACHE_SECONDS: Final = 6 * 3600
 LANGUAGES: Final = ("de", "en", "nl", "fr")
 # Regionen der Bing-Bilder, die im Editor wählbar sind (photos.bing_market); ohne Wahl: nach der HA-Sprache
 BING_MARKETS: Final = ("de-DE", "de-AT", "de-CH", "en-US", "en-GB", "en-CA", "en-AU", "en-IN", "fr-FR", "es-ES", "it-IT", "nl-NL", "ja-JP", "zh-CN", "pt-BR")
+# Platzhalter-Bilder, solange keine eigenen Fotos da sind (oder untergemischt): photos.placeholder
+PLACEHOLDERS: Final = ("samples", "bing", "wikimedia", "art", "nasa", "picsum", "none")
+# Kacheln: Kartenstil (Design/Display), Rahmen und Schatten (pro Widget)
+CARD_STYLES: Final = ("solid", "glass", "outline", "none")
+CARD_BORDERS: Final = ("none", "line", "accent")
+CARD_SHADOWS: Final = ("none", "soft", "strong")
 PRICE_CACHE_SECONDS: Final = 15 * 60
 
 # Raster jeder Seite: 12 Spalten × 8 Zeilen
@@ -47,7 +53,7 @@ PORTRAIT_ROWS: Final = 12
 EVENT_KINDS: Final = ("alarm", "live", "info", "page", "media", "effect")
 # Diese Arten zeigen Titel/Ort und brauchen deshalb einen Titel
 EVENT_KINDS_TITLED: Final = ("alarm", "live", "info")
-THEMES: Final = ("ruhig", "klar", "gold", "glass", "aurora", "editorial", "minimal", "pixel", "arcade", "cockpit", "tonal", "kacheln", "klartext", "fallblatt", "millennium", "glanz", "handheld", "bauhaus", "softui", "boho", "landhaus", "natur")
+THEMES: Final = ("ruhig", "klar", "gold", "glass", "aurora", "editorial", "minimal", "pixel", "arcade", "cockpit", "tonal", "kacheln", "klartext", "fallblatt", "millennium", "glanz", "handheld", "bauhaus", "softui", "boho", "landhaus", "natur", "galerie", "papier", "eink", "zeitung", "artdeco", "terminal", "verspielt", "saisonal")
 THEME_MODES: Final = ("auto", "light", "dark")
 AMBIENTS: Final = (
     "none",
