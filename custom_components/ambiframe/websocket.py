@@ -58,6 +58,15 @@ def _store(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg:
     return store
 
 
+def _display_store(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> AmbiframeStore | None:
+    """Store nur für eingetragene Displays – sonst könnte jedes Konto beliebig viele Einträge und Pause-Timer anlegen."""
+    store = _store(hass, connection, msg)
+    if store is not None and not any(d.get("id") == msg["display_id"] for d in store.config.get("displays", [])):
+        connection.send_error(msg["id"], "unknown_display", "Dieses Display ist nicht eingetragen")
+        return None
+    return store
+
+
 @websocket_api.websocket_command({vol.Required("type"): "ambiframe/config"})
 @callback
 def ws_get_config(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
@@ -151,7 +160,7 @@ async def ws_tibber_prices(hass: HomeAssistant, connection: websocket_api.Active
 @websocket_api.async_response
 async def ws_display_connect(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
     """Ein Display meldet sich an und bekommt über dieses Abo Befehle (Seite, weiter, Pause, neu laden)."""
-    if (store := _store(hass, connection, msg)) is None:
+    if (store := _display_store(hass, connection, msg)) is None:
         return
     display_id = msg["display_id"]
 
@@ -182,7 +191,7 @@ async def ws_display_connect(hass: HomeAssistant, connection: websocket_api.Acti
 @websocket_api.async_response
 async def ws_display_report(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
     """Herzschlag eines Displays: aktuelle Seite, Bildschirm an/aus; Antwort enthält die installierte Version."""
-    if (store := _store(hass, connection, msg)) is None:
+    if (store := _display_store(hass, connection, msg)) is None:
         return
     store.hub.report(msg["display_id"], msg["client_id"], msg.get("page"), msg["hidden"], msg.get("version"), msg.get("safe"))
     connection.send_result(msg["id"], {"version": await store.hub.async_frontend_version()})
@@ -194,7 +203,7 @@ async def ws_display_report(hass: HomeAssistant, connection: websocket_api.Activ
 @callback
 def ws_display_pause(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
     """Pause vom Display selbst (Antippen) – wie der Schalter in HA, damit beide denselben Stand haben."""
-    if (store := _store(hass, connection, msg)) is None:
+    if (store := _display_store(hass, connection, msg)) is None:
         return
     if msg["paused"]:
         store.hub.pause(msg["display_id"])

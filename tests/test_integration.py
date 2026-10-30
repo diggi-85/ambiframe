@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from typing import Any
+from unittest.mock import patch
 
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
@@ -77,6 +78,28 @@ async def test_non_admin_cannot_save(
     assert msg["error"]["code"] == "unauthorized"
 
 
+async def test_admin_only_commands(
+    hass: HomeAssistant, setup_ambiframe: MockConfigEntry, hass_ws_client: Any, hass_read_only_access_token: str
+) -> None:
+    """Konten ohne Admin (Tablets) dürfen nichts ändern und keine KI-Abrufe auslösen."""
+    client = await hass_ws_client(hass, hass_read_only_access_token)
+    for cmd in ("ambiframe/config/default", "ambiframe/config/previous", "ambiframe/summary/generate"):
+        await client.send_json_auto_id({"type": cmd})
+        msg = await client.receive_json()
+        assert not msg["success"] and msg["error"]["code"] == "unauthorized", cmd
+
+
+async def test_news_only_fetches_known_feeds(hass: HomeAssistant, setup_ambiframe: MockConfigEntry, hass_ws_client: Any) -> None:
+    """Displays können den Server keine beliebigen Adressen abrufen lassen – nur fertige oder eingetragene Feeds."""
+    client = await hass_ws_client(hass)
+    await client.send_json_auto_id({"type": "ambiframe/config/save", "config": minimal_config()})
+    assert (await client.receive_json())["success"]
+    with patch("custom_components.ambiframe.news.NewsService.async_items", return_value=[]) as items:
+        await client.send_json_auto_id({"type": "ambiframe/news", "feeds": ["http://192.0.2.1/intern", "tagesschau"]})
+        assert (await client.receive_json())["success"]
+    assert "http://192.0.2.1/intern" not in items.call_args.args[0]
+
+
 def test_saved_templates_are_collected() -> None:
     config = minimal_config()
     config["pages"][0]["widgets"][0]["options"] = {"text": "{{ states('sensor.a') }}", "plain": "kein Jinja"}
@@ -126,6 +149,23 @@ async def test_display_pause_from_tablet(hass: HomeAssistant, setup_ambiframe: M
     assert status["kueche"]["paused"] is True
     await client.send_json_auto_id({"type": "ambiframe/display/pause", "display_id": "kueche", "paused": False})
     assert (await client.receive_json())["success"]
+
+
+async def test_unknown_display_ids_are_rejected(hass: HomeAssistant, setup_ambiframe: MockConfigEntry, hass_ws_client: Any) -> None:
+    """Erfundene Display-IDs legen weder Einträge noch Pause-Timer an (jedes Konto darf diese Befehle schicken)."""
+    client = await hass_ws_client(hass)
+    await client.send_json_auto_id({"type": "ambiframe/config/save", "config": minimal_config()})
+    assert (await client.receive_json())["success"]
+    for cmd in (
+        {"type": "ambiframe/display/connect", "display_id": "erfunden", "client_id": "x"},
+        {"type": "ambiframe/display/report", "display_id": "erfunden", "client_id": "x"},
+        {"type": "ambiframe/display/pause", "display_id": "erfunden", "paused": True},
+    ):
+        await client.send_json_auto_id(cmd)
+        msg = await client.receive_json()
+        assert not msg["success"] and msg["error"]["code"] == "unknown_display"
+    await client.send_json_auto_id({"type": "ambiframe/displays/status"})
+    assert "erfunden" not in (await client.receive_json())["result"]
 
 
 async def test_safe_mode_switch_and_reason(hass: HomeAssistant, setup_ambiframe: MockConfigEntry, hass_ws_client: Any) -> None:

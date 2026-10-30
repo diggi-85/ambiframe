@@ -20,6 +20,8 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
+from .photosources import album_status
+
 _LOGGER = logging.getLogger(__name__)
 
 # Bild-Adressen von iCloud laufen nach etwa 15 Minuten ab (Parameter e=…). Die Liste gilt bis 5 Minuten vorher –
@@ -140,9 +142,11 @@ class ICloudAlbum:
                 result = await self._ck_photos(key)
             except (aiohttp.ClientError, TimeoutError, ValueError, KeyError, IndexError) as err:
                 _LOGGER.warning("Ambiframe: iCloud-Album nicht abrufbar: %s", err)
+                album_status(self.hass, "iCloud", False)
                 return cached[1] if cached else []
             self._cache[cache_key] = (_valid_until(result), result)
             _LOGGER.debug("Ambiframe: %d Fotos aus dem iCloud-Album", len(result))
+            album_status(self.hass, "iCloud", bool(result))
             return result
         assert token is not None
         try:
@@ -168,9 +172,11 @@ class ICloudAlbum:
                         result.append({"url": f"https://{item['url_location']}{item['url_path']}", "credit": wanted[guid]["caption"]})
         except (aiohttp.ClientError, TimeoutError, ValueError, KeyError, HomeAssistantError) as err:
             _LOGGER.warning("Ambiframe: iCloud-Album nicht abrufbar: %s", err)
+            album_status(self.hass, "iCloud", False)
             return cached[1] if cached else []
         self._cache[token] = (_valid_until(result), result)
         _LOGGER.debug("Ambiframe: %d Fotos aus dem iCloud-Album", len(result))
+        album_status(self.hass, "iCloud", bool(result))
         return result
 
 

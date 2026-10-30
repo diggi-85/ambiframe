@@ -115,5 +115,11 @@
         "name": "Videostream Full HD"
       }
     }
+  },
+  "issues": {
+    "album_empty": {
+      "title": "Fotoalbum liefert keine Fotos: {album}",
+      "description": "Ambiframe hat aus dem eingetragenen {album}-Album keine Fotos bekommen. Die Displays zeigen so lange die zuletzt geladenen Fotos oder die Platzhalter.\n\nPrüfe, ob der Link noch öffentlich geteilt ist und im Browser ohne Anmeldung aufgeht. Bei Google Fotos kann es auch sein, dass Google die Albumseite geändert hat – dann hilft ein Ambiframe-Update.\n\nDer Hinweis verschwindet von selbst, sobald wieder Fotos kommen."
+    }
   }
 }

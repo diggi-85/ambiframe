@@ -20,10 +20,11 @@ import aiohttp
 
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.util import dt as dt_util
 
-from .const import URL_BASE
+from .const import DOMAIN, URL_BASE
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -49,6 +50,18 @@ _BROWSER_UA = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like G
 MAX_GOOGLE = 300
 
 _TAGS = re.compile(r"<[^>]+>")
+
+
+def album_status(hass: HomeAssistant, album: str, ok: bool) -> None:
+    """Hinweis unter Einstellungen → Reparaturen, solange ein eingetragenes Album keine Fotos liefert."""
+    issue = f"album_empty_{album.lower().replace(' ', '_')}"
+    if ok:
+        ir.async_delete_issue(hass, DOMAIN, issue)
+    else:
+        ir.async_create_issue(
+            hass, DOMAIN, issue, is_fixable=False, severity=ir.IssueSeverity.WARNING,
+            translation_key="album_empty", translation_placeholders={"album": album},
+        )
 
 
 def _text(value: str | None, limit: int = 90) -> str:
@@ -230,10 +243,13 @@ class PhotoSources:
                 page = await resp.text()
         except (aiohttp.ClientError, TimeoutError) as err:
             _LOGGER.warning("Ambiframe: Google-Fotos-Album nicht erreichbar: %s", err)
+            album_status(self.hass, "Google Photos", False)
             return cached[1] if cached else []
         photos = parse_google_album(page)
+        album_status(self.hass, "Google Photos", bool(photos))
         if not photos:
+            # Auch wenn Google die Seite umbaut: die letzten guten Fotos weiterzeigen
             _LOGGER.warning("Ambiframe: Im Google-Fotos-Album wurden keine Fotos gefunden – ist der Link öffentlich geteilt?")
-        else:
-            self._cache[url] = (time.monotonic(), photos)
+            return cached[1] if cached else []
+        self._cache[url] = (time.monotonic(), photos)
         return photos

@@ -115,5 +115,11 @@
         "name": "Flux vidéo Full HD"
       }
     }
+  },
+  "issues": {
+    "album_empty": {
+      "title": "L'album photo ne fournit aucune photo : {album}",
+      "description": "Ambiframe n'a reçu aucune photo de l'album {album} configuré. En attendant, les écrans affichent les dernières photos chargées ou les images de remplacement.\n\nVérifiez que le lien est toujours partagé publiquement et s'ouvre dans un navigateur sans connexion. Pour Google Photos, Google a peut-être aussi modifié la page de l'album – une mise à jour d'Ambiframe corrigera cela.\n\nCet avis disparaît de lui-même dès que des photos arrivent à nouveau."
+    }
   }
 }

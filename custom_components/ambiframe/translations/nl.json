@@ -115,5 +115,11 @@
         "name": "Videostream Full HD"
       }
     }
+  },
+  "issues": {
+    "album_empty": {
+      "title": "Fotoalbum levert geen foto's: {album}",
+      "description": "Ambiframe heeft geen foto's gekregen uit het ingestelde {album}-album. Tot die tijd tonen de displays de laatst geladen foto's of de plaatsvervangers.\n\nControleer of de link nog openbaar gedeeld is en zonder inloggen in een browser opent. Bij Google Foto's kan Google ook de albumpagina hebben gewijzigd – dan helpt een Ambiframe-update.\n\nDeze melding verdwijnt vanzelf zodra er weer foto's binnenkomen."
+    }
   }
 }

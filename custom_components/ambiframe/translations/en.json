@@ -115,5 +115,11 @@
         "name": "Video stream Full HD"
       }
     }
+  },
+  "issues": {
+    "album_empty": {
+      "title": "Photo album returns no photos: {album}",
+      "description": "Ambiframe got no photos from the configured {album} album. Until then the displays show the last loaded photos or the placeholders.\n\nCheck that the link is still shared publicly and opens in a browser without signing in. For Google Photos, Google may also have changed the album page – an Ambiframe update will fix that.\n\nThis notice disappears by itself as soon as photos arrive again."
+    }
   }
 }

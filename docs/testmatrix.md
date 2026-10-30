@@ -27,6 +27,17 @@ Ausführen: `cd frontend && npm test` (Frontend) · `.venv/bin/python -m pytest`
 | Nur echte Freigabe-Links | `test_google_link_and_art_title`, `test_google_album_rejects_foreign_links` |
 | Zwischenspeicher, nicht erreichbar → leer | `test_google_album_fetch_parses_and_caches`, `test_google_album_unreachable_returns_empty` |
 | **Sicherheit:** Displays rufen nur eingetragene Alben ab | `test_google_album_only_when_configured` |
+| Google baut die Albumseite um: letzte Fotos bleiben, Hinweis unter Reparaturen, verschwindet von selbst | `test_google_album_changed_page_keeps_photos_and_raises_repair` |
+| iCloud-Album nicht erreichbar → Hinweis unter Reparaturen | `test_icloud_album_unreachable_raises_repair` |
+
+## Rechte
+
+| Anforderung | Test |
+|---|---|
+| Konfiguration speichern, Standard, KI-Zusammenfassung, Vorversion nur für Admins | `test_non_admin_cannot_save`, `test_admin_only_commands` |
+| Konten ohne Admin rendern nur gespeicherte Templates | `test_integration.py` › Templates |
+| News nur aus fertigen oder eingetragenen Feeds | `test_news_only_fetches_known_feeds` |
+| Erfundene Display-IDs legen keine Einträge oder Pause-Timer an | `test_unknown_display_ids_are_rejected` |
 
 ## Updates ohne Neuanfang
 

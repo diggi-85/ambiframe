@@ -127,3 +127,38 @@ async def test_google_album_rejects_foreign_links(hass: HomeAssistant) -> None:
 async def test_google_album_unreachable_returns_empty(hass: HomeAssistant, aioclient_mock: AiohttpClientMocker) -> None:
     aioclient_mock.get("https://photos.app.goo.gl/X", status=404)
     assert await PhotoSources(hass).async_google("https://photos.app.goo.gl/X") == []
+
+
+async def test_google_album_changed_page_keeps_photos_and_raises_repair(hass: HomeAssistant, aioclient_mock: AiohttpClientMocker) -> None:
+    """Baut Google die Albumseite um, bleiben die letzten Fotos – und unter Reparaturen steht ein Hinweis."""
+    from homeassistant.helpers import issue_registry as ir
+
+    url = "https://photos.app.goo.gl/AbC"
+    issue = ("ambiframe", "album_empty_google_photos")
+    aioclient_mock.get(url, text=PAGE)
+    src = PhotoSources(hass)
+    assert len(await src.async_google(url)) == 2
+    assert ir.async_get(hass).async_get_issue(*issue) is None
+
+    aioclient_mock.clear_requests()
+    aioclient_mock.get(url, text="<html>neues Format</html>")
+    with patch("custom_components.ambiframe.photosources.time.monotonic", return_value=10**9):
+        assert len(await src.async_google(url)) == 2  # letzte gute Liste
+    found = ir.async_get(hass).async_get_issue(*issue)
+    assert found and found.translation_key == "album_empty"
+
+    aioclient_mock.clear_requests()
+    aioclient_mock.get(url, text=PAGE)
+    with patch("custom_components.ambiframe.photosources.time.monotonic", return_value=2 * 10**9):
+        assert len(await src.async_google(url)) == 2
+    assert ir.async_get(hass).async_get_issue(*issue) is None  # verschwindet von selbst
+
+
+async def test_icloud_album_unreachable_raises_repair(hass: HomeAssistant, aioclient_mock: AiohttpClientMocker) -> None:
+    from homeassistant.helpers import issue_registry as ir
+
+    from custom_components.ambiframe.icloud import ICloudAlbum
+
+    aioclient_mock.post(_re.compile(r"https://p\d+-sharedstreams\.icloud\.com/.*"), status=500)
+    assert await ICloudAlbum(hass).async_photos("https://www.icloud.com/sharedalbum/#B0aBcDeF") == []
+    assert ir.async_get(hass).async_get_issue("ambiframe", "album_empty_icloud")
