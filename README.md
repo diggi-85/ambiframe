@@ -29,7 +29,7 @@ appears. When the laundry is done, it says so briefly and then stays as a small 
   <tr>
     <td align="center"><sub><b>Animated backgrounds</b> – here aurora</sub></td>
     <td align="center"><sub><b>Word clock</b> in four languages</sub></td>
-    <td align="center"><sub><b>30 styles</b> – here “Gallery”</sub></td>
+    <td align="center"><sub><b>35 styles</b> – here “Gallery”</sub></td>
   </tr>
   <tr>
     <td width="33%"><img src="https://raw.githubusercontent.com/diggi-85/ambiframe/main/docs/screenshots/en/clocks-split-flap.jpg" alt="Analogue clocks and split-flap displays"></td>
@@ -48,7 +48,7 @@ Dutch and French).</sub>
 
 ## Features
 
-- **Pages built from 47 widgets** on a 12×8 grid with half-cell steps: clock, date, text, weather (current, card,
+- **Pages built from 48 widgets** on a 12×8 grid with half-cell steps: clock, date, day clock, text, weather (current, card,
   hourly, daily, rain preview, line), value, rooms, status ("right now"), calendar/waste, info line, camera and **any
   Lovelace card** – the full list is under [Widgets](#widgets).
 - **Everyday widgets:** kitchen timer (HA timers with quick-start buttons), notice board (text helpers, e.g. set from
@@ -79,11 +79,14 @@ Dutch and French).</sub>
 - **Now playing mini card:** permanent or per track for a while, how long after pausing, conditions and quiet hours,
   corner, size, cover, progress and background.
 - **Night mode** (dimmed clock that drifts to prevent burn-in) and **evening mood**.
-- **30 styles, each light and dark:** Calm, Clear, Gold, Glass, Aurora, Editorial, Minimal, Pixel (LED dot matrix),
+- **35 styles, each light and dark:** Calm, Clear, Gold, Glass, Aurora, Editorial, Minimal, Pixel (LED dot matrix),
   Arcade (neon), Cockpit, Tonal, Tiles, Clear text (large and high contrast), Split-flap, Millennium, Gloss, Handheld,
   Bauhaus, Soft UI, Boho, Country house, Nature, **Gallery** (photos in a mount like in a museum), **Paper** (pure black
   and white), **E-Ink** (no motion or fades at all, bold type, greyscale photos – for e-paper displays),
-  **Newspaper**, **Art Deco**, **Terminal**, **Playful** – and **Seasons**, which changes by
+  **Newspaper**, **Art Deco**, **Terminal**, **Playful**, **Wayfinding** (yellow on anthracite like airport signs),
+  **Swiss Grid** (strict grid, huge numbers, signal red), **Rams** (warm grey, orange accent, speaker grille), **Lobby**
+  (hotel reception: fine serifs, brass lines), **Picture book** (for children: hills, sun or moon, cut-out cards) – and
+  **Seasons**, which changes by
   itself: spring, summer, autumn, winter, plus Christmas, New Year's Eve, Valentine's Day, Easter and Halloween. Tile
   styles put widgets into cards automatically. Light/dark automatically by the sun (with a soft fade) or fixed,
   adjustable per display.
@@ -308,6 +311,7 @@ events:
 | `wordclock` | `face` (black/white/brass/copper/accent), `color`, `font`, `glow`, `dots`, `prefix`, `language` |
 | `pixel` | `items: [{type: time/date, entity, attribute, text, icon, unit, decimals, color}]`, `interval`, `frame` |
 | `date` | `format` (long/short), `size`, `color`, `style: card` |
+| `dayclock` | Day clock for older people: weekday and time of day in words (“Tuesday – Afternoon”), date below; `date: false`, `time: true`, `color` |
 | `text` | `text` (may contain Jinja), `markdown`, `style` (label/title/body/big), `size`, `color`, `icon` |
 | `chart` | `entities: [{entity, name, color}]`, `kind` (line/area/bar), `hours`, `period` (hour/day), `value`, `min`, `max`, `unit`, `decimals`, `label`, `style: card` |
 | `gauge` | `entity`, `attribute`, `kind` (ring/half), `min`, `max`, `unit`, `decimals`, `color`, `severity: [{from, color}]`, `name`, `icon` |

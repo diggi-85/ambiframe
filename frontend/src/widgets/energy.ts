@@ -247,6 +247,10 @@ class AfPower extends AfTickingWidget {
         gap: 32px;
         margin-top: 18px;
       }
+      .row > div {
+        container-type: inline-size;
+        min-width: 0;
+      }
       .k {
         display: flex;
         align-items: center;
@@ -258,10 +262,12 @@ class AfPower extends AfTickingWidget {
         font-size: calc(22px * var(--af-fs, 1));
         color: var(--af-accent);
       }
+      /* Zahl und Einheit in einer Zeile: kleiner, sobald der Wert nicht mehr in die Spalte passt (--n = Zeichen) */
       .v {
-        font-size: 72px;
+        font-size: min(72px, calc(100cqi / (var(--n, 4) * 0.75) * var(--af-wide, 1)));
         line-height: 1;
         margin-top: 10px;
+        white-space: nowrap;
       }
       .src {
         font-size: calc(16px * var(--af-fs, 1));
@@ -314,13 +320,13 @@ class AfPower extends AfTickingWidget {
       <div class="row">
         <div>
           <div class="k">${anyIcon("solar")}${o.production_label ?? t("Erzeugung")}</div>
-          <div class="v display num">${watt(prod)}</div>
+          <div class="v display num" style="--n:${watt(prod).length}">${watt(prod)}</div>
           <div class="src num">${values.map((v) => html`${v.name} ${watt(v.w)}<br />`)}</div>
         </div>
         ${o.consumption?.entity
           ? html`<div>
               <div class="k">${anyIcon("home")}${o.consumption.name ?? t("Verbrauch")}</div>
-              <div class="v display num">${watt(cons)}</div>
+              <div class="v display num" style="--n:${watt(cons).length}">${watt(cons)}</div>
               ${fc != null ? html`<div class="src num">${t("Prognose heute {n} kWh", { n: fmt(fc, 1) })}${fcRest != null ? html`<br />${t("noch {n} kWh", { n: fmt(fcRest, 1) })}` : nothing}</div>` : nothing}
             </div>`
           : nothing}

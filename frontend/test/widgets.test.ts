@@ -305,6 +305,44 @@ describe("Wortuhr", () => {
   });
 });
 
+describe("Tagesuhr", () => {
+  it("nennt die Tageszeit in Worten, auch an den Grenzen", async () => {
+    const { dayPart } = await import("../src/widgets/basic");
+    expect([4, 5, 9, 10, 11, 12, 13, 14, 17, 18, 21, 22, 0].map(dayPart)).toEqual([
+      "Nacht", "Morgen", "Morgen", "Vormittag", "Vormittag", "Mittag", "Mittag", "Nachmittag", "Nachmittag", "Abend", "Abend", "Nacht", "Nacht",
+    ]);
+  });
+
+  it("zeigt Wochentag, Tageszeit und Datum – auf Wunsch ohne Datum, mit Uhrzeit", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 9, 27, 15, 5)); // Dienstag
+    const el = await mount("af-dayclock", hassOf([]));
+    const text = () => el.shadowRoot!.textContent!.replace(/\s+/g, " ");
+    expect(text()).toContain("Dienstag");
+    expect(text()).toContain("Nachmittag");
+    expect(text()).toContain("27. Oktober 2026");
+    el.remove();
+    const plain = await mount("af-dayclock", hassOf([]), { date: false, time: true });
+    expect(plain.shadowRoot!.textContent).not.toContain("Oktober");
+    expect(plain.shadowRoot!.textContent).toContain("15:05");
+    plain.remove();
+    // Englisch: eigene Tageszeit-Wörter, nicht „Tomorrow“ (Schlüssel „Morgen“ gehört dem Wetter)
+    const { setLang } = await import("../src/i18n");
+    setLang("en");
+    vi.setSystemTime(new Date(2026, 9, 27, 7, 0));
+    const en = await mount("af-dayclock", hassOf([]));
+    expect(en.shadowRoot!.textContent).toContain("Morning");
+    expect(en.shadowRoot!.textContent).not.toContain("Tomorrow");
+    en.remove();
+    setLang("fr");
+    const fr = await mount("af-dayclock", hassOf([]));
+    expect(fr.shadowRoot!.textContent).toContain("Mardi"); // groß, obwohl Französisch klein schreibt
+    fr.remove();
+    setLang("de");
+    vi.useRealTimers();
+  });
+});
+
 describe("Analoge Uhr und Fallblatt", () => {
   it("rechnet die Zeigerstellung", async () => {
     const { handPhases } = await import("../src/widgets/clocks");

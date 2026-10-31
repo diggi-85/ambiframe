@@ -27,6 +27,7 @@ export interface WidgetType {
 export const WIDGETS: Record<string, WidgetType> = {
   clock: { tag: "af-clock", name: "Uhr", icon: "mdi:clock-outline", size: [6, 2] },
   date: { tag: "af-date", name: "Datum", icon: "mdi:calendar-today", size: [6, 1] },
+  dayclock: { tag: "af-dayclock", name: "Tagesuhr (Wochentag und Tageszeit)", icon: "mdi:calendar-clock", size: [12, 8] },
   text: { tag: "af-text", name: "Text & Vorlage", icon: "mdi:format-text", size: [4, 1] },
   chart: { tag: "af-chart", name: "Verlauf", icon: "mdi:chart-line", size: [6, 3] },
   gauge: { tag: "af-gauge", name: "Anzeige (Ring)", icon: "mdi:gauge", size: [3, 3] },

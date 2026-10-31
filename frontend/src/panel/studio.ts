@@ -499,6 +499,9 @@ export class AmbiframeStudio extends LitElement {
           </select>
         </label>
       </div>
+      ${this.previewWeather && (page?.background?.ambient ?? d.design?.ambient?.type ?? this.draft?.design.ambient?.type) !== "weather"
+        ? html`<p class="hint">${t("Das simulierte Wetter zeigen Wetter-Widgets und die Hintergrund-Animation „Wie das Wetter“ (unter Aussehen) – diese Seite nutzt sie gerade nicht.")}</p>`
+        : nothing}
       <p class="hint">
         ${this.all ? t("Vorschau: so sieht ein Display ohne eigene Abweichungen aus.") : t("Vorschau mit deinen echten Daten – geändert wird erst beim Speichern.")}
       </p>

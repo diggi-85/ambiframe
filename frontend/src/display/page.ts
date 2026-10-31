@@ -35,7 +35,7 @@ const SHADOWS: Record<string, string> = {
 };
 
 /** Diese Widgets haben eine eigene Fläche (Tagesvorschau: eigene Karten) oder stehen frei – Kachel-Stile setzen sie nicht in eine Kachel */
-const FREE = new Set(["clock", "date", "text", "image", "camera", "card", "infoline", "wordclock", "pixel", "radar", "news", "daily", "pet", "balance", "today"]);
+const FREE = new Set(["clock", "date", "dayclock", "text", "image", "camera", "card", "infoline", "wordclock", "pixel", "radar", "news", "daily", "pet", "balance", "today"]);
 
 /** Als Kachel zeigen: per Widget (look.card) oder automatisch im Kachel-Stil */
 export const boxed = (w: WidgetConfig, tiles?: boolean): boolean =>
@@ -244,15 +244,17 @@ export class AfPage extends LitElement {
     const raw = cellRect(this.grid, pos);
     const r = { left: raw.left + inset, top: raw.top + inset, width: raw.width - 2 * inset, height: raw.height - 2 * inset };
     const o = w.options ?? {};
+    // Die Tagesuhr füllt meist die ganze Seite – ohne eigene Angabe mittig
+    const mid = w.type === "dayclock" ? "center" : undefined;
     const face = fontStack(o.typeface);
     const look = w.look ?? {};
     const mix = (c: string, pct: number) => `color-mix(in srgb, ${c} ${pct}%, transparent)`;
     const style = [
       `left:${r.left}px;top:${r.top}px;width:${r.width}px;height:${r.height}px`,
       face ? `--af-display:${face};--af-sans:${face}` : "",
-      `--af-align:${FLEX[o.align] ?? "flex-start"}`,
-      `--af-valign:${FLEX[o.valign] ?? "flex-start"}`,
-      `--af-text-align:${TEXT[o.align] ?? "left"}`,
+      `--af-align:${FLEX[o.align ?? mid] ?? "flex-start"}`,
+      `--af-valign:${FLEX[o.valign ?? mid] ?? "flex-start"}`,
+      `--af-text-align:${TEXT[o.align ?? mid] ?? "left"}`,
       // Darstellung pro Widget
       look.accent ? `--af-accent:${look.accent};--af-accent-soft:${mix(look.accent, 14)}` : "",
       look.ink ? `--af-ink:${look.ink};--af-ink-2:${mix(look.ink, 66)};--af-ink-3:${mix(look.ink, 40)};color:${look.ink}` : "",

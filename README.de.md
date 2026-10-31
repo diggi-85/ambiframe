@@ -29,7 +29,7 @@ Ist die Wäsche fertig, steht es kurz da und bleibt dann als kleine Erinnerung.
   <tr>
     <td align="center"><sub><b>Animierte Hintergründe</b> – hier Polarlicht</sub></td>
     <td align="center"><sub><b>Wortuhr</b> in vier Sprachen</sub></td>
-    <td align="center"><sub><b>30 Stile</b> – hier „Galerie“</sub></td>
+    <td align="center"><sub><b>35 Stile</b> – hier „Galerie“</sub></td>
   </tr>
   <tr>
     <td width="33%"><img src="https://raw.githubusercontent.com/diggi-85/ambiframe/main/docs/screenshots/uhren-fallblatt.jpg" alt="Analoge Uhren und Fallblatt-Anzeigen"></td>
@@ -47,7 +47,7 @@ Ist die Wäsche fertig, steht es kurz da und bleibt dann als kleine Erinnerung.
 
 ## Was Ambiframe kann
 
-- **Seiten aus 47 Widgets** in einem 12×8-Raster mit halben Schritten: Uhr, Datum, Text, Wetter (aktuell, Karte,
+- **Seiten aus 48 Widgets** in einem 12×8-Raster mit halben Schritten: Uhr, Datum, Tagesuhr, Text, Wetter (aktuell, Karte,
   Stunden, Tage, Regen-Vorschau, Zeile), Wert, Räume, Status („Gerade“), Kalender/Müll, Infozeile, Kamera und **jede
   Lovelace-Karte** – die vollständige Liste steht unter [Widgets](#widgets).
 - **Widgets für den Alltag:** Küchentimer (HA-Timer mit Schnellstart-Knöpfen), Pinnwand (Text-Helfer, z. B. vom
@@ -79,11 +79,14 @@ Ist die Wäsche fertig, steht es kurz da und bleibt dann als kleine Erinnerung.
 - **Mini-Karte „Läuft gerade“:** dauerhaft oder je Titel eine Weile, wie lange nach einer Pause, Bedingungen und
   Ruhezeiten, Ecke, Größe, Cover, Fortschritt und Hintergrund.
 - **Nachtmodus** (gedimmte Uhr, wandert gegen Einbrennen) und **Abendstimmung**.
-- **30 Stile, jeder hell und dunkel:** Ruhig, Klar, Gold, Glas, Aurora, Editorial, Minimal, Pixel (LED-Punktmatrix),
+- **35 Stile, jeder hell und dunkel:** Ruhig, Klar, Gold, Glas, Aurora, Editorial, Minimal, Pixel (LED-Punktmatrix),
   Arcade (Neon), Cockpit, Tonal, Kacheln, Klartext (groß und kontrastreich), Fallblatt, Millennium, Glanz, Handheld,
   Bauhaus, Soft-UI, Boho, Landhaus, Natur, **Galerie** (Fotos im Passepartout wie im Museum), **Papier** (reines
   Schwarz-Weiß), **E-Ink** (ganz ohne Bewegung und Überblendungen, kräftige Schrift, Fotos in Graustufen – für
-  E-Paper-Displays), **Zeitung**, **Art déco**, **Terminal**, **Verspielt** – und **Jahreszeiten**, das
+  E-Paper-Displays), **Zeitung**, **Art déco**, **Terminal**, **Verspielt**, **Leitsystem** (Gelb auf
+  Anthrazit wie Wegweiser am Flughafen), **Swiss Grid** (strenges Raster, riesige Zahlen, Signalrot), **Rams** (warmes
+  Grau, orangener Akzent, Lautsprecher-Raster), **Lobby** (Hotel-Rezeption: feine Serifen, Messinglinien),
+  **Bilderbuch** (für Kinder: Hügel, Sonne oder Mond, ausgeschnittene Karten) – und **Jahreszeiten**, das
   von selbst wechselt: Frühling, Sommer, Herbst, Winter, dazu Weihnachten, Silvester, Valentinstag, Ostern und
   Halloween. Kachel-Stile setzen Widgets automatisch in Karten. Hell/Dunkel automatisch nach Sonnenstand (weich
   überblendet) oder fest, pro Display änderbar.
@@ -316,6 +319,7 @@ events:
 | `wordclock` | `face` (black/white/brass/copper/accent), `color`, `font`, `glow`, `dots`, `prefix`, `language` |
 | `pixel` | `items: [{type: time/date, entity, attribute, text, icon, unit, decimals, color}]`, `interval`, `frame` |
 | `date` | `format` (long/short), `size`, `color`, `style: card` |
+| `dayclock` | Tagesuhr für Senioren: Wochentag und Tageszeit in Worten („Dienstag – Nachmittag“), darunter das Datum; `date: false`, `time: true`, `color` |
 | `text` | `text` (darf Jinja enthalten), `markdown`, `style` (label/title/body/big), `size`, `color`, `icon` |
 | `chart` | `entities: [{entity, name, color}]`, `kind` (line/area/bar), `hours`, `period` (hour/day), `value`, `min`, `max`, `unit`, `decimals`, `label`, `style: card` |
 | `gauge` | `entity`, `attribute`, `kind` (ring/half), `min`, `max`, `unit`, `decimals`, `color`, `severity: [{from, color}]`, `name`, `icon` |

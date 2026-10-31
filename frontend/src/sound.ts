@@ -56,8 +56,20 @@ const STREAM_MUSIC = 3;
 
 let current: HTMLAudioElement | undefined;
 
+/** Kürzeste stille WAV-Datei – entsperrt das Audio-Element in Safari */
+const SILENCE = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YQAAAAA=";
+
 /** Ton abspielen; Lautstärke 0–100. In Fully stellt sie die Medienlautstärke des Tablets ein. */
 export const playSound = async (sound: string, volume = 70, ctx: SoundContext = {}): Promise<void> => {
+  const fully = (window as unknown as { fully?: Fully }).fully;
+  // Safari spielt nur, was noch im Klick gestartet wird – HA-Medien brauchen aber erst eine Antwort von HA.
+  // Darum das Element schon jetzt mit Stille starten und danach nur die Quelle tauschen.
+  let audio: HTMLAudioElement | undefined;
+  if (!fully?.playSound) {
+    current?.pause();
+    audio = current = new Audio(SILENCE);
+    void audio.play().catch(() => undefined);
+  }
   let url: string;
   try {
     url = await resolveSound(sound, ctx);
@@ -65,7 +77,6 @@ export const playSound = async (sound: string, volume = 70, ctx: SoundContext = 
     console.warn("Ambiframe: Ton nicht abspielbar:", sound, err);
     return;
   }
-  const fully = (window as unknown as { fully?: Fully }).fully;
   if (fully?.playSound) {
     try {
       fully.setAudioVolume?.(Math.max(0, Math.min(100, Math.round(volume))), STREAM_MUSIC);
@@ -75,10 +86,11 @@ export const playSound = async (sound: string, volume = 70, ctx: SoundContext = 
     fully.playSound(url, false);
     return;
   }
-  current?.pause();
-  current = new Audio(url);
-  current.volume = Math.max(0, Math.min(1, volume / 100));
-  void current.play().catch(() => {
+  // Inzwischen ein anderer Ton gestartet → diesen nicht mehr spielen
+  if (!audio || current !== audio) return;
+  audio.src = url;
+  audio.volume = Math.max(0, Math.min(1, volume / 100));
+  void audio.play().catch(() => {
     /* Autoplay gesperrt – ohne Ton weiter */
   });
 };

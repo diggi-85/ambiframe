@@ -303,7 +303,7 @@ export type DisplayDesign = Partial<
 
 export type TextSize = "normal" | "large" | "xlarge";
 
-export type Theme = "ruhig" | "klar" | "gold" | "glass" | "editorial" | "minimal" | "aurora" | "pixel" | "arcade" | "cockpit" | "tonal" | "kacheln" | "klartext" | "fallblatt" | "millennium" | "glanz" | "handheld" | "bauhaus" | "softui" | "boho" | "landhaus" | "natur" | "galerie" | "papier" | "eink" | "zeitung" | "artdeco" | "terminal" | "verspielt" | "saisonal"
+export type Theme = "ruhig" | "klar" | "gold" | "glass" | "editorial" | "minimal" | "aurora" | "pixel" | "arcade" | "cockpit" | "tonal" | "kacheln" | "klartext" | "fallblatt" | "millennium" | "glanz" | "handheld" | "bauhaus" | "softui" | "boho" | "landhaus" | "natur" | "galerie" | "papier" | "eink" | "zeitung" | "artdeco" | "terminal" | "verspielt" | "leitsystem" | "swiss" | "rams" | "lobby" | "bilderbuch" | "saisonal"
   // „Jahreszeiten“ zur Laufzeit – nicht in der Konfiguration
   | "saison-weihnachten" | "saison-silvester" | "saison-valentin" | "saison-ostern" | "saison-halloween" | "saison-fruehling" | "saison-sommer" | "saison-herbst" | "saison-winter";
 

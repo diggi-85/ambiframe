@@ -52,6 +52,11 @@ export const WIDGET_FIELDS: Record<string, Field[]> = {
     { key: "size", label: "Schriftgröße", type: "number", min: 10, max: 120, placeholder: "26" },
     COLOR,
   ],
+  dayclock: [
+    { key: "date", label: "Datum", type: "select", options: [[undefined, "mit Datum"], [false, "ohne Datum"]] },
+    { key: "time", label: "Uhrzeit klein dazu", type: "boolean" },
+    COLOR,
+  ],
   text: [
     {
       key: "text",
@@ -1261,7 +1266,7 @@ export const eventFields = (config: AmbiframeConfig): Field[] => [
     placeholder: "kein Ton",
     // Eigene Töne aus der Tonbibliothek zuerst, dann die mitgelieferten
     suggestions: [...(config.sounds ?? []).map((s) => [s.id, `${s.name} · ${t("eigener Ton")}`] as [string, string]), ...SOUNDS],
-    help: "Klick ins Feld für eigene und mitgelieferte Töne – oder ein Link (/local/ton.mp3, media-source://…). Eigene Töne legst du unter „Eigene Töne“ an – im Studio unter den Momenten, im Experten-Editor links bei den Ereignissen.",
+    help: "Klick ins Feld für eigene und mitgelieferte Töne – oder ein Link (/local/ton.mp3, media-source://media_source/local/ton.mp3). Eigene Töne legst du im Studio unter den Momenten bei „Eigene Töne“ an.",
     when: (v) => v.kind !== "media",
   },
   {

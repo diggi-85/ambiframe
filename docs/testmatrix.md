@@ -69,9 +69,10 @@ Ausführen: `cd frontend && npm test` (Frontend) · `.venv/bin/python -m pytest`
 | Zahlen aus der Titelschrift, Wörter aus der Textschrift | `themes.test.ts`, `logic.test.ts` › Zahlen in der Titelschrift |
 | Frontend und Backend kennen dieselben Stile, Animationen, Quellen, Kartenstile | `themes.test.ts` › Stile insgesamt |
 | Kachel-Stil pro Widget und Abstand | `display.test.ts` › Kachel-Stil, `test_validation.py::test_tile_look_card_style_and_gap` |
+| Tagesuhr: Tageszeit in Worten (auch an den Grenzen), Wochentag groß, eigene Wörter je Sprache | `widgets.test.ts` › Tagesuhr |
 | Jahreszeiten: Ostern, Anlässe vor Jahreszeit | `logic.test.ts` › Jahreszeiten |
 | E-Ink: keine Animation, keine Überblendung, kein Seitenwechsel-Effekt, Fotos in Graustufen | `display.test.ts` › E-Ink, `visual.mjs` zählt bewegte Elemente (muss 0 sein) |
-| Aussehen aller 30 Stile auf Zuhause, Wetter und Tagesvorschau bleibt gleich (Uhrzeit und Zufall eingefroren) | `frontend/tools/visual.mjs`, Referenzbilder in `frontend/test/visual/` |
+| Aussehen aller 35 Stile auf Zuhause, Wetter und Tagesvorschau bleibt gleich (Uhrzeit und Zufall eingefroren) | `frontend/tools/visual.mjs`, Referenzbilder in `frontend/test/visual/` |
 
 ## Noch ohne automatischen Test (vor Releases von Hand)
 

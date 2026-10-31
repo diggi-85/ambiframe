@@ -1,5 +1,5 @@
 // Uhr, Datum, Text
-import { locale } from "../i18n";
+import { lang, locale, t } from "../i18n";
 import { css, html, nothing } from "lit";
 import { anyIcon } from "../icons";
 import { markdown, markdownStyles } from "../markdown";
@@ -121,6 +121,84 @@ class AfDate extends AfTickingWidget {
   }
 }
 
+/** Tageszeit in Worten – grob genug, dass man sie ohne Uhr versteht */
+export const dayPart = (hour: number): string =>
+  hour >= 5 && hour < 10
+    ? "Morgen"
+    : hour >= 10 && hour < 12
+      ? "Vormittag"
+      : hour >= 12 && hour < 14
+        ? "Mittag"
+        : hour >= 14 && hour < 18
+          ? "Nachmittag"
+          : hour >= 18 && hour < 22
+            ? "Abend"
+            : "Nacht";
+
+// Eigene Schlüssel: „Morgen“ heißt in den Übersetzungen schon „tomorrow“
+const PART_NAMES: Record<string, () => string> = {
+  Morgen: () => t("Tageszeit: Morgen"),
+  Vormittag: () => t("Tageszeit: Vormittag"),
+  Mittag: () => t("Tageszeit: Mittag"),
+  Nachmittag: () => t("Tageszeit: Nachmittag"),
+  Abend: () => t("Tageszeit: Abend"),
+  Nacht: () => t("Tageszeit: Nacht"),
+};
+const partName = (hour: number): string => (lang() === "de" ? dayPart(hour) : PART_NAMES[dayPart(hour)]());
+
+/**
+ * Tagesuhr für Senioren: Wochentag und Tageszeit groß in Worten („Dienstag – Nachmittag“), darunter das Datum.
+ * Ohne Ziffern-Uhr, damit man auf einen Blick weiß, welcher Tag ist. Optionen: date (false = ohne Datum),
+ * time (true = Uhrzeit klein dazu), color.
+ */
+class AfDayClock extends AfTickingWidget {
+  static styles = [
+    widgetStyles,
+    alignStyles,
+    css`
+      :host {
+        container-type: size;
+      }
+      /* so groß wie möglich, ohne Umbruch: --n = Zeichen des längeren Worts (Wochentag oder Tageszeit) */
+      .day,
+      .part {
+        line-height: 1;
+        white-space: nowrap;
+        font-size: min(28cqh, calc(100cqw / (var(--n, 10) * 0.66)));
+      }
+      .part {
+        color: var(--af-accent);
+        margin-top: 0.12em;
+      }
+      .date {
+        font-size: min(9cqh, 5.5cqw);
+        color: var(--af-ink-2);
+        margin-top: min(6cqh, 3cqw);
+      }
+    `,
+  ];
+
+  render() {
+    const now = new Date();
+    const o = this.options;
+    const name = now.toLocaleDateString(locale(), { weekday: "long" });
+    // Als Überschrift groß – Französisch und Niederländisch schreiben Wochentage sonst klein
+    const day = name.charAt(0).toLocaleUpperCase(locale()) + name.slice(1);
+    const part = partName(now.getHours());
+    return html`<div style="color:${color(o.color, "")};--n:${Math.max(day.length, part.length)}">
+      <div class="day display">${day}</div>
+      <div class="part display">${part}</div>
+      ${o.date === false && !o.time
+        ? nothing
+        : html`<div class="date num">
+            ${o.date === false ? "" : now.toLocaleDateString(locale(), { day: "numeric", month: "long", year: "numeric" })}${o.date !== false && o.time ? " · " : ""}${o.time
+              ? fmtTime(now)
+              : ""}
+          </div>`}
+    </div>`;
+  }
+}
+
 const TEXT_STYLES: Record<string, string> = {
   label: "font-size: calc(16px * var(--af-fs, 1));letter-spacing:.16em;text-transform:uppercase;font-weight:500;color:var(--af-ink-3)",
   title: "font-size:44px;line-height:1.05",
@@ -209,4 +287,5 @@ class AfText extends AfWidget {
 
 define("af-clock", AfClock);
 define("af-date", AfDate);
+define("af-dayclock", AfDayClock);
 define("af-text", AfText);
