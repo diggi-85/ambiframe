@@ -27,6 +27,8 @@ Ausführen: `cd frontend && npm test` (Frontend) · `.venv/bin/python -m pytest`
 | Nur echte Freigabe-Links | `test_google_link_and_art_title`, `test_google_album_rejects_foreign_links` |
 | Zwischenspeicher, nicht erreichbar → leer | `test_google_album_fetch_parses_and_caches`, `test_google_album_unreachable_returns_empty` |
 | **Sicherheit:** Displays rufen nur eingetragene Alben ab | `test_google_album_only_when_configured` |
+| Route zur Pendelzeit: Adressen umrechnen und merken, Verlauf von OSRM, Luftlinie bei Ausfall, unbekannter Start = Zuhause; Karte zeichnet sie ein | `tests/test_routes.py`, `widgets.test.ts` › Karte |
+| **Sicherheit:** Strecken nur zu eingetragenen Reisezeit-Sensoren | `test_route_only_for_configured_sensors` |
 | Google baut die Albumseite um: letzte Fotos bleiben, Hinweis unter Reparaturen, verschwindet von selbst | `test_google_album_changed_page_keeps_photos_and_raises_repair` |
 | iCloud-Album nicht erreichbar → Hinweis unter Reparaturen | `test_icloud_album_unreachable_raises_repair` |
 
@@ -69,6 +71,10 @@ Ausführen: `cd frontend && npm test` (Frontend) · `.venv/bin/python -m pytest`
 | Zahlen aus der Titelschrift, Wörter aus der Textschrift | `themes.test.ts`, `logic.test.ts` › Zahlen in der Titelschrift |
 | Frontend und Backend kennen dieselben Stile, Animationen, Quellen, Kartenstile | `themes.test.ts` › Stile insgesamt |
 | Kachel-Stil pro Widget und Abstand | `display.test.ts` › Kachel-Stil, `test_validation.py::test_tile_look_card_style_and_gap` |
+| Karte: Personen ausblenden (Ausschluss, nur Unterwegs), Namensschilder abschaltbar | `widgets.test.ts` › Karte, To-do, Pendelzeit |
+| Karte: Ausschnitt passt alle ein, Personen am selben Ort als Stapel mit einem Schild, Zuhause eingezeichnet | `widgets.test.ts` › Karte, To-do, Pendelzeit |
+| To-do: nur Offenes, Abhaken nach 4 s, vorher zurücknehmbar | `widgets.test.ts` › Karte, To-do, Pendelzeit |
+| Pendelzeit: „losfahren bis“, Mehrzeit bei Verkehr, fehlender Sensor | `widgets.test.ts` › Karte, To-do, Pendelzeit |
 | Tagesuhr: Tageszeit in Worten (auch an den Grenzen), Wochentag groß, eigene Wörter je Sprache | `widgets.test.ts` › Tagesuhr |
 | Jahreszeiten: Ostern, Anlässe vor Jahreszeit | `logic.test.ts` › Jahreszeiten |
 | E-Ink: keine Animation, keine Überblendung, kein Seitenwechsel-Effekt, Fotos in Graustufen | `display.test.ts` › E-Ink, `visual.mjs` zählt bewegte Elemente (muss 0 sein) |

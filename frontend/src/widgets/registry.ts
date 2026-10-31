@@ -10,6 +10,7 @@ import "./more";
 import "./extras";
 import "./news";
 import "./plus";
+import "./places";
 import "./pixel";
 import "./wordclock";
 import "./clocks";
@@ -66,6 +67,9 @@ export const WIDGETS: Record<string, WidgetType> = {
   board: { tag: "af-board", name: "Pinnwand", icon: "mdi:pin-outline", size: [5, 4] },
   countdown: { tag: "af-countdown", name: "Countdown", icon: "mdi:calendar-clock", size: [4, 4] },
   departures: { tag: "af-departures", name: "Abfahrten", icon: "mdi:train", size: [6, 5] },
+  map: { tag: "af-map", name: "Karte (Personen und Fahrzeuge)", icon: "mdi:map-marker-radius", size: [6, 6] },
+  todo: { tag: "af-todo", name: "To-do- und Einkaufsliste", icon: "mdi:format-list-checks", size: [4, 6] },
+  commute: { tag: "af-commute", name: "Pendelzeit", icon: "mdi:car-clock", size: [5, 3] },
   radar: { tag: "af-radar", name: "Regenradar", icon: "mdi:radar", size: [6, 6] },
   sky: { tag: "af-sky", name: "Sonne & Mond", icon: "mdi:weather-sunset", size: [8, 2] },
   air: { tag: "af-air", name: "Pollen & Luft", icon: "mdi:flower-pollen", size: [4, 5] },

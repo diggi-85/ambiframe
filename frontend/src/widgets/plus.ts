@@ -13,18 +13,18 @@ import "./clocks";
 /* ───────── Gemeinsame Helfer ───────── */
 
 /** Liste aus Optionen: Text („a, b“), Liste von Texten oder Editor-Liste [{value}] */
-const listOf = (v: unknown): string[] =>
+export const listOf = (v: unknown): string[] =>
   (Array.isArray(v) ? v : typeof v === "string" ? v.split(",") : [])
     .map((x) => (typeof x === "string" ? x : (x as { value?: string; entity?: string })?.value ?? (x as { entity?: string })?.entity))
     .filter((x): x is string => !!x && !!x.trim())
     .map((x) => x.trim());
 
-const allOf = (hass: Hass | undefined, test: (id: string, s: HassEntity) => boolean): string[] =>
+export const allOf = (hass: Hass | undefined, test: (id: string, s: HassEntity) => boolean): string[] =>
   Object.entries(hass?.states ?? {})
     .filter(([id, s]) => test(id, s))
     .map(([id]) => id);
 
-const label = (o: Record<string, unknown>, fallback: string) =>
+export const label = (o: Record<string, unknown>, fallback: string) =>
   o.label === false ? nothing : html`<div class="label">${(o.label as string | undefined) ?? fallback}</div>`;
 
 /** Ort für Radar und Sonne: Optionen vor zone.home */
@@ -585,10 +585,23 @@ export const tileOf = (lat: number, lon: number, z: number): { x: number; y: num
 
 // Frei nutzbare Karten ohne Schlüssel (CARTO verlangt inzwischen einen)
 const ESRI = "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas";
-const MAPS: Record<string, { url: string; credit: string }> = {
+export const MAPS: Record<string, { url: string; credit: string }> = {
   light: { url: `${ESRI}/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}`, credit: "© Esri, HERE, OpenStreetMap" },
   dark: { url: `${ESRI}/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}`, credit: "© Esri, HERE, OpenStreetMap" },
   osm: { url: "https://tile.openstreetmap.org/{z}/{x}/{y}.png", credit: "© OpenStreetMap" },
+};
+
+/** Kartenkacheln nach Option map (auto | light | dark | osm) oder eigener Adresse map_url */
+export const mapFor = (el: Element, o: Record<string, unknown>): { url: string; credit: string } => {
+  const own = String(o.map_url ?? "");
+  if (own.includes("{z}")) return { url: own, credit: "" };
+  const m = String(o.map ?? "auto");
+  if (MAPS[m]) return MAPS[m];
+  if (m === "voyager") return MAPS.osm;
+  // wie die Anzeige: helle Karte im hellen Modus (af-display trägt mode, auch über Shadow-Grenzen hinweg suchen)
+  let n: Node | null = el;
+  while (n && !(n instanceof Element && n.tagName === "AF-DISPLAY")) n = n.parentNode ?? (n as ShadowRoot).host ?? null;
+  return MAPS[(n as Element | null)?.getAttribute("mode") === "light" ? "light" : "dark"];
 };
 
 interface RadarFrame {
@@ -745,15 +758,7 @@ class AfRadar extends AfWidget {
   }
 
   private map(): { url: string; credit: string } {
-    const own = String(this.options.map_url ?? "");
-    if (own.includes("{z}")) return { url: own, credit: "" };
-    const m = String(this.options.map ?? "auto");
-    if (MAPS[m]) return MAPS[m];
-    if (m === "voyager") return MAPS.osm;
-    // wie die Anzeige: helle Karte im hellen Modus (af-display trägt mode, auch über Shadow-Grenzen hinweg suchen)
-    let n: Node | null = this;
-    while (n && !(n instanceof Element && n.tagName === "AF-DISPLAY")) n = n.parentNode ?? (n as ShadowRoot).host ?? null;
-    return MAPS[(n as Element | null)?.getAttribute("mode") === "light" ? "light" : "dark"];
+    return mapFor(this, this.options);
   }
 
   render() {

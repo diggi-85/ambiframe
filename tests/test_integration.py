@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import re
 from typing import Any
 from unittest.mock import patch
 
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
+from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMocker
 
 from homeassistant import config_entries
 from homeassistant.core import HomeAssistant
@@ -324,3 +326,20 @@ async def test_older_config_loads_unchanged_after_update(hass: HomeAssistant, se
     assert cfg["photos"]["placeholder"] == "bing" and cfg["photos"]["placeholder_mix"] is False
     assert [p["id"] for p in cfg["pages"]] == [p["id"] for p in example_config["pages"]]
     assert [e["id"] for e in cfg["events"]] == [e["id"] for e in example_config["events"]]
+
+
+async def test_route_only_for_configured_sensors(hass: HomeAssistant, setup_ambiframe: MockConfigEntry, hass_ws_client: Any, aioclient_mock: AiohttpClientMocker) -> None:
+    """Sicherheit: Displays lassen den Server nur Strecken zu eingetragenen Sensoren abfragen."""
+    hass.states.async_set("sensor.weg", "28", {"origin": "51.5,7.0", "destination": "51.4,7.2"})
+    aioclient_mock.get(re.compile(r"https://router\.project-osrm\.org/.*"), json={"routes": [{"geometry": {"coordinates": [[7.0, 51.5], [7.2, 51.4]]}}]})
+    client = await hass_ws_client(hass)
+    await client.send_json_auto_id({"type": "ambiframe/route", "entity": "sensor.weg"})
+    msg = await client.receive_json()
+    assert not msg["success"] and msg["error"]["code"] == "unknown_route"
+    config = minimal_config()
+    config["pages"][0]["widgets"].append({"id": "p", "type": "commute", "x": 6, "y": 0, "w": 5, "h": 3, "options": {"routes": [{"entity": "sensor.weg"}]}})
+    await client.send_json_auto_id({"type": "ambiframe/config/save", "config": config})
+    assert (await client.receive_json())["success"]
+    await client.send_json_auto_id({"type": "ambiframe/route", "entity": "sensor.weg"})
+    msg = await client.receive_json()
+    assert msg["success"] and msg["result"]["end"] == [51.4, 7.2]

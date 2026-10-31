@@ -43,6 +43,7 @@ def async_register_commands(hass: HomeAssistant) -> None:
         ws_icloud_photos,
         ws_placeholder_photos,
         ws_google_photos,
+        ws_route,
         ws_summary_subscribe,
         ws_summary_generate,
         ws_template_subscribe,
@@ -296,6 +297,29 @@ async def ws_google_photos(hass: HomeAssistant, connection: websocket_api.Active
             connection.send_error(msg["id"], "unknown_album", "Dieses Album ist nicht eingetragen")
             return
         connection.send_result(msg["id"], await store.photo_sources.async_google(msg["url"]))
+
+
+def _route_sensors(config: dict[str, Any]) -> set[str]:
+    """Reisezeit-Sensoren aus Karten (routes) und Pendelzeit-Widgets – nur für diese wird ein Verlauf geholt."""
+    found: set[str] = set()
+    for page in config.get("pages", []):
+        for widget in page.get("widgets", []):
+            for item in (widget.get("options") or {}).get("routes") or []:
+                entity = item.get("entity") if isinstance(item, dict) else item
+                if isinstance(entity, str):
+                    found.add(entity)
+    return found
+
+
+@websocket_api.websocket_command({vol.Required("type"): "ambiframe/route", vol.Required("entity"): str})
+@websocket_api.async_response
+async def ws_route(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
+    """Streckenverlauf zum Reisezeit-Sensor für die Karte (None, wenn nicht ermittelbar)."""
+    if (store := _store(hass, connection, msg)) is not None:
+        if msg["entity"] not in _route_sensors(store.config):
+            connection.send_error(msg["id"], "unknown_route", "Dieser Sensor ist in keiner Karte und keiner Pendelzeit eingetragen")
+            return
+        connection.send_result(msg["id"], await store.routes.async_route(msg["entity"]))
 
 
 @websocket_api.websocket_command({vol.Required("type"): "ambiframe/summary/subscribe"})

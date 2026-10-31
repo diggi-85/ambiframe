@@ -488,6 +488,43 @@ export const WIDGET_FIELDS: Record<string, Field[]> = {
     { key: "attribute", label: "Attribut mit der Liste", type: "text", placeholder: "automatisch" },
     LABEL,
   ],
+  map: [
+    { key: "entities", label: "Personen und Fahrzeuge", type: "entities", domains: ["person", "device_tracker"], help: "Leer = alle Personen mit Standort. Autos als device_tracker hinzufügen." },
+    { key: "exclude", label: "Ausblenden", type: "entities", domains: ["person", "device_tracker"], help: "Erscheinen nie – auch wenn oben niemand gewählt ist (dann alle Personen)" },
+    { key: "away_only", label: "Nur wer unterwegs ist", type: "boolean", help: "Wer zu Hause ist, verschwindet von der Karte" },
+    { key: "tags", label: "Namensschilder", type: "select", options: [[undefined, "Name, Ort und seit wann"], ["name", "nur Name"], ["none", "keine"]] },
+    { key: "routes", label: "Strecken", type: "entities", domains: ["sensor"], help: "Reisezeit-Sensoren (z. B. Waze) – die Strecke wird eingezeichnet. Start- und Zieladresse gehen dafür einmal an OpenStreetMap (Nominatim, OSRM)." },
+    { key: "zone", label: "Zuhause einzeichnen", type: "select", options: [[undefined, "ja"], [false, "nein"]] },
+    { key: "max_zoom", label: "Höchstens so nah", type: "select", options: [[12, "Stadt"], [14, "Viertel"], [undefined, "Straße"], [17, "Haus"]] },
+    { key: "map", label: "Karte", type: "select", options: [[undefined, "wie die Anzeige"], ["light", "Hell"], ["dark", "Dunkel"], ["osm", "Farbig"]] },
+    { key: "map_url", label: "Eigene Karte (Adresse)", type: "text", placeholder: "https://…/{z}/{x}/{y}.png", advanced: true },
+    LABEL,
+  ],
+  todo: [
+    { key: "entity", label: "Liste", type: "entity", domains: ["todo"], placeholder: "erste Liste" },
+    { key: "check", label: "Antippen hakt ab", type: "select", options: [[undefined, "ja (4 s zurücknehmbar)"], [false, "nein, nur anzeigen"]] },
+    { key: "max", label: "Höchstens", type: "number", min: 1, max: 30, placeholder: "8" },
+    { key: "show_completed", label: "Erledigte zeigen", type: "boolean" },
+    { key: "size", label: "Schriftgröße (px)", type: "number", min: 14, max: 80, placeholder: "26" },
+    { key: "empty_text", label: "Text ohne Einträge", type: "text", placeholder: "Alles erledigt" },
+    LABEL,
+  ],
+  commute: [
+    {
+      key: "routes",
+      label: "Ziele",
+      type: "list",
+      addLabel: "Ziel",
+      itemLabel: (it) => it.name ?? it.entity ?? "Ziel",
+      fields: [
+        { key: "entity", label: "Reisezeit-Sensor", type: "entity", domains: ["sensor"], help: "Z. B. von Waze Travel Time (Minuten)" },
+        { key: "name", label: "Name", type: "text", placeholder: "Büro" },
+        { key: "arrive", label: "Ankommen um", type: "text", placeholder: "08:00", help: "Dann steht dort „losfahren bis …“" },
+        { key: "usual", label: "Normal (Minuten)", type: "number", min: 1, help: "Ab 5 min mehr wird die Zeit rot" },
+      ],
+    },
+    LABEL,
+  ],
   radar: [
     { key: "zoom", label: "Zoom", type: "select", options: [[4, "Land"], [5, "Region"], [6, "Umgebung"], [undefined, "Nah"]] },
     {

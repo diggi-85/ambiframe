@@ -35,7 +35,7 @@ const SHADOWS: Record<string, string> = {
 };
 
 /** Diese Widgets haben eine eigene Fläche (Tagesvorschau: eigene Karten) oder stehen frei – Kachel-Stile setzen sie nicht in eine Kachel */
-const FREE = new Set(["clock", "date", "dayclock", "text", "image", "camera", "card", "infoline", "wordclock", "pixel", "radar", "news", "daily", "pet", "balance", "today"]);
+const FREE = new Set(["clock", "date", "dayclock", "text", "image", "camera", "card", "infoline", "wordclock", "pixel", "radar", "map", "news", "daily", "pet", "balance", "today"]);
 
 /** Als Kachel zeigen: per Widget (look.card) oder automatisch im Kachel-Stil */
 export const boxed = (w: WidgetConfig, tiles?: boolean): boolean =>

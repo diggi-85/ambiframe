@@ -3,6 +3,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { CLOCKS, litCells } from "../src/widgets/wordclock";
 import "../src/widgets/clocks";
+import "../src/widgets/places";
 import { airKindOf, airLevel, countdownText, moonPhase, readDepartures, sunTimes, targetDate, tileOf, timerLeft } from "../src/widgets/plus";
 import type { Hass, HassEntity } from "../src/types";
 
@@ -386,5 +387,148 @@ describe("Namen kürzen", () => {
     expect(stripCommon(["Pollenflug Birke", "Pollenflug Gräser"])).toEqual(["Birke", "Gräser"]);
     expect(stripCommon(["Birke", "Erle"])).toEqual(["Birke", "Erle"]);
     expect(stripCommon(["Feinstaub"])).toEqual(["Feinstaub"]);
+  });
+});
+
+describe("Karte, To-do, Pendelzeit", () => {
+  it("wählt den Ausschnitt so, dass alle Punkte hineinpassen – nah, wenn alle beieinander sind", async () => {
+    const { fitView } = await import("../src/widgets/places");
+    const home = { lat: 51.5, lon: 7.0 };
+    const near = fitView([home, { lat: 51.501, lon: 7.001 }], 600, 400);
+    const far = fitView([home, { lat: 52.52, lon: 13.4 }], 600, 400);
+    expect(near.z).toBe(15); // höchstens Straße
+    expect(far.z).toBeLessThan(10);
+    // beide Punkte mit Rand im Bild
+    for (const p of [home, { lat: 52.52, lon: 13.4 }]) {
+      const t = tileOf(p.lat, p.lon, far.z);
+      expect(Math.abs((t.x - far.x) * 256)).toBeLessThanOrEqual(300 - 60);
+      expect(Math.abs((t.y - far.y) * 256)).toBeLessThanOrEqual(200 - 60);
+    }
+  });
+
+  it("zeigt Personen und Fahrzeuge mit Ort, Gleiche als Stapel mit einem Schild", async () => {
+    const hass = hassOf([
+      ent("zone.home", "0", { latitude: 51.5, longitude: 7.0, radius: 30 }),
+      ent("person.anna", "home", { latitude: 51.5, longitude: 7.0, friendly_name: "Anna" }),
+      ent("person.ben", "home", { latitude: 51.5, longitude: 7.0, friendly_name: "Ben" }),
+      ent("device_tracker.auto", "not_home", { latitude: 51.52, longitude: 7.05, friendly_name: "Auto" }),
+    ]);
+    const el = document.createElement("af-map") as El;
+    Object.defineProperty(el, "clientWidth", { value: 600 });
+    Object.defineProperty(el, "clientHeight", { value: 400 });
+    el.hass = hass;
+    el.options = { entities: ["person.anna", "person.ben", "device_tracker.auto"] };
+    document.body.append(el);
+    await el.updateComplete;
+    // Anna und Ben zu Hause: ein Stapel mit gemeinsamem Schild, das Auto für sich
+    const pins = [...el.shadowRoot!.querySelectorAll<HTMLElement>(".pin")];
+    expect(pins).toHaveLength(2);
+    expect(pins[0].querySelectorAll(".avatar")).toHaveLength(2);
+    expect(pins[0].textContent).toContain("Anna, Ben");
+    expect(text(el)).toContain("Zuhause");
+    expect(text(el)).toContain("unterwegs");
+    expect(el.shadowRoot!.querySelector(".zone")).toBeTruthy();
+    expect(el.shadowRoot!.querySelectorAll(".map img").length).toBeGreaterThan(0);
+    el.remove();
+  });
+
+  it("blendet Personen aus: ausgeschlossene, auf Wunsch alle zu Hause, und Schilder lassen sich abschalten", async () => {
+    const hass = hassOf([
+      ent("person.anna", "home", { latitude: 51.5, longitude: 7.0, friendly_name: "Anna" }),
+      ent("person.ben", "not_home", { latitude: 51.6, longitude: 7.2, friendly_name: "Ben" }),
+      ent("person.tab", "home", { latitude: 51.5, longitude: 7.0, friendly_name: "Tablet" }),
+    ]);
+    const show = async (options: Record<string, unknown>) => {
+      const el = document.createElement("af-map") as El;
+      Object.defineProperty(el, "clientWidth", { value: 600 });
+      Object.defineProperty(el, "clientHeight", { value: 400 });
+      el.hass = hass;
+      el.options = options;
+      document.body.append(el);
+      await el.updateComplete;
+      const t = text(el);
+      const tags = el.shadowRoot!.querySelectorAll(".tag").length;
+      el.remove();
+      return { t, tags };
+    };
+    expect((await show({})).t).toContain("Tablet"); // ohne Auswahl: alle Personen
+    expect((await show({ exclude: ["person.tab"] })).t).not.toContain("Tablet");
+    const away = await show({ away_only: true });
+    expect(away.t).toContain("Ben");
+    expect(away.t).not.toContain("Anna");
+    expect((await show({ tags: "name" })).t).not.toContain("unterwegs");
+    expect((await show({ tags: "none" })).tags).toBe(0);
+  });
+
+  it("zeichnet die Strecke eines Reisezeit-Sensors ein und zoomt so weit heraus, dass sie ganz zu sehen ist", async () => {
+    const hass = hassOf([
+      ent("zone.home", "0", { latitude: 51.5, longitude: 7.0, radius: 30 }),
+      ent("person.anna", "home", { latitude: 51.5, longitude: 7.0, friendly_name: "Anna" }),
+    ]);
+    (hass as unknown as Record<string, unknown>).callWS = vi.fn(async () => ({ path: [[51.5, 7.0], [51.45, 7.1], [51.4, 7.3]] }));
+    const el = document.createElement("af-map") as El;
+    Object.defineProperty(el, "clientWidth", { value: 600 });
+    Object.defineProperty(el, "clientHeight", { value: 400 });
+    el.hass = hass;
+    el.options = { entities: ["person.anna"], routes: ["sensor.weg"] };
+    document.body.append(el);
+    await el.updateComplete;
+    await new Promise((r) => setTimeout(r, 0));
+    await el.updateComplete;
+    expect(hass.callWS).toHaveBeenCalledWith({ type: "ambiframe/route", entity: "sensor.weg" });
+    const line = el.shadowRoot!.querySelector(".route")!;
+    const pts = line.getAttribute("points")!.split(" ").map((p) => p.split(",").map(Number));
+    expect(pts).toHaveLength(3);
+    // Start und Ziel liegen im Bild
+    for (const [x, y] of [pts[0], pts[2]]) {
+      expect(x).toBeGreaterThanOrEqual(0);
+      expect(x).toBeLessThanOrEqual(600);
+      expect(y).toBeGreaterThanOrEqual(0);
+      expect(y).toBeLessThanOrEqual(400);
+    }
+    expect(el.shadowRoot!.querySelector(".goal")).toBeTruthy();
+    el.remove();
+  });
+
+  it("To-do: zeigt offene Einträge, hakt nach 4 s ab und lässt sich vorher zurücknehmen", async () => {
+    vi.useFakeTimers();
+    let push: (m: unknown) => void = () => undefined;
+    const hass = hassOf([ent("todo.einkauf", "2", { friendly_name: "Einkauf" })]);
+    (hass as unknown as Record<string, unknown>).connection = {
+      subscribeMessage: vi.fn(async (cb: (m: unknown) => void) => ((push = cb), () => undefined)),
+    };
+    const el = await mount("af-todo", hass);
+    push({ items: [{ uid: "1", summary: "Milch", status: "needs_action" }, { uid: "2", summary: "Brot", status: "needs_action" }, { uid: "3", summary: "Eier", status: "completed" }] });
+    await el.updateComplete;
+    expect(text(el)).toContain("Milch");
+    expect(text(el)).not.toContain("Eier");
+    const rows = el.shadowRoot!.querySelectorAll<HTMLElement>("li");
+    rows[0].click(); // Milch abhaken …
+    rows[1].click(); // Brot abhaken …
+    await el.updateComplete;
+    el.shadowRoot!.querySelectorAll<HTMLElement>("li")[1].click(); // … Brot doch nicht
+    vi.advanceTimersByTime(4100);
+    expect(hass.callService).toHaveBeenCalledTimes(1);
+    expect(hass.callService).toHaveBeenCalledWith("todo", "update_item", { entity_id: "todo.einkauf", item: "1", status: "completed" });
+    el.remove();
+    vi.useRealTimers();
+  });
+
+  it("Pendelzeit: „losfahren bis“, Verkehr und fehlender Sensor", async () => {
+    const { leaveAt } = await import("../src/widgets/places");
+    const now = new Date(2026, 9, 30, 7, 0);
+    expect(leaveAt("08:00", 23, now)!.getHours() * 60 + leaveAt("08:00", 23, now)!.getMinutes()).toBe(7 * 60 + 37);
+    expect(leaveAt("acht", 23, now)).toBeNull();
+    vi.useFakeTimers();
+    vi.setSystemTime(now);
+    const hass = hassOf([ent("sensor.buero", "31", { distance: 18.4, route: "A40" })]);
+    const el = await mount("af-commute", hass, { routes: [{ entity: "sensor.buero", name: "Büro", arrive: "08:00", usual: 22 }, { entity: "sensor.fehlt", name: "Schule" }] });
+    expect(text(el)).toContain("losfahren bis 07:29");
+    expect(text(el)).toContain("über A40");
+    expect(text(el)).toContain("18 km");
+    expect(text(el)).toContain("+9 min");
+    expect(text(el)).toContain("nicht verfügbar");
+    el.remove();
+    vi.useRealTimers();
   });
 });

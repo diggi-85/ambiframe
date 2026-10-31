@@ -48,13 +48,17 @@ Dutch and French).</sub>
 
 ## Features
 
-- **Pages built from 48 widgets** on a 12×8 grid with half-cell steps: clock, date, day clock, text, weather (current, card,
+- **Pages built from 51 widgets** on a 12×8 grid with half-cell steps: clock, date, day clock, map, to-do list, commute, text, weather (current, card,
   hourly, daily, rain preview, line), value, rooms, status ("right now"), calendar/waste, info line, camera and **any
   Lovelace card** – the full list is under [Widgets](#widgets).
 - **Everyday widgets:** kitchen timer (HA timers with quick-start buttons), notice board (text helpers, e.g. set from
   your phone), countdown (date, date helper or calendar), departures (public transport sensors, line filter, walking
   time), animated rain radar (RainViewer), sun & moon (sunrise/sunset, day length, moon phase) and pollen & air quality
   (traffic-light levels, sensors found automatically).
+- **Map, to-do list and commute:** people and cars on a map that fits itself (hide anyone, only who's away, the route
+  to work drawn in); a to-do or shopping list (`todo.*`, live, tap to check off with 4 s to undo); commute times from
+  Waze/Google/HERE with “leave by 7:29” and extra minutes in traffic.
+- **Day clock for older people:** weekday and time of day in large words (“Tuesday – Afternoon”), no digits needed.
 - **A playlist per display.** Pages with a condition (`show_if`) only appear when they are relevant, e.g. waste
   collection only the evening before.
 - **Events** interrupt the display:
@@ -350,6 +354,9 @@ events:
 | `board` | `entities` (input_text/text, empty = names with "board", "message", "note"), `expire_hours`, `size`, `empty_text` |
 | `countdown` | `items: [{name, date \| entity, icon}]` (input_datetime, timestamp sensor, calendar), `max`, `show_past` |
 | `departures` | `entities` (public transport sensors, empty = automatic), `lines`, `walk` (minutes), `max`, `show_platform`, `attribute` |
+| `map` | People and vehicles on a map that fits itself (people at the same place as one avatar stack): `entities` (person.*, device_tracker.*; empty = everyone with a location), `exclude` (never shown), `away_only`, `tags` (full/name/none), `routes` (travel time sensors – their route is drawn; the start and destination addresses are sent once to OpenStreetMap's Nominatim and OSRM, an unknown start falls back to `zone.home`), `zone`, `max_zoom`, `map` (auto/light/dark/osm) |
+| `todo` | To-do or shopping list (todo.*), live; tap to check off with 4 s to undo: `entity`, `check: false`, `max`, `show_completed`, `size` |
+| `commute` | Travel time from Waze/Google/HERE sensors: `routes: [{entity, name, arrive ("08:00" → leave by), usual (minutes)}]` |
 | `radar` | `zoom` (4–7), `map` (auto/light/dark/osm), `map_url`, `frames` (6 = last hour), `speed`, `latitude`/`longitude` |
 | `sky` | `show` (sun/moon, empty = both), `latitude`/`longitude` (default: home) |
 | `air` | `entities: [{entity, name, kind, scale}]` (pollen, aqi, pm25, pm10, ozone, no2; empty = automatic), `only_elevated`, `max` |

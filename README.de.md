@@ -47,13 +47,17 @@ Ist die Wäsche fertig, steht es kurz da und bleibt dann als kleine Erinnerung.
 
 ## Was Ambiframe kann
 
-- **Seiten aus 48 Widgets** in einem 12×8-Raster mit halben Schritten: Uhr, Datum, Tagesuhr, Text, Wetter (aktuell, Karte,
+- **Seiten aus 51 Widgets** in einem 12×8-Raster mit halben Schritten: Uhr, Datum, Tagesuhr, Karte, To-do-Liste, Pendelzeit, Text, Wetter (aktuell, Karte,
   Stunden, Tage, Regen-Vorschau, Zeile), Wert, Räume, Status („Gerade“), Kalender/Müll, Infozeile, Kamera und **jede
   Lovelace-Karte** – die vollständige Liste steht unter [Widgets](#widgets).
 - **Widgets für den Alltag:** Küchentimer (HA-Timer mit Schnellstart-Knöpfen), Pinnwand (Text-Helfer, z. B. vom
   Handy gesetzt), Countdown (Datum, Datum-Helfer oder Kalender), Abfahrten (ÖPNV-Sensoren, Linienfilter, Fußweg),
   animiertes Regenradar (RainViewer), Sonne & Mond (Auf- und Untergang, Tageslänge, Mondphase) sowie Pollen & Luft
   (Ampel-Stufen, Sensoren werden automatisch gefunden).
+- **Karte, To-do-Liste und Pendelzeit:** Personen und Autos auf einer Karte, die sich selbst einpasst (jeden
+  ausblenden, nur wer unterwegs ist, die Strecke zur Arbeit eingezeichnet); To-do- oder Einkaufsliste (`todo.*`, live,
+  Antippen hakt ab, 4 s zurücknehmbar); Pendelzeit aus Waze/Google/HERE mit „losfahren bis 7:29“ und Mehrzeit im Stau.
+- **Tagesuhr für Senioren:** Wochentag und Tageszeit groß in Worten („Dienstag – Nachmittag“), ganz ohne Ziffern.
 - **Wiedergabeliste pro Display**. Seiten mit Bedingung (`show_if`) erscheinen nur, wenn sie relevant sind,
   z. B. Müll nur am Vorabend.
 - **Ereignisse** unterbrechen die Anzeige:
@@ -358,6 +362,9 @@ events:
 | `board` | `entities` (input_text/text, leer = Namen mit „pinnwand“, „nachricht“, „notiz“), `expire_hours`, `size`, `empty_text` |
 | `countdown` | `items: [{name, date \| entity, icon}]` (input_datetime, Zeitstempel-Sensor, Kalender), `max`, `show_past` |
 | `departures` | `entities` (ÖPNV-Sensoren, leer = automatisch), `lines`, `walk` (Minuten), `max`, `show_platform`, `attribute` |
+| `map` | Personen und Fahrzeuge auf einer Karte, die sich selbst einpasst (wer am selben Ort ist, erscheint als Avatar-Stapel): `entities` (person.*, device_tracker.*; leer = alle mit Standort), `exclude` (nie zeigen), `away_only` (nur wer unterwegs ist), `tags` (full/name/none), `routes` (Reisezeit-Sensoren – ihre Strecke wird eingezeichnet; Start- und Zieladresse gehen dafür einmal an Nominatim und OSRM von OpenStreetMap, ein unbekannter Start wird `zone.home`), `zone`, `max_zoom`, `map` (auto/light/dark/osm) |
+| `todo` | To-do- oder Einkaufsliste (todo.*), live; Antippen hakt ab, 4 s zurücknehmbar: `entity`, `check: false`, `max`, `show_completed`, `size` |
+| `commute` | Pendelzeit aus Waze-/Google-/HERE-Sensoren: `routes: [{entity, name, arrive („08:00“ → losfahren bis), usual (Minuten)}]` |
 | `radar` | `zoom` (4–7), `map` (auto/light/dark/osm), `map_url`, `frames` (6 = letzte Stunde), `speed`, `latitude`/`longitude` |
 | `sky` | `show` (sun/moon, leer = beides), `latitude`/`longitude` (Standard: Zuhause) |
 | `air` | `entities: [{entity, name, kind, scale}]` (pollen, aqi, pm25, pm10, ozone, no2; leer = automatisch), `only_elevated`, `max` |
