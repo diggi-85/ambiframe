@@ -29,7 +29,7 @@ Ist die Wäsche fertig, steht es kurz da und bleibt dann als kleine Erinnerung.
   <tr>
     <td align="center"><sub><b>Animierte Hintergründe</b> – hier Polarlicht</sub></td>
     <td align="center"><sub><b>Wortuhr</b> in vier Sprachen</sub></td>
-    <td align="center"><sub><b>35 Stile</b> – hier „Galerie“</sub></td>
+    <td align="center"><sub><b>36 Stile</b> – hier „Galerie“</sub></td>
   </tr>
   <tr>
     <td width="33%"><img src="https://raw.githubusercontent.com/diggi-85/ambiframe/main/docs/screenshots/uhren-fallblatt.jpg" alt="Analoge Uhren und Fallblatt-Anzeigen"></td>
@@ -85,14 +85,15 @@ Ist die Wäsche fertig, steht es kurz da und bleibt dann als kleine Erinnerung.
 - **Nachtmodus** (gedimmte Uhr, wandert gegen Einbrennen) und **Abendstimmung**.
 - **Bildschirm aus, wenn alle weg sind:** Personen pro Display wählen; mit Fully geht der Bildschirm aus, Klingel und
   andere Momente wecken ihn trotzdem.
-- **35 Stile, jeder hell und dunkel:** Ruhig, Klar, Gold, Glas, Aurora, Editorial, Minimal, Pixel (LED-Punktmatrix),
+- **36 Stile, jeder hell und dunkel:** Ruhig, Klar, Gold, Glas, Aurora, Editorial, Minimal, Pixel (LED-Punktmatrix),
   Arcade (Neon), Cockpit, Tonal, Kacheln, Klartext (groß und kontrastreich), Fallblatt, Millennium, Glanz, Handheld,
   Bauhaus, Soft-UI, Boho, Landhaus, Natur, **Galerie** (Fotos im Passepartout wie im Museum), **Papier** (reines
   Schwarz-Weiß), **E-Ink** (ganz ohne Bewegung und Überblendungen, kräftige Schrift, Fotos in Graustufen – für
   E-Paper-Displays), **Zeitung**, **Art déco**, **Terminal**, **Verspielt**, **Leitsystem** (Gelb auf
   Anthrazit wie Wegweiser am Flughafen), **Swiss Grid** (strenges Raster, riesige Zahlen, Signalrot), **Rams** (warmes
   Grau, orangener Akzent, Lautsprecher-Raster), **Lobby** (Hotel-Rezeption: feine Serifen, Messinglinien),
-  **Bilderbuch** (für Kinder: Hügel, Sonne oder Mond, ausgeschnittene Karten) – und **Jahreszeiten**, das
+  **Bilderbuch** (für Kinder: Hügel, Sonne oder Mond, ausgeschnittene Karten), **Weihnachten** (Tannengrün und
+  Kerzengold, Lichterkette am oberen Rand, leiser Schnee) – und **Jahreszeiten**, das
   von selbst wechselt: Frühling, Sommer, Herbst, Winter, dazu Weihnachten, Silvester, Valentinstag, Ostern und
   Halloween. Kachel-Stile setzen Widgets automatisch in Karten. Hell/Dunkel automatisch nach Sonnenstand (weich
   überblendet) oder fest, pro Display änderbar.

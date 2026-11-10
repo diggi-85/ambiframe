@@ -222,6 +222,8 @@ export class AmbiframeStudio extends LitElement {
   private saved = "";
   /** Neuerer Stand vom Server, solange hier ungespeicherte Änderungen offen sind */
   private external = "";
+  /** Einmal gewarnt: der nächste Klick auf „Speichern“ überschreibt */
+  private overwrite = false;
   private unsubConfig?: Promise<unknown>;
 
   connectedCallback(): void {
@@ -311,6 +313,7 @@ export class AmbiframeStudio extends LitElement {
     this.draft = structuredClone(config);
     this.dirty = false;
     this.external = "";
+    this.overwrite = false;
     this.watchConfig();
     this.history = [];
     this.future = [];
@@ -418,12 +421,18 @@ export class AmbiframeStudio extends LitElement {
       alert(t("Beim Moment „{name}“ fehlt noch der Auslöser – bitte unter „Anpassen“ wählen oder den Moment löschen.", { name: missing.name || missing.id }));
       return;
     }
-    if (this.external && !confirm(t("Die Konfiguration wurde inzwischen anderswo geändert. Trotzdem speichern und diese Änderungen überschreiben?"))) return;
+    // Zweimal „Speichern“ statt confirm() – das unterdrücken manche Browser (HA-App, eingebettete Fenster)
+    if (this.external && !this.overwrite) {
+      this.overwrite = true;
+      this.showNote({ kind: "error", text: t("Inzwischen anderswo geändert – noch einmal „Speichern“ überschreibt diese Änderungen.") });
+      return;
+    }
     this.saving = true;
     try {
       await this.hass.callWS({ type: "ambiframe/config/save", config: this.draft, language: lang() });
       this.saved = JSON.stringify(this.draft);
       this.external = "";
+      this.overwrite = false;
       this.dirty = false;
       this.showNote({ kind: "ok", text: t("Gespeichert – alle Displays zeigen es sofort.") });
     } catch (e) {
@@ -1190,7 +1199,7 @@ export class AmbiframeStudio extends LitElement {
                   class="small ghost danger"
                   title=${t("Löschen")}
                   @click=${() => {
-                    if (!confirm(t("Moment „{name}“ für alle Displays löschen?", { name: ev.name || ev.title || ev.id }))) return;
+                    this.showNote({ kind: "ok", text: t("Moment „{name}“ gelöscht – mit ↶ zurückholen.", { name: ev.name || ev.title || ev.id }) });
                     this.mutate((cc) => {
                       cc.events = cc.events.filter((x) => x.id !== ev.id);
                       // aus den Listen der Displays nehmen

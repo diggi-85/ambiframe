@@ -19,3 +19,4 @@ __pycache__/
 
 # Bildvergleiche: Abweichungen eines Laufs (Referenzbilder werden eingecheckt)
 frontend/test/visual/_diff/
+exports/

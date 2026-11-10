@@ -29,7 +29,7 @@ appears. When the laundry is done, it says so briefly and then stays as a small 
   <tr>
     <td align="center"><sub><b>Animated backgrounds</b> – here aurora</sub></td>
     <td align="center"><sub><b>Word clock</b> in four languages</sub></td>
-    <td align="center"><sub><b>35 styles</b> – here “Gallery”</sub></td>
+    <td align="center"><sub><b>36 styles</b> – here “Gallery”</sub></td>
   </tr>
   <tr>
     <td width="33%"><img src="https://raw.githubusercontent.com/diggi-85/ambiframe/main/docs/screenshots/en/clocks-split-flap.jpg" alt="Analogue clocks and split-flap displays"></td>
@@ -85,13 +85,14 @@ Dutch and French).</sub>
 - **Night mode** (dimmed clock that drifts to prevent burn-in) and **evening mood**.
 - **Screen off when everyone is away:** pick the people per display; with Fully the screen turns off, the doorbell and
   other moments still wake it.
-- **35 styles, each light and dark:** Calm, Clear, Gold, Glass, Aurora, Editorial, Minimal, Pixel (LED dot matrix),
+- **36 styles, each light and dark:** Calm, Clear, Gold, Glass, Aurora, Editorial, Minimal, Pixel (LED dot matrix),
   Arcade (neon), Cockpit, Tonal, Tiles, Clear text (large and high contrast), Split-flap, Millennium, Gloss, Handheld,
   Bauhaus, Soft UI, Boho, Country house, Nature, **Gallery** (photos in a mount like in a museum), **Paper** (pure black
   and white), **E-Ink** (no motion or fades at all, bold type, greyscale photos – for e-paper displays),
   **Newspaper**, **Art Deco**, **Terminal**, **Playful**, **Wayfinding** (yellow on anthracite like airport signs),
   **Swiss Grid** (strict grid, huge numbers, signal red), **Rams** (warm grey, orange accent, speaker grille), **Lobby**
-  (hotel reception: fine serifs, brass lines), **Picture book** (for children: hills, sun or moon, cut-out cards) – and
+  (hotel reception: fine serifs, brass lines), **Picture book** (for children: hills, sun or moon, cut-out cards), **Christmas** (fir green and candle gold,
+  fairy lights along the top, gentle snow) – and
   **Seasons**, which changes by
   itself: spring, summer, autumn, winter, plus Christmas, New Year's Eve, Valentine's Day, Easter and Halloween. Tile
   styles put widgets into cards automatically. Light/dark automatically by the sun (with a soft fade) or fixed,

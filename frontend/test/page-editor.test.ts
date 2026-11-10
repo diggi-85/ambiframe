@@ -168,14 +168,16 @@ describe("Seiteneditor", () => {
   });
 
   it("wählt nach dem Löschen der Seite die erste vorhandene", async () => {
-    vi.stubGlobal("confirm", () => true);
+    // ohne Rückfrage – confirm() wird in manchen Browsern unterdrückt und gälte dort als „Abbrechen“
+    vi.stubGlobal("confirm", () => false);
     const cfg = config();
     cfg.pages.push({ ...cfg.pages[0], id: "b", name: "B", widgets: [] });
-    const { el } = await mount(cfg);
+    const { el, notes } = await mount(cfg);
     el.removePage();
     await el.updateComplete;
     expect(el.config.pages.map((p: { id: string }) => p.id)).toEqual(["b"]);
     expect(el.pageId).toBe("b");
+    expect(notes.at(-1)).toMatch(/zurückholen|bring it back/);
     vi.unstubAllGlobals();
   });
 });
@@ -188,5 +190,32 @@ describe("Widget-Katalog", () => {
     expect(all.sort()).toEqual(Object.keys(WIDGETS).sort());
     expect(new Set(all).size).toBe(all.length);
     expect(paletteGroups(false).flatMap(([, types]) => types)).not.toContain("card");
+  });
+});
+
+describe("Seite duplizieren", () => {
+  it("nimmt die Kopie dort in die Wiedergabe auf, wo das Original läuft – direkt dahinter, mit gleichen Bedingungen", async () => {
+    const cfg = config();
+    const when = [{ condition: "time", after: "04:00", before: "12:00" }];
+    cfg.displays = [
+      { ...cfg.displays[0], playlist: [{ page: "a", duration: 20, show_if: when }, { page: "b" }] },
+      { ...cfg.displays[0], id: "buero", name: "Büro", playlist: [{ page: "b" }] },
+    ] as never;
+    cfg.pages.push({ ...cfg.pages[0], id: "b", name: "B" });
+    const { el, notes } = await mount(cfg);
+    el.duplicatePage();
+    const [kueche, buero] = el.config.displays;
+    expect(kueche.playlist.map((e: { page: string }) => e.page)).toEqual(["a", "a_kopie", "b"]);
+    expect(kueche.playlist[1]).toEqual({ page: "a_kopie", duration: 20, show_if: when });
+    expect(buero.playlist.map((e: { page: string }) => e.page)).toEqual(["b"]); // dort lief das Original nicht
+    expect(notes.at(-1)).toContain("Küche");
+  });
+
+  it("legt eine Kopie einer nirgends laufenden Seite ins aktuelle Display", async () => {
+    const cfg = config();
+    cfg.displays[0].playlist = [];
+    const { el } = await mount(cfg);
+    el.duplicatePage();
+    expect(el.config.displays[0].playlist).toEqual([{ page: "a_kopie" }]);
   });
 });

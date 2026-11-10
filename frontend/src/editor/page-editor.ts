@@ -399,13 +399,27 @@ export class AfPageEditor extends LitElement {
     const p = this.page;
     if (!p) return;
     const id = uniqueId(`${p.id}_kopie`, this.config?.pages.map((x) => x.id) ?? []);
-    this.mutate((d) => d.pages.push({ ...clone(p), id, name: `${p.name} (Kopie)` }));
+    // Die Kopie läuft dort, wo das Original läuft (direkt dahinter, gleiche Dauer und Bedingungen) –
+    // sonst wie eine neue Seite im aktuellen Display. Vorher landete sie unbemerkt nur in der Bibliothek.
+    const where = (this.config?.displays ?? []).filter((x) => x.playlist.some((e) => e.page === p.id)).map((x) => x.name);
+    this.mutate((d) => {
+      d.pages.push({ ...clone(p), id, name: `${p.name} (Kopie)` });
+      const showing = d.displays.filter((x) => x.playlist.some((e) => e.page === p.id));
+      for (const disp of showing) {
+        const i = disp.playlist.findIndex((e) => e.page === p.id);
+        disp.playlist.splice(i + 1, 0, { ...clone(disp.playlist[i]), page: id });
+      }
+      if (!showing.length) (d.displays.find((x) => x.id === this.displayId) ?? d.displays[0])?.playlist.push({ page: id });
+    });
+    const target = where.length ? where.join(", ") : (this.config?.displays.find((x) => x.id === this.displayId) ?? this.config?.displays[0])?.name;
+    if (target) this.message = { kind: "ok", text: t("Kopie läuft auf: {list} – wie das Original, direkt dahinter.", { list: target }) };
     this.pageId = id;
   }
 
   private removePage(): void {
     const p = this.page;
-    if (!p || !confirm(t("Seite „{name}“ löschen?", { name: p.name }))) return;
+    // Ohne Rückfrage: manche Browser (HA-App, eingebettete Fenster) unterdrücken confirm() – Rückgängig holt sie zurück
+    if (!p) return;
     this.mutate((d) => {
       d.pages = d.pages.filter((x) => x.id !== p.id);
       for (const disp of d.displays) {
@@ -414,6 +428,7 @@ export class AfPageEditor extends LitElement {
       }
     });
     this.widgetId = null;
+    this.message = { kind: "ok", text: t("Seite „{name}“ gelöscht – mit ↶ zurückholen.", { name: p.name }) };
   }
 
   private addWidget(type: string): void {
@@ -536,7 +551,7 @@ export class AfPageEditor extends LitElement {
                             <button
                               class="x"
                               title=${t("Vorlage löschen")}
-                              @click=${() => confirm(t("Seitenvorlage „{name}“ löschen?", { name: tpl.name })) && this.mutate((dd) => dd.templates!.pages!.splice(i, 1))}
+                              @click=${() => this.mutate((dd) => dd.templates!.pages!.splice(i, 1))}
                             >
                               ${iconSvg("close")}
                             </button>
@@ -639,7 +654,7 @@ export class AfPageEditor extends LitElement {
                   <button
                     class="x"
                     title=${t("Vorlage löschen")}
-                    @click=${() => confirm(t("Vorlage „{name}“ löschen?", { name: tpl.name })) && this.mutate((dd) => dd.templates!.widgets!.splice(i, 1))}
+                    @click=${() => this.mutate((dd) => dd.templates!.widgets!.splice(i, 1))}
                   >
                     ${iconSvg("close")}
                   </button>

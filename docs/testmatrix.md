@@ -64,6 +64,7 @@ Ausführen: `cd frontend && npm test` (Frontend) · `.venv/bin/python -m pytest`
 | Hinweis „Zeigen“ führt an die richtige Stelle | `studio-advanced.test.ts` › Hinweise |
 | Eigene Töne im Studio | `studio.test.ts` › Tonbibliothek |
 | Widgets platzieren, verschieben, Größe, Rand, löschen, duplizieren, einfügen, Vorlagen, Seiten-Import, Hochformat | `frontend/test/page-editor.test.ts` |
+| Seite duplizieren: Kopie läuft dort, wo das Original läuft (direkt dahinter, gleiche Dauer und Bedingungen), sonst im aktuellen Display | `page-editor.test.ts` › Seite duplizieren |
 
 ## Darstellung
 
@@ -81,11 +82,12 @@ Ausführen: `cd frontend && npm test` (Frontend) · `.venv/bin/python -m pytest`
 | Tagesuhr: Tageszeit in Worten (auch an den Grenzen), Wochentag groß, eigene Wörter je Sprache | `widgets.test.ts` › Tagesuhr |
 | Jahreszeiten: Ostern, Anlässe vor Jahreszeit | `logic.test.ts` › Jahreszeiten |
 | E-Ink: keine Animation, keine Überblendung, kein Seitenwechsel-Effekt, Fotos in Graustufen | `display.test.ts` › E-Ink, `visual.mjs` zählt bewegte Elemente (muss 0 sein) |
-| Aussehen aller 35 Stile auf Zuhause, Wetter und Tagesvorschau bleibt gleich (Uhrzeit und Zufall eingefroren) | `frontend/tools/visual.mjs`, Referenzbilder in `frontend/test/visual/` |
+| Aussehen aller 36 Stile auf Zuhause, Wetter und Tagesvorschau bleibt gleich (Uhrzeit und Zufall eingefroren) | `frontend/tools/visual.mjs`, Referenzbilder in `frontend/test/visual/` |
 
 ## Noch ohne automatischen Test (vor Releases von Hand)
 
 - Bildvergleiche für Seiten mit Fotos, Kamera und Regenradar (ändern sich von außen) und für helle Fassungen.
 - Echtes geteiltes Google-Album: von Hand geprüft am 31.10.2026 (11 von 11 Fotos, volle Größe). Vor Releases erneut prüfen – Google kann den Seitenaufbau ändern.
 - Erreichbarkeit der echten Anbieter (Wikimedia, NASA, Picsum).
-- Geräte: iPad (HA-App-Karte), Android mit Fully, Fernseher per Videostream.
+- Geräte: iPad (HA-App-Karte), Android mit Fully, Fernseher per Videostream – von Hand geprüft am 10.11.2026. Vor Releases mit größeren Änderungen am Display erneut prüfen.
+- Studio im hellen HA-Theme (Übersicht, Momente, Seiteneditor, Assistent): von Hand geprüft am 10.11.2026.

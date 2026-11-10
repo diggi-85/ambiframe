@@ -158,14 +158,10 @@ describe("Studio: Änderungen von anderswo", () => {
     el.mutate((c: { design: { theme: string } }) => (c.design.theme = "papier"));
     push({ config: { ...config(), pages: [...config().pages, { id: "neu", name: "Neu", duration: 30, background: { type: "none" }, palette: "normal", widgets: [] }] } });
     expect(el.draft.design.theme).toBe("papier"); // eigene Änderung bleibt
-    const ask = vi.spyOn(window, "confirm").mockReturnValue(false);
-    await el.save();
-    expect(ask).toHaveBeenCalled();
+    await el.save(); // erster Klick warnt nur
     expect(saved).toEqual([]);
-    ask.mockReturnValue(true);
-    await el.save();
+    await el.save(); // zweiter Klick überschreibt – ohne confirm(), das manche Browser unterdrücken
     expect(saved).toHaveLength(1);
-    ask.mockRestore();
   });
 });
 
