@@ -148,7 +148,7 @@ class FullyLink:
         mode = control_mode(display)
         origin = info["origin"]
         own = f"{origin}/ambiframe-display?display={display_id}"
-        dashboard = urljoin(f"{origin}/", control.get("dashboard", "/lovelace/0"))
+        dashboard = urljoin(f"{origin}/", control.get("dashboard") or "/")
         want = {"mode": mode, "own": own, "dashboard": dashboard, "idle": control.get("idle", 60)}
         if info.get("applied") == want:
             return

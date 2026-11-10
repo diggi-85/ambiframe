@@ -184,7 +184,7 @@ def build_default_config(hass: HomeAssistant) -> dict[str, Any]:
                 "name": tr(lang, "Display"),
                 "playlist": playlist,
                 "night": {"page": "nacht"},
-                "control": {"enabled": True, "dashboard": "/lovelace/0", "idle": 60},
+                "control": {"enabled": True, "dashboard": "/", "idle": 60},
                 "events": "all",
             }
         ],

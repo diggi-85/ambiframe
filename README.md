@@ -83,6 +83,8 @@ Dutch and French).</sub>
 - **Now playing mini card:** permanent or per track for a while, how long after pausing, conditions and quiet hours,
   corner, size, cover, progress and background.
 - **Night mode** (dimmed clock that drifts to prevent burn-in) and **evening mood**.
+- **Screen off when everyone is away:** pick the people per display; with Fully the screen turns off, the doorbell and
+  other moments still wake it.
 - **35 styles, each light and dark:** Calm, Clear, Gold, Glass, Aurora, Editorial, Minimal, Pixel (LED dot matrix),
   Arcade (neon), Cockpit, Tonal, Tiles, Clear text (large and high contrast), Split-flap, Millennium, Gloss, Handheld,
   Bauhaus, Soft UI, Boho, Country house, Nature, **Gallery** (photos in a mount like in a museum), **Paper** (pure black
@@ -114,7 +116,8 @@ Dutch and French).</sub>
   plain, elegant, dots), split-flap clock and departures, LED pixel display with 8×8 icons, typewriter text.
 - **The Studio:** one editor for everything, always with a live preview – built around the display, with a page
   editor for arranging widgets, undo and hints about what's missing – see [The Studio](#the-studio).
-- **Control mode:** a tap brings up the HA dashboard; after a minute without touch Ambiframe returns.
+- **Control mode:** a tap brings up the HA dashboard – pick it from a list, or leave it on each user's own default
+  dashboard; after a minute without touch Ambiframe returns.
 - **Native camera** via Home Assistant's own stream (WebRTC/HLS) – all displays share one connection to the camera,
   which matters for cameras that allow only a few (e.g. Tapo). Until the live picture runs, the latest snapshot is shown
   instead of an empty area; MJPEG only as a fallback.
@@ -337,7 +340,7 @@ events:
 | `media` | `entities`, `variant: full` (default: compact), `show_paused` |
 | `appliances` | `items: [{name, running, icon, power, progress, end, cost}]`, `empty_text` |
 | `price` | `entity`, `home` (Tibber), `window` (cheapest hours), `tomorrow`, `note` |
-| `power` | `production: [{name, entity}]`, `consumption`, `forecast`, `forecast_remaining`, `extra`, `extra_name` |
+| `power` | `production: [{name, entity}]`, `consumption`, `consumption_first`, `forecast`, `forecast_remaining`, `extra`, `extra_name` |
 | `consumers` | `count`, `devices`, `exclude` |
 | `balance` | `switch_hour`, `groups` (YAML) |
 | `batteries` | `part`, `devices`, `threshold`, `max`, `exclude` |

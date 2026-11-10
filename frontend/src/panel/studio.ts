@@ -19,24 +19,7 @@ import "../editor/wizard";
 import type { Note } from "../editor/page-editor";
 import { checkHealth, type HealthGo, type PhotoHealth } from "../editor/health";
 import { PROFILES, displayFromProfile, profilePlaylist } from "../editor/profiles";
-import {
-  AMBIENT_OPTIONS,
-  DESIGN_FIELDS,
-  DISPLAY_DESIGN_FIELDS,
-  DISPLAY_PHOTO_FIELDS,
-  DISPLAY_SOUND_FIELDS,
-  DISPLAY_STREAM_FIELDS,
-  LOOK_FIELDS,
-  MOTION_FIELDS,
-  SHAPE_FIELDS,
-  colorFields,
-  PAGE_TEMPLATES,
-  SUMMARY_FIELDS,
-  displayFields,
-  eventFields,
-  slug,
-  uniqueId,
-} from "../editor/schemas";
+import { AMBIENT_OPTIONS, colorFields, dashboardsOf, DESIGN_FIELDS, DISPLAY_DESIGN_FIELDS, DISPLAY_PHOTO_FIELDS, DISPLAY_SOUND_FIELDS, DISPLAY_STREAM_FIELDS, displayFields, eventFields, LOOK_FIELDS, MOTION_FIELDS, PAGE_TEMPLATES, SHAPE_FIELDS, slug, SUMMARY_FIELDS, uniqueId } from "../editor/schemas";
 import { define } from "../widgets/base";
 import { WIDGETS } from "../widgets/registry";
 
@@ -237,6 +220,9 @@ export class AmbiframeStudio extends LitElement {
   advanced = readAdvanced();
   status: Record<string, DisplayStatus> = {};
   private saved = "";
+  /** Neuerer Stand vom Server, solange hier ungespeicherte Änderungen offen sind */
+  private external = "";
+  private unsubConfig?: Promise<unknown>;
 
   connectedCallback(): void {
     super.connectedCallback();
@@ -249,6 +235,33 @@ export class AmbiframeStudio extends LitElement {
     super.disconnectedCallback();
     window.removeEventListener("keydown", this.onKey);
     clearInterval(this.statusTimer);
+    void this.unsubConfig?.then((u) => (typeof u === "function" ? u() : undefined)).catch(() => undefined);
+    this.unsubConfig = undefined;
+  }
+
+  /**
+   * Änderungen von anderswo (zweites Studio, Handy, YAML-Import): ohne eigene offene Änderungen still übernehmen,
+   * sonst merken und vor dem Speichern fragen – damit nichts unbemerkt überschrieben wird.
+   */
+  private watchConfig(): void {
+    if (this.unsubConfig || !this.hass) return;
+    this.unsubConfig = Promise.resolve(
+      this.hass.connection.subscribeMessage<{ config: AmbiframeConfig }>((m) => {
+        const text = JSON.stringify(m.config);
+        if (!this.draft || text === this.saved) return;
+        if (!this.dirty) {
+          this.saved = text;
+          this.draft = structuredClone(m.config);
+          this.history = [];
+          this.future = [];
+          this.syncUndo();
+          this.showNote({ kind: "ok", text: t("Anderswo geändert – neuer Stand übernommen.") });
+        } else {
+          this.external = text;
+          this.showNote({ kind: "error", text: t("Inzwischen anderswo gespeichert. „Verwerfen“ lädt den neuen Stand, „Speichern“ überschreibt ihn.") });
+        }
+      }, { type: "ambiframe/config/subscribe" }),
+    ).catch(() => (this.unsubConfig = undefined));
   }
 
   /** ⌘S speichert, ⌘Z / ⇧⌘Z macht rückgängig bzw. wiederholt (nicht beim Tippen in Feldern) */
@@ -297,6 +310,8 @@ export class AmbiframeStudio extends LitElement {
     this.saved = JSON.stringify(config);
     this.draft = structuredClone(config);
     this.dirty = false;
+    this.external = "";
+    this.watchConfig();
     this.history = [];
     this.future = [];
     this.coalesceKey = "";
@@ -319,6 +334,7 @@ export class AmbiframeStudio extends LitElement {
       formContext.displays = this.draft.displays.map((x) => [x.id, x.name] as [string, string]);
       formContext.pages = this.draft.pages.map((x) => [x.id, x.name] as [string, string]);
     }
+    if (changed.has("hass")) formContext.dashboards = dashboardsOf(this.hass);
   }
 
   private get all(): boolean {
@@ -402,10 +418,12 @@ export class AmbiframeStudio extends LitElement {
       alert(t("Beim Moment „{name}“ fehlt noch der Auslöser – bitte unter „Anpassen“ wählen oder den Moment löschen.", { name: missing.name || missing.id }));
       return;
     }
+    if (this.external && !confirm(t("Die Konfiguration wurde inzwischen anderswo geändert. Trotzdem speichern und diese Änderungen überschreiben?"))) return;
     this.saving = true;
     try {
       await this.hass.callWS({ type: "ambiframe/config/save", config: this.draft, language: lang() });
       this.saved = JSON.stringify(this.draft);
+      this.external = "";
       this.dirty = false;
       this.showNote({ kind: "ok", text: t("Gespeichert – alle Displays zeigen es sofort.") });
     } catch (e) {
@@ -686,7 +704,7 @@ export class AmbiframeStudio extends LitElement {
               <button class="small ghost" title=${t("Widgets der Seite anordnen und einstellen")} @click=${() => this.openPage(e.page)}>${t("Gestalten")}</button>
               <button class="icon" ?disabled=${i === 0} title=${t("nach oben")} @click=${() => this.move(i, -1)}>↑</button>
               <button class="icon" ?disabled=${i === d.playlist.length - 1} title=${t("nach unten")} @click=${() => this.move(i, 1)}>↓</button>
-              <button class="icon" title=${t("entfernen")} @click=${() => this.mutateDisplay((x) => x.playlist.splice(i, 1))}>✕</button>
+              <button class="icon" title=${t("entfernen")} @click=${() => this.mutateDisplay((x) => x.playlist.splice(i, 1))}>${iconSvg("close")}</button>
             </span>
             ${this.condOpen === i || (when === "custom" && this.advanced)
               ? html`<div class="cond" @click=${(ev: Event) => ev.stopPropagation()}>
@@ -999,7 +1017,7 @@ export class AmbiframeStudio extends LitElement {
               (p, i) => html`<div class="preset">
                 <span>${p.name}</span>
                 <button class="small ghost" @click=${() => apply(p.design)}>${t("Anwenden")}</button>
-                <button class="icon" title=${t("Löschen")} @click=${() => this.mutate((cc) => cc.design.presets!.splice(i, 1))}>✕</button>
+                <button class="icon" title=${t("Löschen")} @click=${() => this.mutate((cc) => cc.design.presets!.splice(i, 1))}>${iconSvg("close")}</button>
               </div>`,
             )}
           </div>`
@@ -1166,7 +1184,7 @@ export class AmbiframeStudio extends LitElement {
                 ${this.all ? html`<span class="muted small">${t("Auf: {list}", { list: shownOn.join(", ") || t("keinem Display") })}</span>` : nothing}
               </div>
               <span class="btns">
-                <button class="small" @click=${() => this.testMoment(ev.id)}>▶ ${t("Testen")}</button>
+                <button class="small" @click=${() => this.testMoment(ev.id)}>${iconSvg("play")}${t("Testen")}</button>
                 <button class="small ghost" @click=${() => (this.openEvent = open ? "" : ev.id)}>${open ? t("Fertig") : t("Anpassen")}</button>
                 <button
                   class="small ghost danger"
@@ -1180,7 +1198,7 @@ export class AmbiframeStudio extends LitElement {
                     });
                   }}
                 >
-                  ✕
+                  ${iconSvg("close")}
                 </button>
               </span>
             </div>
@@ -1204,7 +1222,17 @@ export class AmbiframeStudio extends LitElement {
     `;
   }
 
-  /** Ein Moment als Satz: Wenn … dann … */
+  /** Zustand in Worten, wie HA ihn zeigt (übersetzt) – sonst der Rohwert */
+  private stateText(entity: string | undefined, state: string): string {
+    const obj = entity ? this.hass?.states[entity] : undefined;
+    try {
+      return (obj && this.hass?.formatEntityState?.(obj, state)) || state;
+    } catch {
+      return state;
+    }
+  }
+
+    /** Ein Moment als Satz: Wenn … dann … */
   private sentence(ev: EventConfig): string {
     const name = (id?: string) => (id ? ((this.hass?.states[id]?.attributes.friendly_name as string | undefined) ?? id) : "…");
     const who = name(ev.entity);
@@ -1217,7 +1245,7 @@ export class AmbiframeStudio extends LitElement {
             ? t("Wenn {name} anspringt", { name: who })
             : ev.to === "off"
               ? t("Wenn {name} ausgeht", { name: who })
-              : t("Wenn {name} „{state}“ meldet", { name: who, state: ev.to! });
+              : t("Wenn {name} „{state}“ meldet", { name: who, state: this.stateText(ev.entity, ev.to!) });
     const then = t("dann {what}", { what: t(KIND_TEXT[ev.kind] ?? ev.kind) });
     return `${when}, ${then}${ev.sound ? t(" mit Ton") : ""}`;
   }
@@ -1425,7 +1453,7 @@ export class AmbiframeStudio extends LitElement {
         ? html`<div class="healthpanel">
             <div class="hhead">
               <b>${t("Gesundheitscheck")}</b>
-              <button class="icon" title=${t("Schließen")} @click=${() => (this.healthOpen = false)}>✕</button>
+              <button class="icon" title=${t("Schließen")} @click=${() => (this.healthOpen = false)}>${iconSvg("close")}</button>
             </div>
             ${issues.length
               ? html`<ul>
@@ -1528,7 +1556,16 @@ export class AmbiframeStudio extends LitElement {
       --s-ink: var(--primary-text-color, #eceef2);
       --s-mute: var(--secondary-text-color, #9aa1ab);
       --s-line: var(--divider-color, rgba(255, 255, 255, 0.1));
-      --s-acc: var(--primary-color, #4aa3ff);
+      /* Messing wie der Doppelpunkt der Uhr – gilt für alles im Studio, auch für eingebettete HA-Felder */
+      --primary-color: #c9a063;
+      --text-primary-color: #1f1810;
+      --s-acc: var(--primary-color);
+      --s-on-acc: var(--text-primary-color);
+      /* Messing als Schrift: zur Textfarbe hin gemischt, damit es hell wie dunkel lesbar bleibt */
+      --s-acc-ink: color-mix(in srgb, #a87b3c 70%, var(--s-ink));
+      --s-ok: var(--success-color, #81c784);
+      --s-bad: var(--error-color, #e57373);
+      --s-warn: var(--warning-color, #ffb74d);
       background: var(--s-bg);
       color: var(--s-ink);
       font-family: var(--paper-font-body1_-_font-family, system-ui, sans-serif);
@@ -1545,15 +1582,8 @@ export class AmbiframeStudio extends LitElement {
       display: flex;
       align-items: center;
       gap: 12px;
-      padding: 10px 18px;
+      padding: 12px 16px;
       border-bottom: 1px solid var(--s-line);
-    }
-    .beta {
-      font-size: 11px;
-      padding: 2px 8px;
-      border-radius: 999px;
-      background: color-mix(in srgb, var(--s-acc) 20%, transparent);
-      color: var(--s-acc);
     }
     .spacer {
       flex: 1;
@@ -1567,7 +1597,7 @@ export class AmbiframeStudio extends LitElement {
       font-size: 20px;
     }
     h3 {
-      margin: 22px 0 8px;
+      margin: 24px 0 8px;
       font-size: 15px;
     }
     .muted {
@@ -1585,7 +1615,7 @@ export class AmbiframeStudio extends LitElement {
       border-radius: 10px;
       border: 1px solid var(--s-line);
       background: var(--s-card);
-      padding: 8px 14px;
+      padding: 8px 16px;
     }
     button:disabled {
       opacity: 0.45;
@@ -1594,27 +1624,47 @@ export class AmbiframeStudio extends LitElement {
     button.primary {
       background: var(--s-acc);
       border-color: transparent;
-      color: #fff;
+      color: var(--s-on-acc);
+    }
+    button:hover:not(:disabled) {
+      border-color: color-mix(in srgb, var(--s-ink) 24%, transparent);
+    }
+    button:focus-visible,
+    input:focus-visible,
+    select:focus-visible {
+      outline: 2px solid var(--s-acc);
+      outline-offset: 2px;
     }
     button.ghost {
       background: transparent;
     }
     button.small {
-      padding: 5px 10px;
+      padding: 4px 12px;
       font-size: 12px;
     }
     button.icon {
-      padding: 4px 9px;
+      padding: 4px 8px;
       line-height: 1;
     }
     .ic {
       width: 20px;
       height: 20px;
     }
+    button .ic {
+      width: 16px;
+      height: 16px;
+      vertical-align: -3px;
+    }
+    button.small .ic {
+      margin-right: 4px;
+    }
+    button.icon .ic {
+      margin: 0;
+    }
     .ic.big {
       width: 34px;
       height: 34px;
-      color: var(--s-acc);
+      color: var(--s-acc-ink);
     }
     input,
     select {
@@ -1623,7 +1673,7 @@ export class AmbiframeStudio extends LitElement {
       background: var(--s-card);
       border: 1px solid var(--s-line);
       border-radius: 8px;
-      padding: 7px 10px;
+      padding: 8px 12px;
     }
     .inline {
       display: inline-flex;
@@ -1633,7 +1683,7 @@ export class AmbiframeStudio extends LitElement {
     }
     .field {
       display: grid;
-      gap: 6px;
+      gap: 8px;
       font-size: 13px;
       color: var(--s-mute);
       max-width: 420px;
@@ -1659,16 +1709,16 @@ export class AmbiframeStudio extends LitElement {
       grid-template-columns: auto minmax(0, 1fr) auto;
       gap: 16px;
       align-items: center;
-      padding: 16px 18px;
-      margin-bottom: 18px;
+      padding: 16px 16px;
+      margin-bottom: 16px;
       border-radius: 16px;
       border: 1px solid var(--s-line);
-      background: linear-gradient(120deg, color-mix(in srgb, var(--s-acc) 14%, var(--s-card)), var(--s-card));
+      background: var(--s-card);
       cursor: pointer;
     }
     .allcard:hover,
     .dcard:hover {
-      border-color: var(--s-acc);
+      border-color: color-mix(in srgb, var(--s-acc) 60%, var(--s-line));
     }
     .allcard h3 {
       margin: 0 0 4px;
@@ -1676,7 +1726,7 @@ export class AmbiframeStudio extends LitElement {
     .cards {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-      gap: 18px;
+      gap: 16px;
     }
     .dcard {
       background: var(--s-card);
@@ -1700,22 +1750,22 @@ export class AmbiframeStudio extends LitElement {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 12px 14px;
-      gap: 10px;
+      padding: 12px 16px;
+      gap: 8px;
     }
     .meta h3 {
       margin: 0;
     }
     .pill {
-      font-size: 11px;
-      padding: 3px 9px;
-      border-radius: 999px;
+      font-size: 12px;
+      padding: 4px 8px;
+      border-radius: 8px;
       background: color-mix(in srgb, var(--s-mute) 20%, transparent);
       white-space: nowrap;
     }
     .pill.ok {
-      background: color-mix(in srgb, #3ecf8e 22%, transparent);
-      color: #3ecf8e;
+      background: color-mix(in srgb, var(--s-ok) 18%, transparent);
+      color: var(--s-ok);
     }
     .chips {
       display: flex;
@@ -1725,9 +1775,9 @@ export class AmbiframeStudio extends LitElement {
     .chip {
       display: inline-flex;
       align-items: center;
-      gap: 6px;
-      padding: 6px 12px;
-      border-radius: 999px;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 8px;
       border: 1px solid var(--s-line);
       background: var(--s-card);
       font-size: 13px;
@@ -1758,29 +1808,29 @@ export class AmbiframeStudio extends LitElement {
       padding: 16px;
       display: flex;
       flex-direction: column;
-      gap: 6px;
+      gap: 8px;
       overflow: auto;
     }
     .steps .back {
       border: 0;
       background: none;
-      padding: 0 0 10px;
+      padding: 0 0 12px;
       color: var(--s-mute);
       display: flex;
-      gap: 6px;
+      gap: 8px;
       align-items: center;
       text-align: left;
     }
     .steps h2 {
-      margin-bottom: 10px;
+      margin-bottom: 12px;
     }
     .step {
       display: flex;
-      gap: 10px;
+      gap: 8px;
       text-align: left;
       border: 1px solid transparent;
       background: none;
-      padding: 10px;
+      padding: 12px;
     }
     .step small {
       display: block;
@@ -1804,51 +1854,51 @@ export class AmbiframeStudio extends LitElement {
     .step.on .n {
       background: var(--s-acc);
       border-color: var(--s-acc);
-      color: #fff;
+      color: var(--s-on-acc);
     }
     .step.done .n {
       border-color: var(--s-acc);
-      color: var(--s-acc);
+      color: var(--s-acc-ink);
     }
     .jump {
       margin-top: auto;
       padding-top: 16px;
       display: grid;
-      gap: 6px;
+      gap: 8px;
     }
     .content {
       padding: 20px 24px 40px;
       overflow: auto;
     }
     .content header {
-      margin-bottom: 14px;
+      margin-bottom: 16px;
     }
     .row-head {
       display: flex;
       align-items: baseline;
       justify-content: space-between;
-      gap: 10px;
+      gap: 8px;
     }
     .origin {
-      font-size: 11px;
+      font-size: 12px;
       color: var(--s-mute);
       border: 0;
       background: none;
       padding: 0;
     }
     .origin.own {
-      color: var(--s-acc);
+      color: var(--s-acc-ink);
     }
     .grid3 {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
-      gap: 10px;
+      gap: 8px;
     }
     .choice {
       display: grid;
       gap: 4px;
       text-align: left;
-      padding: 14px;
+      padding: 16px;
       border-radius: 14px;
     }
     .choice small {
@@ -1865,10 +1915,10 @@ export class AmbiframeStudio extends LitElement {
       background: color-mix(in srgb, var(--s-acc) 12%, var(--s-card));
     }
     .howto {
-      margin-top: 18px;
+      margin-top: 16px;
       display: grid;
-      gap: 6px;
-      padding: 12px 14px;
+      gap: 8px;
+      padding: 12px 16px;
       border-radius: 12px;
       border: 1px dashed var(--s-line);
       font-size: 13px;
@@ -1883,9 +1933,9 @@ export class AmbiframeStudio extends LitElement {
     .playlist li {
       display: grid;
       grid-template-columns: 28px minmax(0, 1fr) auto 70px auto;
-      gap: 10px;
+      gap: 8px;
       align-items: center;
-      padding: 10px 12px;
+      padding: 12px 12px;
       border-radius: 12px;
       border: 1px solid var(--s-line);
       background: var(--s-card);
@@ -1914,11 +1964,11 @@ export class AmbiframeStudio extends LitElement {
     }
     .types i {
       font-style: normal;
-      font-size: 11px;
+      font-size: 12px;
       color: var(--s-mute);
       border: 1px solid var(--s-line);
       border-radius: 6px;
-      padding: 1px 6px;
+      padding: 1px 8px;
     }
     .btns {
       display: inline-flex;
@@ -1927,13 +1977,13 @@ export class AmbiframeStudio extends LitElement {
     .adder {
       display: flex;
       flex-wrap: wrap;
-      gap: 10px;
+      gap: 8px;
       margin-top: 12px;
     }
     .themes {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
-      gap: 10px;
+      gap: 8px;
     }
     .theme {
       padding: 0;
@@ -1967,7 +2017,7 @@ export class AmbiframeStudio extends LitElement {
       background: var(--acc);
     }
     .theme b {
-      padding: 7px 10px;
+      padding: 8px 12px;
       font-size: 12px;
       font-weight: 500;
     }
@@ -1984,33 +2034,33 @@ export class AmbiframeStudio extends LitElement {
     .seg button {
       border: 0;
       border-radius: 0;
-      padding: 6px 12px;
+      padding: 8px 12px;
       font-size: 13px;
     }
     .seg button.on {
       background: var(--s-acc);
-      color: #fff;
+      color: var(--s-on-acc);
     }
     .group {
       margin: 8px 0;
     }
     .glabel {
       display: block;
-      font-size: 11px;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
+      font-size: 13px;
+      font-weight: 500;
+      text-transform: none;
       color: var(--s-mute);
-      margin-bottom: 6px;
+      margin-bottom: 8px;
     }
     .moments {
       display: grid;
-      gap: 10px;
+      gap: 8px;
     }
     .moment {
       border: 1px solid var(--s-line);
       border-radius: 14px;
       background: var(--s-card);
-      padding: 12px 14px;
+      padding: 12px 16px;
     }
     .moment.off {
       opacity: 0.6;
@@ -2019,10 +2069,14 @@ export class AmbiframeStudio extends LitElement {
       display: block;
       margin-top: 4px;
       font-size: 12px;
-      color: #ff6b5b;
+      color: var(--s-bad);
     }
+    /* Löschen leise – rot erst, wenn man darauf zeigt */
     button.danger {
-      color: #ff6b5b;
+      color: var(--s-mute);
+    }
+    button.danger:hover {
+      color: var(--s-bad);
     }
     .sentence {
       display: grid;
@@ -2041,8 +2095,8 @@ export class AmbiframeStudio extends LitElement {
       display: block;
       width: 38px;
       height: 22px;
-      border-radius: 999px;
-      background: var(--s-line);
+      border-radius: 11px;
+      background: color-mix(in srgb, var(--s-ink) 18%, transparent);
       position: relative;
       cursor: pointer;
     }
@@ -2057,8 +2111,12 @@ export class AmbiframeStudio extends LitElement {
       background: #fff;
       transition: transform 0.2s;
     }
+    /* „an“ ist ein Zustand, keine Auswahl – neutral, damit Messing für Auswahl und Hauptaktion bleibt */
     .switch input:checked + span {
-      background: var(--s-acc);
+      background: color-mix(in srgb, var(--s-ink) 78%, transparent);
+    }
+    .switch input:checked + span::after {
+      background: var(--s-bg);
     }
     .switch input:checked + span::after {
       transform: translateX(16px);
@@ -2066,8 +2124,8 @@ export class AmbiframeStudio extends LitElement {
     details {
       border: 1px solid var(--s-line);
       border-radius: 12px;
-      padding: 10px 14px;
-      margin-bottom: 10px;
+      padding: 12px 16px;
+      margin-bottom: 12px;
       background: var(--s-card);
     }
     summary {
@@ -2079,7 +2137,7 @@ export class AmbiframeStudio extends LitElement {
       bottom: 0;
       display: flex;
       justify-content: space-between;
-      padding: 14px 0 0;
+      padding: 16px 0 0;
       margin-top: 24px;
       background: linear-gradient(transparent, var(--s-bg) 30%);
     }
@@ -2108,7 +2166,7 @@ export class AmbiframeStudio extends LitElement {
     }
     .controls {
       display: grid;
-      gap: 10px;
+      gap: 8px;
     }
     .pager {
       display: flex;
@@ -2157,8 +2215,8 @@ export class AmbiframeStudio extends LitElement {
     /* Hinweis oben (gespeichert, kopiert, Fehler) */
     .note {
       font-size: 13px;
-      padding: 5px 12px;
-      border-radius: 999px;
+      padding: 4px 12px;
+      border-radius: 8px;
       cursor: pointer;
       max-width: 46vw;
       overflow: hidden;
@@ -2166,10 +2224,10 @@ export class AmbiframeStudio extends LitElement {
       white-space: nowrap;
     }
     .note.ok {
-      background: color-mix(in srgb, #4caf50 18%, transparent);
+      background: color-mix(in srgb, var(--s-ok) 16%, transparent);
     }
     .note.error {
-      background: color-mix(in srgb, #f44336 20%, transparent);
+      background: color-mix(in srgb, var(--s-bad) 18%, transparent);
     }
     .rel {
       position: relative;
@@ -2177,7 +2235,7 @@ export class AmbiframeStudio extends LitElement {
     .health {
       display: inline-flex;
       align-items: center;
-      gap: 6px;
+      gap: 8px;
       white-space: nowrap;
     }
     .health .ic,
@@ -2187,13 +2245,13 @@ export class AmbiframeStudio extends LitElement {
       flex: none;
     }
     .health.bad {
-      color: var(--error-color, #e57373);
+      color: var(--s-bad);
     }
     .health.warn {
-      color: var(--warning-color, #ffb74d);
+      color: var(--s-warn);
     }
     .health.ok .ic {
-      color: var(--success-color, #81c784);
+      color: var(--s-ok);
     }
     .healthpanel {
       position: absolute;
@@ -2203,7 +2261,7 @@ export class AmbiframeStudio extends LitElement {
       width: min(520px, calc(100vw - 24px));
       max-height: 70vh;
       overflow: auto;
-      padding: 14px 16px;
+      padding: 16px 16px;
       border-radius: 14px;
       background: var(--s-card);
       border: 1px solid var(--s-line);
@@ -2216,22 +2274,22 @@ export class AmbiframeStudio extends LitElement {
     }
     .healthpanel ul {
       list-style: none;
-      margin: 10px 0 0;
+      margin: 12px 0 0;
       padding: 0;
     }
     .healthpanel li {
       display: flex;
       align-items: center;
-      gap: 10px;
-      padding: 9px 0;
+      gap: 8px;
+      padding: 8px 0;
       border-top: 1px solid var(--s-line);
-      font-size: 14px;
+      font-size: 13px;
     }
     .healthpanel li.error .ic {
-      color: var(--error-color, #e57373);
+      color: var(--s-bad);
     }
     .healthpanel li.warn .ic {
-      color: var(--warning-color, #ffb74d);
+      color: var(--s-warn);
     }
     .htext {
       flex: 1;
@@ -2242,10 +2300,10 @@ export class AmbiframeStudio extends LitElement {
     .devices {
       list-style: none;
       margin: 0;
-      padding: 8px 14px 12px;
+      padding: 8px 16px 12px;
       display: grid;
       gap: 4px;
-      font-size: 12.5px;
+      font-size: 12px;
     }
     .devices li {
       display: flex;
@@ -2266,12 +2324,12 @@ export class AmbiframeStudio extends LitElement {
       background: var(--s-mute);
     }
     .devices .dot.on {
-      background: #4caf50;
+      background: var(--s-ok);
     }
     /* Eigene Stile, YAML */
     .presets {
       display: grid;
-      gap: 6px;
+      gap: 8px;
       margin-bottom: 8px;
     }
     .preset,
@@ -2293,7 +2351,7 @@ export class AmbiframeStudio extends LitElement {
       background: color-mix(in srgb, var(--s-ink) 5%, transparent);
       border: 1px solid var(--s-line);
       border-radius: 10px;
-      padding: 10px 12px;
+      padding: 12px 12px;
     }
     textarea.code.yaml {
       min-height: 55vh;
@@ -2313,12 +2371,12 @@ export class AmbiframeStudio extends LitElement {
       flex: 1;
       min-height: 0;
       overflow: auto;
-      padding: 12px 18px 40px;
+      padding: 12px 16px 40px;
     }
     .pagehead {
       display: flex;
       align-items: center;
-      gap: 14px;
+      gap: 16px;
       margin-bottom: 12px;
     }
   `;

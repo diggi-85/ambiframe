@@ -65,7 +65,7 @@ const ADVANCED_KEYS = new Set([
 export const isAdvanced = (f: Field): boolean => f.advanced ?? ADVANCED_KEYS.has(f.key.split(".").pop() ?? "");
 
 /** Was Formulare über die Konfiguration wissen müssen (setzt der Editor) */
-export const formContext: { displays: [string, string][]; pages: [string, string][] } = { displays: [], pages: [] };
+export const formContext: { displays: [string, string][]; pages: [string, string][]; dashboards: [string, string][] } = { displays: [], pages: [], dashboards: [] };
 
 export const getPath = (obj: any, path: string): any => path.split(".").reduce((o, k) => (o == null ? undefined : o[k]), obj);
 
@@ -468,15 +468,15 @@ export class AfForm extends LitElement {
   static styles = css`
     :host {
       display: block;
-      font-size: 14px;
+      font-size: 13px;
       color: var(--primary-text-color);
     }
     .field {
       display: grid;
       grid-template-columns: 128px minmax(0, 1fr);
-      gap: 6px 12px;
+      gap: 8px 12px;
       align-items: center;
-      padding: 6px 0;
+      padding: 8px 0;
     }
     .field.wide {
       grid-template-columns: 1fr;
@@ -501,7 +501,7 @@ export class AfForm extends LitElement {
       background: var(--af-input, rgba(127, 127, 127, 0.08));
       border: 1px solid var(--divider-color, rgba(127, 127, 127, 0.25));
       border-radius: 8px;
-      padding: 7px 9px;
+      padding: 8px 8px;
     }
     textarea.code {
       font: 12px/1.45 ui-monospace, Menlo, monospace;
@@ -530,7 +530,7 @@ export class AfForm extends LitElement {
     .hint {
       font-size: 12px;
       color: var(--secondary-text-color);
-      margin-top: 3px;
+      margin-top: 4px;
     }
     ha-entity-picker,
     ha-icon-picker {
@@ -581,7 +581,7 @@ export class AfForm extends LitElement {
     .item {
       border: 1px solid var(--divider-color, rgba(127, 127, 127, 0.2));
       border-radius: 10px;
-      padding: 4px 10px 6px;
+      padding: 4px 12px 8px;
     }
     .item-head {
       display: flex;
@@ -600,9 +600,9 @@ export class AfForm extends LitElement {
       background: transparent;
       border: 1px solid var(--divider-color, rgba(127, 127, 127, 0.25));
       border-radius: 6px;
-      padding: 2px 7px;
+      padding: 2px 8px;
       cursor: pointer;
-      margin-left: 3px;
+      margin-left: 4px;
     }
     .tools button:disabled {
       opacity: 0.35;
@@ -610,19 +610,19 @@ export class AfForm extends LitElement {
     }
     .add {
       align-self: flex-start;
-      padding: 6px 12px;
+      padding: 8px 12px;
       border-style: dashed;
       margin-left: 0;
     }
     .nested {
       border-left: 2px solid var(--divider-color, rgba(127, 127, 127, 0.25));
-      padding-left: 10px;
+      padding-left: 12px;
     }
     .chips {
       display: flex;
       flex-wrap: wrap;
-      gap: 6px;
-      margin-bottom: 6px;
+      gap: 8px;
+      margin-bottom: 8px;
     }
     .pick {
       font: inherit;
@@ -630,7 +630,7 @@ export class AfForm extends LitElement {
       color: var(--primary-text-color);
       background: transparent;
       border: 1px solid var(--divider-color, rgba(127, 127, 127, 0.3));
-      border-radius: 999px;
+      border-radius: 8px;
       padding: 4px 12px;
       cursor: pointer;
     }
@@ -644,8 +644,8 @@ export class AfForm extends LitElement {
       align-items: center;
       gap: 4px;
       font-size: 12px;
-      border-radius: 999px;
-      padding: 3px 4px 3px 10px;
+      border-radius: 8px;
+      padding: 4px 4px 4px 12px;
       background: rgba(127, 127, 127, 0.12);
     }
   `;

@@ -377,6 +377,7 @@ DISPLAY = vol.Schema(
         vol.Optional("nav"): cv.boolean,
         # OLED-Schutz: die Anzeige wandert alle paar Minuten um wenige Pixel
         vol.Optional("oled"): cv.boolean,
+        vol.Optional("screen_off"): vol.Schema({vol.Optional("away"): [cv.entity_id]}),
         # Nachrichten-Laufband; fehlt = an, außer beim Profil „tv“ (im Videostream ohnehin aus)
         vol.Optional("ticker"): cv.boolean,
         # Erinnerungen oben rechts (fehlt = an)
@@ -406,7 +407,8 @@ DISPLAY = vol.Schema(
                 vol.Optional("enabled", default=True): cv.boolean,
                 # embedded: Dashboard über Ambiframe · screensaver: Dashboard in Fully, Ambiframe als Bildschirmschoner
                 vol.Optional("mode"): vol.In(["embedded", "screensaver"]),
-                vol.Optional("dashboard", default="/lovelace/0"): cv.string,
+                # „/“ = das Standard-Dashboard, das der jeweilige Benutzer in HA eingestellt hat
+                vol.Optional("dashboard", default="/"): cv.string,
                 vol.Optional("idle", default=60): vol.All(vol.Coerce(int), vol.Range(min=10, max=3600)),
             }
         ),

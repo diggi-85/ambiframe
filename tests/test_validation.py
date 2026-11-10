@@ -487,3 +487,21 @@ def test_tile_look_card_style_and_gap() -> None:
     bad["pages"][0]["widgets"] = [{"id": "w", "type": "text", "x": 0, "y": 0, "w": 2, "h": 1, "options": {}, "look": {"shadow": "riesig"}}]
     with pytest.raises(vol.Invalid):
         validate_config(bad)
+
+
+def test_screen_off_when_everyone_is_away() -> None:
+    config = minimal_config()
+    config["displays"][0]["screen_off"] = {"away": ["person.anna", "person.ben"]}
+    assert validate_config(config)["displays"][0]["screen_off"]["away"] == ["person.anna", "person.ben"]
+    config["displays"][0]["screen_off"] = {"away": ["keine entität"]}
+    with pytest.raises(vol.Invalid):
+        validate_config(config)
+
+
+def test_dashboard_defaults_to_users_own_default_dashboard() -> None:
+    """Ohne Angabe „/“ – HA leitet dann auf das Standard-Dashboard des Benutzers weiter; Eigenes bleibt."""
+    config = minimal_config()
+    config["displays"][0]["control"] = {"enabled": True}
+    assert validate_config(config)["displays"][0]["control"]["dashboard"] == "/"
+    config["displays"][0]["control"] = {"enabled": True, "dashboard": "/dashboard-kueche"}
+    assert validate_config(config)["displays"][0]["control"]["dashboard"] == "/dashboard-kueche"

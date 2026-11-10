@@ -480,7 +480,29 @@ export class AfDisplay extends LitElement {
     }, 1600);
   }
 
+  /**
+   * Bildschirm aus, solange alle unter screen_off.away unterwegs sind – außer während Klingel, Bild-im-Bild oder
+   * einer eingeblendeten Seite. Unbekannte Zustände zählen nicht als weg, damit der Bildschirm nicht grundlos ausgeht.
+   */
+  private screenOff = false;
+  private updateScreenOff(): void {
+    const away = this.display?.screen_off?.away ?? [];
+    const gone = (id: string) => !["home", "unknown", "unavailable", undefined].includes(this.hass?.states[id]?.state);
+    const want = !this.preview && !this.streamMode && away.length > 0 && away.every(gone) && !this.alarm && !this.pip && !this.takeover;
+    if (want === this.screenOff) return;
+    this.screenOff = want;
+    this.toggleAttribute("asleep", want);
+    const f = (window as unknown as { fully?: { turnScreenOff?: (keepAlive?: boolean) => void; turnScreenOn?: () => void } }).fully;
+    try {
+      if (want) f?.turnScreenOff?.(true);
+      else f?.turnScreenOn?.();
+    } catch {
+      /* ältere Fully-Version – dann bleibt nur die schwarze Fläche */
+    }
+  }
+
   protected updated(): void {
+    this.updateScreenOff();
     // Akzentfarbe und Schriften aus dem Design direkt am Host – so gelten sie auch für abgeleitete Werte
     const design = this.config?.design;
     const set = (name: string, value?: string) => (value ? this.style.setProperty(name, value) : this.style.removeProperty(name));
@@ -1281,7 +1303,7 @@ export class AfDisplay extends LitElement {
     if (this.preview || !control?.enabled) return;
     // HA-App: eingebettete Dashboards meldet die App nicht an – dort zum Dashboard wechseln und zurückkehren
     if (this.hasAttribute("app")) {
-      leaveToDashboard(control.dashboard ?? "/lovelace/0", control.idle ?? 60);
+      leaveToDashboard(control.dashboard || "/", control.idle ?? 60);
       return;
     }
     this.closeMedia();
@@ -1710,7 +1732,7 @@ export class AfDisplay extends LitElement {
     if (!this.controlOpen) return nothing;
     const covered = !!(this.alarm || this.notice || this.pip);
     return html`<div class="ov control ${covered ? "covered" : ""}">
-      <iframe src=${this.display?.control.dashboard ?? "/lovelace/0"} title="Home Assistant" @load=${this.onFrameLoad}></iframe>
+      <iframe src=${this.display?.control.dashboard || "/"} title="Home Assistant" @load=${this.onFrameLoad}></iframe>
       <div class="back" @click=${() => this.closeControl()}>${icon("back")}${t("Zurück zu Ambiframe")} <span class="num">· ${this.controlLeft} s</span></div>
     </div>`;
   }
@@ -1757,6 +1779,13 @@ export class AfDisplay extends LitElement {
     stillStyles,
     css`
       /* E-Ink: die alte Seite sofort weg – sonst stünden kurz zwei Seiten übereinander */
+      :host([asleep])::after {
+        content: "";
+        position: fixed;
+        inset: 0;
+        z-index: 2147483647;
+        background: #000;
+      }
       :host([eink]) .layer.out {
         display: none;
       }

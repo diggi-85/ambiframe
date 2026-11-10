@@ -45,7 +45,7 @@ export const PROFILES: Profile[] = [
     pages: ["photo", "morning", "standby", "agenda", "weather", "waste", "home", "energy", "news", "persons"],
     display: {
       orientation: "auto",
-      control: { enabled: true, mode: "embedded", dashboard: "/lovelace/0", idle: 60 },
+      control: { enabled: true, mode: "embedded", dashboard: "/", idle: 60 },
       sound: { volume: 80, quiet: { after: "22:00", before: "07:00" } },
     },
   },
@@ -58,7 +58,7 @@ export const PROFILES: Profile[] = [
     display: {
       orientation: "auto",
       text_size: "large",
-      control: { enabled: true, mode: "embedded", dashboard: "/lovelace/0", idle: 30 },
+      control: { enabled: true, mode: "embedded", dashboard: "/", idle: 30 },
       sound: { volume: 60, quiet: { after: "22:00", before: "07:00" } },
     },
   },
@@ -71,7 +71,7 @@ export const PROFILES: Profile[] = [
     eventKinds: ["alarm"],
     display: {
       mode: "dark",
-      control: { enabled: true, mode: "embedded", dashboard: "/lovelace/0", idle: 30 },
+      control: { enabled: true, mode: "embedded", dashboard: "/", idle: 30 },
       sound: { volume: 35, quiet: { after: "21:00", before: "08:00" } },
       design: { ambient: { type: "none" } },
     },
@@ -87,7 +87,7 @@ export const PROFILES: Profile[] = [
       orientation: "landscape",
       mode: "dark",
       text_size: "large",
-      control: { enabled: false, dashboard: "/lovelace/0", idle: 60 },
+      control: { enabled: false, dashboard: "/", idle: 60 },
       sound: { mute: true },
       oled: true,
       design: { ambient: { type: "none" } },
@@ -127,7 +127,7 @@ export const displayFromProfile = (profile: Profile, config: AmbiframeConfig, id
     profile: profile.id,
     playlist: profilePlaylist(profile, config.pages),
     night: night ? { page: night.id } : {},
-    control: { enabled: true, dashboard: "/lovelace/0", idle: 60 },
+    control: { enabled: true, dashboard: "/", idle: 60 },
     events,
     ...structuredClone(profile.display),
   } as DisplayConfig;

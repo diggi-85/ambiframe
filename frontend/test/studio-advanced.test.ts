@@ -134,3 +134,60 @@ describe("Studio: Hinweise „Zeigen“", () => {
     expect([el.displayId, el.step]).toEqual(["__all", "technik"]);
   });
 });
+
+describe("Studio: Änderungen von anderswo", () => {
+  const withPush = async () => {
+    const r = await mount();
+    const sub = r.el.hass.connection.subscribeMessage as ReturnType<typeof vi.fn>;
+    await vi.waitFor(() => expect(sub).toHaveBeenCalled());
+    const push = sub.mock.calls[0][0] as (m: unknown) => void;
+    return { ...r, push };
+  };
+
+  it("übernimmt einen neueren Stand still, solange hier nichts offen ist", async () => {
+    const { el, push } = await withPush();
+    push({ config: config() }); // derselbe Stand (z. B. Echo des eigenen Speicherns) → nichts tun
+    expect(el.draft.design.theme).toBe("ruhig");
+    push({ config: { ...config(), design: { theme: "zeitung" } } });
+    expect(el.draft.design.theme).toBe("zeitung");
+    expect(el.dirty).toBe(false);
+  });
+
+  it("überschreibt fremde Änderungen nur nach Rückfrage", async () => {
+    const { el, push, saved } = await withPush();
+    el.mutate((c: { design: { theme: string } }) => (c.design.theme = "papier"));
+    push({ config: { ...config(), pages: [...config().pages, { id: "neu", name: "Neu", duration: 30, background: { type: "none" }, palette: "normal", widgets: [] }] } });
+    expect(el.draft.design.theme).toBe("papier"); // eigene Änderung bleibt
+    const ask = vi.spyOn(window, "confirm").mockReturnValue(false);
+    await el.save();
+    expect(ask).toHaveBeenCalled();
+    expect(saved).toEqual([]);
+    ask.mockReturnValue(true);
+    await el.save();
+    expect(saved).toHaveLength(1);
+    ask.mockRestore();
+  });
+});
+
+describe("Studio: Dashboard beim Verlassen", () => {
+  it("listet die Dashboards aus HA und behält eine eigene Adresse", async () => {
+    const { dashboardOptions, dashboardsOf } = await import("../src/editor/schemas");
+    const { formContext } = await import("../src/editor/form");
+    const hass = {
+      panels: {
+        lovelace: { url_path: "lovelace", title: null, component_name: "lovelace" },
+        "dashboard-kueche": { url_path: "dashboard-kueche", title: "Küche", component_name: "lovelace" },
+        map: { url_path: "map", title: "Karte", component_name: "map" },
+      },
+    } as never;
+    formContext.dashboards = dashboardsOf(hass);
+    expect(formContext.dashboards).toEqual([
+      ["/dashboard-kueche", "Küche"],
+      ["/lovelace", "Übersicht"],
+    ]);
+    const opts = dashboardOptions("/lovelace/flur");
+    expect(opts[0]).toEqual(["/", "Standard-Dashboard von Home Assistant"]);
+    expect(opts.at(-1)).toEqual(["/lovelace/flur", "/lovelace/flur"]); // eigene Ansicht bleibt wählbar
+    expect(dashboardOptions("/dashboard-kueche")).toHaveLength(3);
+  });
+});

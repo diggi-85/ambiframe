@@ -340,3 +340,27 @@ describe("E-Ink", () => {
     expect(el.transitionFor(el.config.pages[0]).duration).toBeGreaterThan(0);
   });
 });
+
+describe("Bildschirm aus, wenn alle weg sind", () => {
+  const person = (id: string, state: string) => ({ entity_id: id, state, attributes: {}, last_changed: "", last_updated: "" }) as HassEntity;
+
+  it("schaltet über Fully aus, wenn alle weg sind, und wieder an, sobald jemand heimkommt", async () => {
+    const fully = { turnScreenOff: vi.fn(), turnScreenOn: vi.fn() };
+    (window as unknown as { fully?: unknown }).fully = fully;
+    const cfg = config({ screen_off: { away: ["person.a", "person.b"] } });
+    const el = await mount(cfg, hassWith(person("person.a", "not_home"), person("person.b", "Arbeit")));
+    expect(fully.turnScreenOff).toHaveBeenCalledTimes(1);
+    expect(el.hasAttribute("asleep")).toBe(true);
+    el.hass = hassWith(person("person.a", "home"), person("person.b", "Arbeit"));
+    await el.updateComplete;
+    expect(fully.turnScreenOn).toHaveBeenCalledTimes(1);
+    expect(el.hasAttribute("asleep")).toBe(false);
+    delete (window as unknown as { fully?: unknown }).fully;
+  });
+
+  it("bleibt an bei unbekanntem Zustand, ohne Auswahl und in der Vorschau", async () => {
+    const away = hassWith(person("person.a", "unavailable"));
+    expect((await mount(config({ screen_off: { away: ["person.a"] } }), away)).hasAttribute("asleep")).toBe(false);
+    expect((await mount(config(), hassWith(person("person.a", "not_home")))).hasAttribute("asleep")).toBe(false);
+  });
+});

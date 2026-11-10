@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import { CLOCKS, litCells } from "../src/widgets/wordclock";
 import "../src/widgets/clocks";
 import "../src/widgets/places";
+import "../src/widgets/energy";
 import { airKindOf, airLevel, countdownText, moonPhase, readDepartures, sunTimes, targetDate, tileOf, timerLeft } from "../src/widgets/plus";
 import type { Hass, HassEntity } from "../src/types";
 
@@ -530,5 +531,20 @@ describe("Karte, To-do, Pendelzeit", () => {
     expect(text(el)).toContain("nicht verfügbar");
     el.remove();
     vi.useRealTimers();
+  });
+});
+
+describe("Energie jetzt", () => {
+  it("zeigt auf Wunsch den Verbrauch zuerst", async () => {
+    const hass = hassOf([ent("sensor.pv", "120"), ent("sensor.haus", "285")]);
+    const options = { production: [{ entity: "sensor.pv", name: "Balkon" }], consumption: { entity: "sensor.haus", name: "Wohnung" } };
+    const first = async (o: Record<string, unknown>) => {
+      const el = await mount("af-power", hass, o);
+      const k = el.shadowRoot!.querySelector(".k")!.textContent!.trim();
+      el.remove();
+      return k;
+    };
+    expect(await first(options)).toContain("Erzeugung");
+    expect(await first({ ...options, consumption_first: true })).toContain("Wohnung");
   });
 });

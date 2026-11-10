@@ -9,7 +9,7 @@ import type { Field } from "./form";
 import { t } from "../i18n";
 import { ACTION_FORM, ALIGN_FIELDS, WIDGET_LOOK_FIELDS, PAGE_FIELDS, PAGE_TEMPLATES, WIDGET_FIELDS, defaultOptions, slug, uniqueId } from "./schemas";
 import { BASE, GRID_STEP, layoutOf, type Orientation, type Pos } from "../display/grid";
-import { anyIcon } from "../icons";
+import { anyIcon, iconSvg } from "../icons";
 import type { AmbiframeConfig, Hass, PageConfig, WidgetConfig } from "../types";
 import { define } from "../widgets/base";
 import { WIDGETS } from "../widgets/registry";
@@ -17,6 +17,26 @@ import { WIDGETS } from "../widgets/registry";
 const clone = <T>(x: T): T => JSON.parse(JSON.stringify(x));
 
 export type Note = { kind: "ok" | "error"; text: string };
+
+/** Widget-Katalog nach Themen – leichter zu finden als eine lange Reihe; Unbekanntes landet unter „Weitere“ */
+const PALETTE: [string, string[]][] = [
+  ["Zeit", ["clock", "date", "dayclock", "analog", "wordclock", "pixel", "countdown", "timer"]],
+  ["Wetter und Natur", ["weather", "radar", "sky", "air"]],
+  ["Zuhause", ["rooms", "status", "warnings", "activity", "covers", "vacuum", "batteries", "persons", "map", "pet", "camera"]],
+  ["Energie und Auto", ["power", "price", "consumers", "balance", "appliances", "car", "commute"]],
+  ["Alltag", ["today", "agenda", "calendar", "waste", "todo", "board", "departures", "qr", "job"]],
+  ["Medien und Inhalte", ["media", "news", "daily", "summary", "infoline", "image", "text"]],
+  ["Werte und Diagramme", ["value", "list", "gauge", "chart", "card"]],
+];
+
+export const paletteGroups = (advanced: boolean): [string, string[]][] => {
+  const shown = (type: string) => !!WIDGETS[type] && (advanced || type !== "card");
+  const listed = new Set(PALETTE.flatMap(([, types]) => types));
+  const rest = Object.keys(WIDGETS).filter((type) => !listed.has(type));
+  return [...PALETTE, ["Weitere", rest] as [string, string[]]]
+    .map(([label, types]) => [label, types.filter(shown)] as [string, string[]])
+    .filter(([, types]) => types.length);
+};
 
 export class AfPageEditor extends LitElement {
   static properties = {
@@ -518,7 +538,7 @@ export class AfPageEditor extends LitElement {
                               title=${t("Vorlage löschen")}
                               @click=${() => confirm(t("Seitenvorlage „{name}“ löschen?", { name: tpl.name })) && this.mutate((dd) => dd.templates!.pages!.splice(i, 1))}
                             >
-                              ✕
+                              ${iconSvg("close")}
                             </button>
                           </div>`,
                         )}`
@@ -596,12 +616,15 @@ export class AfPageEditor extends LitElement {
           @select=${this.onSelect}
           @move=${this.onMove}
         ></af-canvas>
-        <div class="palette">
-          <span class="hint">${t("Widget hinzufügen:")}</span>
-          ${Object.entries(WIDGETS)
-            .filter(([type]) => this.advanced || type !== "card")
-            .map(([type, wt]) => html`<button class="chip" @click=${() => this.addWidget(type)}>${anyIcon(wt.icon)} ${t(wt.name)}</button>`)}
-        </div>
+        <h4>${t("Widget hinzufügen")}</h4>
+        ${paletteGroups(this.advanced).map(
+          ([label, types]) => html`<div class="palette">
+            <span class="glabel">${t(label)}</span>
+            <span class="chips">
+              ${types.map((type) => html`<button class="chip" @click=${() => this.addWidget(type)}>${anyIcon(WIDGETS[type].icon)} ${t(WIDGETS[type].name)}</button>`)}
+            </span>
+          </div>`,
+        )}
         ${d.templates?.widgets?.length || this.clip
           ? html`<div class="palette">
               <span class="hint">${t("Eigene Vorlagen:")}</span>
@@ -618,7 +641,7 @@ export class AfPageEditor extends LitElement {
                     title=${t("Vorlage löschen")}
                     @click=${() => confirm(t("Vorlage „{name}“ löschen?", { name: tpl.name })) && this.mutate((dd) => dd.templates!.widgets!.splice(i, 1))}
                   >
-                    ✕
+                    ${iconSvg("close")}
                   </button>
                 </span>`,
               )}
@@ -727,8 +750,7 @@ export class AfPageEditor extends LitElement {
     :host {
       display: block;
       color: var(--primary-text-color, #eee);
-      font-size: 14px;
-    }
+      font-size: 13px;
     }
     button,
     .button,
@@ -737,8 +759,8 @@ export class AfPageEditor extends LitElement {
       color: var(--primary-text-color);
       background: var(--card-background-color, #1c1c1c);
       border: 1px solid var(--divider-color, rgba(127, 127, 127, 0.25));
-      border-radius: 999px;
-      padding: 7px 14px;
+      border-radius: 8px;
+      padding: 8px 16px;
       cursor: pointer;
       text-decoration: none;
     }
@@ -748,21 +770,45 @@ export class AfPageEditor extends LitElement {
     }
     .tab.on,
     .primary,
-    .entry.on,
     .theme.on {
-      background: var(--primary-color, #03a9f4);
-      border-color: var(--primary-color, #03a9f4);
-      color: var(--text-primary-color, #fff);
+      background: var(--primary-color, #c9a063);
+      border-color: var(--primary-color, #c9a063);
+      color: var(--text-primary-color, #1f1810);
+    }
+    button:hover:not(:disabled) {
+      border-color: color-mix(in srgb, var(--primary-text-color) 24%, transparent);
+    }
+    button:focus-visible {
+      outline: 2px solid var(--primary-color, #c9a063);
+      outline-offset: 2px;
+    }
+    /* Ausgewählte Seite: ruhige Fläche und der Messing-Punkt wie der Doppelpunkt der Uhr */
+    .entry.on {
+      background: color-mix(in srgb, var(--primary-text-color) 8%, var(--card-background-color, #1c1c1c));
+      border-color: color-mix(in srgb, var(--primary-color, #c9a063) 60%, transparent);
+    }
+    .entry.on .name::before {
+      content: "";
+      display: inline-block;
+      width: 6px;
+      height: 6px;
+      margin-right: 8px;
+      border-radius: 50%;
+      background: var(--primary-color, #c9a063);
+      vertical-align: middle;
     }
     .icon {
-      padding: 6px 11px;
-      font-size: 16px;
+      padding: 8px 12px;
+      font-size: 15px;
     }
     .small {
-      padding: 4px 10px;
+      padding: 4px 12px;
       font-size: 13px;
     }
     .danger {
+      color: var(--secondary-text-color);
+    }
+    .danger:hover {
       color: var(--error-color, #e57373);
     }
     .dashed {
@@ -770,17 +816,17 @@ export class AfPageEditor extends LitElement {
       align-self: flex-start;
     }
     .msg {
-      margin: 10px 16px 0;
-      padding: 10px 14px;
+      margin: 12px 16px 0;
+      padding: 12px 16px;
       border-radius: 10px;
       white-space: pre-wrap;
       cursor: pointer;
     }
     .msg.ok {
-      background: rgba(76, 175, 80, 0.15);
+      background: color-mix(in srgb, var(--success-color, #81c784) 16%, transparent);
     }
     .msg.error {
-      background: rgba(244, 67, 54, 0.15);
+      background: color-mix(in srgb, var(--error-color, #e57373) 18%, transparent);
     }
     main {
       padding: 16px;
@@ -790,15 +836,14 @@ export class AfPageEditor extends LitElement {
       font-size: 13px;
     }
     h3 {
-      margin: 0 0 10px;
-      font-size: 17px;
+      margin: 0 0 12px;
+      font-size: 15px;
       font-weight: 500;
     }
     h4 {
-      margin: 18px 0 6px;
-      font-size: 12px;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
+      margin: 16px 0 8px;
+      font-size: 13px;
+      text-transform: none;
       color: var(--secondary-text-color);
       font-weight: 500;
     }
@@ -875,8 +920,8 @@ export class AfPageEditor extends LitElement {
       width: 100%;
       text-align: left;
       border-radius: 10px;
-      margin-top: 6px;
-      padding: 8px 10px;
+      margin-top: 8px;
+      padding: 8px 12px;
     }
     .entry .name {
       display: block;
@@ -896,17 +941,33 @@ export class AfPageEditor extends LitElement {
     .palette {
       display: flex;
       flex-wrap: wrap;
-      gap: 6px;
-      align-items: center;
-      margin-top: 12px;
+      gap: 8px 12px;
+      align-items: baseline;
+      margin-top: 8px;
+    }
+    /* Gruppenname in einer Spalte, die Knöpfe daneben */
+    .palette .glabel {
+      flex: none;
+      width: 152px;
+      color: var(--secondary-text-color);
+    }
+    .palette .chips {
+      flex: 1;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+    }
+    @media (max-width: 760px) {
+      .palette .glabel {
+        width: 100%;
+      }
     }
     .chip {
-      padding: 5px 11px;
+      padding: 4px 12px;
       font-size: 13px;
     }
     .chip.accent {
       border-color: var(--primary-color);
-      color: var(--primary-color);
     }
     .chip.tpl {
       display: inline-flex;
@@ -914,24 +975,23 @@ export class AfPageEditor extends LitElement {
       gap: 2px;
       padding: 0;
       border: 1px solid var(--divider-color, rgba(127, 127, 127, 0.3));
-      border-radius: 999px;
+      border-radius: 8px;
     }
     .chip.tpl button {
       border: 0;
       background: transparent;
-      padding: 5px 4px 5px 11px;
+      padding: 4px 4px 4px 12px;
       font-size: 13px;
     }
     .chip.tpl button.x,
     .menu-row .x {
-      padding: 5px 9px 5px 4px;
+      padding: 4px 8px 4px 4px;
       opacity: 0.55;
     }
     .menu .sep {
-      margin: 6px 4px 2px;
-      font-size: 11px;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
+      margin: 8px 4px 2px;
+      font-size: 12px;
+      text-transform: none;
       color: var(--secondary-text-color);
       border-top: 1px solid var(--divider-color, rgba(127, 127, 127, 0.25));
       padding-top: 8px;
@@ -946,13 +1006,13 @@ export class AfPageEditor extends LitElement {
     .import-box {
       display: flex;
       flex-direction: column;
-      gap: 6px;
+      gap: 8px;
       margin: 8px 0;
     }
     .actions-row {
       display: flex;
       flex-wrap: wrap;
-      gap: 6px;
+      gap: 8px;
     }
     .keys {
       margin-top: 8px;
@@ -970,21 +1030,21 @@ export class AfPageEditor extends LitElement {
     .pos input {
       width: 100%;
       box-sizing: border-box;
-      margin-top: 3px;
+      margin-top: 4px;
       font: inherit;
       color: var(--primary-text-color);
       background: rgba(127, 127, 127, 0.08);
       border: 1px solid var(--divider-color, rgba(127, 127, 127, 0.25));
       border-radius: 8px;
-      padding: 6px 8px;
+      padding: 8px 8px;
     }
     .seg {
       display: inline-flex;
       gap: 4px;
     }
     .seg button.on {
-      background: var(--primary-color, #03a9f4);
-      color: #fff;
+      background: var(--primary-color, #c9a063);
+      color: var(--text-primary-color, #1f1810);
       border-color: transparent;
     }
     [hidden] {
@@ -994,7 +1054,7 @@ export class AfPageEditor extends LitElement {
       width: 100%;
       box-sizing: border-box;
       border-radius: 8px;
-      padding: 6px 8px;
+      padding: 8px 8px;
       color: var(--primary-text-color);
       background: rgba(127, 127, 127, 0.08);
       border: 1px solid var(--divider-color, rgba(127, 127, 127, 0.25));

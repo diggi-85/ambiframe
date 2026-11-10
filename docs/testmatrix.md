@@ -48,6 +48,9 @@ Ausführen: `cd frontend && npm test` (Frontend) · `.venv/bin/python -m pytest`
 | Konfiguration aus 0.6 lädt unverändert, Bing bleibt Bing | `test_older_config_loads_unchanged_after_update` |
 | Bing an/aus → Platzhalter-Wahl, auch pro Display | `tests/test_validation.py::test_placeholder_sources_and_migration`, `test_display_own_design_sound_and_photos` |
 | Studio speichert nur, was geändert wurde | `frontend/test/studio.test.ts` |
+| Dashboard beim Verlassen: Auswahl aus den Dashboards von HA, eigene Adresse bleibt; ohne Angabe das Standard-Dashboard des Benutzers („/“) | `studio-advanced.test.ts` › Dashboard beim Verlassen, `test_dashboard_defaults_to_users_own_default_dashboard` |
+| Offenes Studio übernimmt Änderungen von anderswo; mit eigenen offenen Änderungen überschreibt es nur nach Rückfrage | `studio-advanced.test.ts` › Änderungen von anderswo |
+| Bildschirm aus, wenn alle gewählten Personen weg sind; an, sobald jemand heimkommt; unbekannter Zustand zählt nicht als weg | `display.test.ts` › Bildschirm aus, `test_screen_off_when_everyone_is_away` |
 
 ## Studio und Seiteneditor
 

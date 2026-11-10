@@ -22,6 +22,8 @@ export interface Hass {
   callService(domain: string, service: string, data?: Record<string, unknown>): Promise<unknown>;
   /** Zustand übersetzt, wie im HA-Dashboard („printing“ → „Druckt“) – nur im echten HA vorhanden */
   formatEntityState?: (stateObj: HassEntity, state?: string) => string;
+  /** Seitenleiste von HA – darunter alle Dashboards (component_name „lovelace“) */
+  panels?: Record<string, { url_path: string; title?: string | null; component_name: string }>;
 }
 
 export type Condition =
@@ -293,6 +295,8 @@ export interface DisplayConfig {
   nav?: boolean;
   /** OLED-Schutz: Anzeige wandert alle paar Minuten um wenige Pixel */
   oled?: boolean;
+  /** Bildschirm aus, solange alle diese Personen nicht zu Hause sind (Momente wecken trotzdem) */
+  screen_off?: { away?: string[] };
   /** Videostream als Kamera-Entität (Puppet-Add-on rendert, nur auf Abruf) */
   stream?: { enabled?: boolean; resolution?: "4k" | "1080p" | "both"; interval?: number; renderer?: string };
 }

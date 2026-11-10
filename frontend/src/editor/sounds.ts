@@ -1,6 +1,7 @@
 // Tonbibliothek „Eigene Töne“: Name und Quelle (Link, /local/… oder Datei aus HA-Medien), mit Probehören.
 // Gemeinsam für Studio (Momente) und Experten-Editor (Ereignisse); Änderungen gehen als „sounds-changed“ an den Editor.
 import { LitElement, css, html } from "lit";
+import { iconSvg } from "../icons";
 import { t } from "../i18n";
 import { playSound } from "../sound";
 import type { Hass, SoundConfig } from "../types";
@@ -42,22 +43,21 @@ class AfSoundLibrary extends LitElement {
       display: block;
     }
     h4 {
-      margin: 14px 0 4px;
+      margin: 16px 0 4px;
       font-size: 12px;
-      letter-spacing: 0.06em;
-      text-transform: uppercase;
+      text-transform: none;
       opacity: 0.7;
     }
     .hint {
-      margin: 0 0 6px;
+      margin: 0 0 8px;
       font-size: 13px;
       opacity: 0.7;
     }
     .row {
       display: grid;
       grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) auto auto;
-      gap: 6px;
-      margin: 6px 0;
+      gap: 8px;
+      margin: 8px 0;
     }
     input {
       min-width: 0;
@@ -66,7 +66,7 @@ class AfSoundLibrary extends LitElement {
       background: rgba(127, 127, 127, 0.12);
       border: 1px solid rgba(127, 127, 127, 0.3);
       border-radius: 8px;
-      padding: 6px 8px;
+      padding: 8px 8px;
     }
     button {
       font: inherit;
@@ -74,16 +74,24 @@ class AfSoundLibrary extends LitElement {
       color: inherit;
       background: rgba(127, 127, 127, 0.15);
       border: 1px solid rgba(127, 127, 127, 0.3);
-      border-radius: 999px;
-      padding: 4px 10px;
+      border-radius: 8px;
+      padding: 4px 12px;
       cursor: pointer;
+    }
+    button .ic {
+      width: 16px;
+      height: 16px;
+      vertical-align: -3px;
+    }
+    button.danger {
+      color: var(--secondary-text-color);
+    }
+    button.danger:hover {
+      color: var(--error-color, #e57373);
     }
     button:disabled {
       opacity: 0.4;
       cursor: default;
-    }
-    .danger {
-      color: #e5484d;
     }
   `;
 
@@ -118,8 +126,8 @@ class AfSoundLibrary extends LitElement {
             placeholder="media-source://…, /local/… ${t("oder")} https://…"
             @input=${(e: Event) => set(i, "url", (e.target as HTMLInputElement).value.trim())}
           />
-          <button title=${t("Anhören")} ?disabled=${!s.url} @click=${() => void playSound(s.id, 70, { hass: this.hass, library: list })}>▶</button>
-          <button class="danger" title=${t("Löschen")} @click=${() => this.emit(list.filter((_, n) => n !== i))}>✕</button>
+          <button title=${t("Anhören")} ?disabled=${!s.url} @click=${() => void playSound(s.id, 70, { hass: this.hass, library: list })}>${iconSvg("play")}</button>
+          <button class="danger" title=${t("Löschen")} @click=${() => this.emit(list.filter((_, n) => n !== i))}>${iconSvg("close")}</button>
         </div>`,
       )}
       <datalist id="media">${this.media.map(([value, label]) => html`<option value=${value}>${label}</option>`)}</datalist>

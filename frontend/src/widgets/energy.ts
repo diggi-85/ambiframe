@@ -235,7 +235,7 @@ interface Source {
 /**
  * Leistung jetzt: Erzeugung gegen Verbrauch.
  * Optionen: production [{name, entity}] (W), consumption {name, entity} (W), forecast (kWh heute),
- * forecast_remaining, extra (Entität für die Zeile unter dem Balken), label, production_label.
+ * forecast_remaining, extra (Entität für die Zeile unter dem Balken), label, production_label, consumption_first.
  */
 class AfPower extends AfTickingWidget {
   static styles = [
@@ -316,21 +316,20 @@ class AfPower extends AfTickingWidget {
     const fc = o.forecast ? numberOf(this.hass, o.forecast) : null;
     const fcRest = o.forecast_remaining ? numberOf(this.hass, o.forecast_remaining) : null;
     const extra = o.extra ? stateOf(this.hass, o.extra) : undefined;
-    return html`<div class="label">${o.label ?? t("Energie jetzt")}</div>
-      <div class="row">
-        <div>
-          <div class="k">${anyIcon("solar")}${o.production_label ?? t("Erzeugung")}</div>
-          <div class="v display num" style="--n:${watt(prod).length}">${watt(prod)}</div>
-          <div class="src num">${values.map((v) => html`${v.name} ${watt(v.w)}<br />`)}</div>
-        </div>
-        ${o.consumption?.entity
-          ? html`<div>
+    const production = html`<div>
+      <div class="k">${anyIcon("solar")}${o.production_label ?? t("Erzeugung")}</div>
+      <div class="v display num" style="--n:${watt(prod).length}">${watt(prod)}</div>
+      <div class="src num">${values.map((v) => html`${v.name} ${watt(v.w)}<br />`)}</div>
+    </div>`;
+    const consumption = o.consumption?.entity
+      ? html`<div>
               <div class="k">${anyIcon("home")}${o.consumption.name ?? t("Verbrauch")}</div>
               <div class="v display num" style="--n:${watt(cons).length}">${watt(cons)}</div>
               ${fc != null ? html`<div class="src num">${t("Prognose heute {n} kWh", { n: fmt(fc, 1) })}${fcRest != null ? html`<br />${t("noch {n} kWh", { n: fmt(fcRest, 1) })}` : nothing}</div>` : nothing}
             </div>`
-          : nothing}
-      </div>
+      : nothing;
+    return html`<div class="label">${o.label ?? t("Energie jetzt")}</div>
+      <div class="row">${o.consumption_first ? html`${consumption}${production}` : html`${production}${consumption}`}</div>
       ${share != null
         ? html`<div class="bar"><i style="width:${share}%"></i></div>
             <div class="share num">

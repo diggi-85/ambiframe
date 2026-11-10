@@ -38,6 +38,20 @@ const TONE: Field = {
 };
 const FRAME: Field = { key: "style", label: "Rahmen", type: "select", options: [[undefined, "Schlicht"], ["card", "Karte"]] };
 
+/** Dashboards aus der Seitenleiste von HA, als [Adresse, Name] */
+export const dashboardsOf = (hass?: Hass): [string, string][] =>
+  Object.values(hass?.panels ?? {})
+    .filter((p) => p.component_name === "lovelace")
+    .map((p) => [`/${p.url_path}`, p.title || (p.url_path === "lovelace" ? t("Übersicht") : p.url_path)] as [string, string])
+    .sort((a, b) => a[1].localeCompare(b[1]));
+
+/** Ziel beim Verlassen: Standard-Dashboard von HA, alle Dashboards – und eine eigene Adresse, falls eingetragen */
+export const dashboardOptions = (current?: string, dashboards = formContext.dashboards): [string | undefined, string][] => {
+  const list: [string | undefined, string][] = [["/", "Standard-Dashboard von Home Assistant"], ...dashboards];
+  if (current && !list.some(([v]) => v === current)) list.push([current, current]);
+  return list;
+};
+
 export const WIDGET_FIELDS: Record<string, Field[]> = {
   clock: [
     { key: "size", label: "Größe", type: "select", options: [[undefined, "füllt das Feld"], ["small", "klein (Kopfzeile)"]] },
@@ -626,6 +640,7 @@ export const WIDGET_FIELDS: Record<string, Field[]> = {
   ],
   power: [
     LABEL,
+    { key: "consumption_first", label: "Verbrauch zuerst", type: "boolean", help: "Verbrauch links, Erzeugung rechts" },
     {
       key: "production",
       label: "Erzeugung (W)",
@@ -1387,7 +1402,23 @@ export const displayFields = (config: AmbiframeConfig): Field[] => [
     help: "Bildschirmschoner: Fully zeigt das Dashboard, nach der Wartezeit ohne Berührung erscheint Ambiframe. Klingel und Kamera holen Ambiframe sofort nach vorn. Fully wird automatisch umgestellt.",
     when: (v) => v.control?.enabled !== false,
   },
-  { key: "control.dashboard", label: "Dashboard", type: "text", placeholder: "/lovelace/0", help: "Erscheint beim Antippen des Displays.", when: (v) => v.control?.enabled !== false },
+  {
+    key: "control.dashboard",
+    label: "Dashboard",
+    type: "select",
+    options: (v) => dashboardOptions(v.control?.dashboard),
+    help: "Erscheint beim Antippen des Displays.",
+    when: (v) => v.control?.enabled !== false,
+  },
+  {
+    key: "control.dashboard",
+    label: "Eigene Adresse",
+    type: "text",
+    placeholder: "/lovelace/kueche",
+    help: "Statt der Auswahl oben, z. B. eine bestimmte Ansicht eines Dashboards.",
+    advanced: true,
+    when: (v) => v.control?.enabled !== false,
+  },
   {
     key: "control.idle",
     label: "Zurück nach (s)",
@@ -1413,6 +1444,13 @@ export const displayFields = (config: AmbiframeConfig): Field[] => [
     max: 1440,
     placeholder: "aus",
     help: "Benachrichtigung in Home Assistant, wenn sich das Display so lange nicht meldet – verschwindet von selbst, sobald es wieder da ist. Ausgeschalteter Bildschirm zählt nicht.",
+  },
+  {
+    key: "screen_off.away",
+    label: "Bildschirm aus, wenn alle weg sind",
+    type: "entities",
+    domains: ["person"],
+    help: "Sind alle gewählten Personen unterwegs, geht der Bildschirm aus (mit Fully) – Klingel und andere Momente wecken ihn trotzdem. Leer = immer an.",
   },
   {
     key: "oled",

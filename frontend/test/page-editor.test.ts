@@ -179,3 +179,14 @@ describe("Seiteneditor", () => {
     vi.unstubAllGlobals();
   });
 });
+
+describe("Widget-Katalog", () => {
+  it("führt jedes Widget in genau einer Gruppe, „HA-Karte“ nur mit Erweitert", async () => {
+    const { paletteGroups } = await import("../src/editor/page-editor");
+    const { WIDGETS } = await import("../src/widgets/registry");
+    const all = paletteGroups(true).flatMap(([, types]) => types);
+    expect(all.sort()).toEqual(Object.keys(WIDGETS).sort());
+    expect(new Set(all).size).toBe(all.length);
+    expect(paletteGroups(false).flatMap(([, types]) => types)).not.toContain("card");
+  });
+});

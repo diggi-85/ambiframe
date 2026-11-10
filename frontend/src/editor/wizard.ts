@@ -11,7 +11,7 @@ import { placeholderOf } from "../data";
 import type { AmbiframeConfig, DisplayConfig, EventConfig, Hass, PlaceholderSource, Theme } from "../types";
 import { define } from "../widgets/base";
 import { displayFromProfile, PROFILES, profilePlaylist, type Profile } from "./profiles";
-import { EVENT_TEMPLATES, PAGE_TEMPLATES, PLACEHOLDER_OPTIONS, slug, uniqueId } from "./schemas";
+import { EVENT_TEMPLATES, PAGE_TEMPLATES, PLACEHOLDER_OPTIONS, dashboardOptions, dashboardsOf, slug, uniqueId } from "./schemas";
 
 type Step = "welcome" | "place" | "content" | "events" | "photos" | "device" | "done";
 const FIRST: Step[] = ["welcome", "place", "content", "events", "photos", "device", "done"];
@@ -73,7 +73,7 @@ export class AfWizard extends LitElement {
   private appliances = new Set<string>();
   private photos = { folder: "", icloud: "", google: "", placeholder: "samples" as PlaceholderSource };
   private control: "embedded" | "screensaver" | "off" = "embedded";
-  private dashboard = "/lovelace/0";
+  private dashboard = "/";
   private prepared = false;
 
   private get steps(): Step[] {
@@ -91,7 +91,7 @@ export class AfWizard extends LitElement {
     this.language = c.design.language ?? "auto";
     this.theme = c.design.theme;
     this.photos = { folder: c.photos.folder ?? "", icloud: c.photos.icloud ?? "", google: c.photos.google ?? "", placeholder: placeholderOf(c.photos) };
-    this.dashboard = c.displays[0]?.control?.dashboard ?? "/lovelace/0";
+    this.dashboard = c.displays[0]?.control?.dashboard ?? "/";
     this.pickProfile(this.profileId);
     this.detectEvents();
   }
@@ -500,8 +500,13 @@ export class AfWizard extends LitElement {
       </div>
       ${this.control !== "off"
         ? html`<label class="field"
-            ><span>${t("Dashboard")}</span><input .value=${this.dashboard} @input=${(e: Event) => (this.dashboard = (e.target as HTMLInputElement).value)}
-          /></label>`
+            ><span>${t("Dashboard")}</span
+            ><select @change=${(e: Event) => (this.dashboard = (e.target as HTMLSelectElement).value)}>
+              ${dashboardOptions(this.dashboard, dashboardsOf(this.hass)).map(
+                ([path, name]) => html`<option value=${path ?? "/"} ?selected=${(path ?? "/") === this.dashboard}>${t(name)}</option>`,
+              )}
+            </select></label
+          >`
         : nothing}
       <p class="hint">
         ${this.fullyButton()

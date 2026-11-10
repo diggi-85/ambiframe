@@ -83,6 +83,8 @@ Ist die Wäsche fertig, steht es kurz da und bleibt dann als kleine Erinnerung.
 - **Mini-Karte „Läuft gerade“:** dauerhaft oder je Titel eine Weile, wie lange nach einer Pause, Bedingungen und
   Ruhezeiten, Ecke, Größe, Cover, Fortschritt und Hintergrund.
 - **Nachtmodus** (gedimmte Uhr, wandert gegen Einbrennen) und **Abendstimmung**.
+- **Bildschirm aus, wenn alle weg sind:** Personen pro Display wählen; mit Fully geht der Bildschirm aus, Klingel und
+  andere Momente wecken ihn trotzdem.
 - **35 Stile, jeder hell und dunkel:** Ruhig, Klar, Gold, Glas, Aurora, Editorial, Minimal, Pixel (LED-Punktmatrix),
   Arcade (Neon), Cockpit, Tonal, Kacheln, Klartext (groß und kontrastreich), Fallblatt, Millennium, Glanz, Handheld,
   Bauhaus, Soft-UI, Boho, Landhaus, Natur, **Galerie** (Fotos im Passepartout wie im Museum), **Papier** (reines
@@ -116,7 +118,8 @@ Ist die Wäsche fertig, steht es kurz da und bleibt dann als kleine Erinnerung.
   8×8-Symbolen, Schreibmaschinen-Text.
 - **Das Studio:** ein Editor für alles, immer mit Live-Vorschau – vom Display aus gedacht, mit Seiteneditor zum
   Anordnen der Widgets, Rückgängig und Hinweisen, was fehlt – siehe [Das Studio](#das-studio).
-- **Bedienmodus:** Tippen holt das HA-Dashboard, nach einer Minute ohne Berührung kehrt Ambiframe zurück.
+- **Bedienmodus:** Tippen holt das HA-Dashboard – aus einer Liste gewählt oder das Standard-Dashboard des jeweiligen
+  Benutzers; nach einer Minute ohne Berührung kehrt Ambiframe zurück.
 - **Kamera nativ** über HAs eigenen Stream (WebRTC/HLS) – alle Displays teilen sich eine Verbindung zur Kamera,
   wichtig bei Kameras, die nur wenige erlauben (z. B. Tapo). Bis das Livebild läuft, steht das letzte Standbild da
   statt einer leeren Fläche; MJPEG nur als Rückfall.
@@ -345,7 +348,7 @@ events:
 | `media` | `entities`, `variant: full` (Standard: kompakt), `show_paused` |
 | `appliances` | `items: [{name, running, icon, power, progress, end, cost}]`, `empty_text` |
 | `price` | `entity`, `home` (Tibber), `window` (günstigste Stunden), `tomorrow`, `note` |
-| `power` | `production: [{name, entity}]`, `consumption`, `forecast`, `forecast_remaining`, `extra`, `extra_name` |
+| `power` | `production: [{name, entity}]`, `consumption`, `consumption_first`, `forecast`, `forecast_remaining`, `extra`, `extra_name` |
 | `consumers` | `count`, `devices`, `exclude` |
 | `balance` | `switch_hour`, `groups` (YAML) |
 | `batteries` | `part`, `devices`, `threshold`, `max`, `exclude` |
