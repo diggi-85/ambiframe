@@ -22,7 +22,7 @@ export type Note = { kind: "ok" | "error"; text: string };
 const PALETTE: [string, string[]][] = [
   ["Zeit", ["clock", "date", "dayclock", "analog", "wordclock", "pixel", "countdown", "timer"]],
   ["Wetter und Natur", ["weather", "radar", "sky", "air"]],
-  ["Zuhause", ["rooms", "status", "warnings", "activity", "covers", "vacuum", "batteries", "persons", "map", "pet", "camera"]],
+  ["Zuhause", ["rooms", "status", "warnings", "activity", "covers", "vacuum", "batteries", "persons", "map", "pet", "camera", "doorlog"]],
   ["Energie und Auto", ["power", "price", "consumers", "balance", "appliances", "car", "commute"]],
   ["Alltag", ["today", "agenda", "calendar", "waste", "todo", "board", "departures", "qr", "job"]],
   ["Medien und Inhalte", ["media", "news", "daily", "summary", "infoline", "image", "text"]],
@@ -40,6 +40,8 @@ export const paletteGroups = (advanced: boolean): [string, string[]][] => {
 
 export class AfPageEditor extends LitElement {
   static properties = {
+    hoverWidget: { state: true },
+    find: { state: true },
     hass: { attribute: false },
     config: { attribute: false },
     pageId: { attribute: false },
@@ -58,6 +60,9 @@ export class AfPageEditor extends LitElement {
   pageId = "";
   /** Display für Vorschau und Wiedergabeliste neuer Seiten */
   displayId = "";
+  /** Widget-Typ unter der Maus (Vorschau in der Seite) und Suchtext der Widget-Liste */
+  hoverWidget = "";
+  find = "";
   advanced = false;
   private widgetId: string | null = null;
   /** weitere ausgewählte Widgets neben widgetId (Mehrfachauswahl) */
@@ -395,6 +400,20 @@ export class AfPageEditor extends LitElement {
     this.menu = "";
   }
 
+  /** Display, von dem aus bearbeitet wird (sonst das erste) */
+  private get targetDisplay() {
+    return this.config?.displays.find((x) => x.id === this.displayId) ?? this.config?.displays[0];
+  }
+
+  /** Seite aus der Bibliothek in die Wiedergabe dieses Displays aufnehmen */
+  private showOnDisplay(): void {
+    const page = this.page;
+    const id = this.targetDisplay?.id;
+    if (!page || !id) return;
+    this.mutate((d) => d.displays.find((x) => x.id === id)?.playlist.push({ page: page.id }));
+    this.message = { kind: "ok", text: t("„{page}“ läuft jetzt auf „{name}“ – Dauer und „Wann?“ unter Inhalte.", { page: page.name, name: this.targetDisplay!.name }) };
+  }
+
   private duplicatePage(): void {
     const p = this.page;
     if (!p) return;
@@ -431,7 +450,25 @@ export class AfPageEditor extends LitElement {
     this.message = { kind: "ok", text: t("Seite „{name}“ gelöscht – mit ↶ zurückholen.", { name: p.name }) };
   }
 
+  /** Wohin ein neues Widget käme: erste freie Stelle in Standardgröße (auch für die Vorschau beim Darüberfahren) */
+  private place(type: string): WidgetConfig | null {
+    const page = this.page;
+    if (!page) return null;
+    const [w, h] = WIDGETS[type].size;
+    const taken = (x: number, y: number) => page.widgets.some((o) => x < o.x + o.w && x + w > o.x && y < o.y + o.h && y + h > o.y);
+    for (let y = 0; y + h <= 8; y++) for (let x = 0; x + w <= 12; x++) if (!taken(x, y)) return { id: uniqueId(type, page.widgets.map((o) => o.id)), type, x, y, w, h, options: defaultOptions(type, this.hass) };
+    return { id: uniqueId(type, page.widgets.map((o) => o.id)), type, x: 0, y: 0, w, h, options: defaultOptions(type, this.hass) };
+  }
+
+  /** Entwurf mit dem Widget, über dessen Knopf die Maus steht – nur zum Ansehen, nichts wird geändert */
+  private withGhost(d: AmbiframeConfig): AmbiframeConfig {
+    const ghost = this.hoverWidget ? this.place(this.hoverWidget) : null;
+    if (!ghost) return d;
+    return { ...d, pages: d.pages.map((pg) => (pg.id === this.pageId ? { ...pg, widgets: [...pg.widgets, ghost] } : pg)) };
+  }
+
   private addWidget(type: string): void {
+    this.hoverWidget = "";
     const page = this.page;
     if (!page) return;
     const [w, h] = WIDGETS[type].size;
@@ -622,7 +659,7 @@ export class AfPageEditor extends LitElement {
         </div>
         <af-canvas
           .hass=${this.hass}
-          .config=${d}
+          .config=${this.withGhost(d)}
           .pageId=${this.pageId}
           .displayId=${this.displayId}
           .orientation=${this.layout}
@@ -632,14 +669,30 @@ export class AfPageEditor extends LitElement {
           @move=${this.onMove}
         ></af-canvas>
         <h4>${t("Widget hinzufügen")}</h4>
-        ${paletteGroups(this.advanced).map(
-          ([label, types]) => html`<div class="palette">
-            <span class="glabel">${t(label)}</span>
-            <span class="chips">
-              ${types.map((type) => html`<button class="chip" @click=${() => this.addWidget(type)}>${anyIcon(WIDGETS[type].icon)} ${t(WIDGETS[type].name)}</button>`)}
-            </span>
-          </div>`,
-        )}
+        <input
+          class="find"
+          type="search"
+          placeholder=${t("Widget suchen")}
+          .value=${this.find}
+          @input=${(e: Event) => (this.find = (e.target as HTMLInputElement).value)}
+        />
+        <p class="hint">${t("Mit der Maus über ein Widget fahren zeigt es oben in der Seite – Klicken fügt es hinzu.")}</p>
+        <div @mouseleave=${() => (this.hoverWidget = "")}>
+          ${paletteGroups(this.advanced)
+            .map(([label, types]) => [label, types.filter((type) => t(WIDGETS[type].name).toLowerCase().includes(this.find.trim().toLowerCase()))] as [string, string[]])
+            .filter(([, types]) => types.length)
+            .map(
+              ([label, types]) => html`<div class="palette">
+                <span class="glabel">${t(label)}</span>
+                <span class="chips">
+                  ${types.map(
+                    (type) =>
+                      html`<button class="chip" @mouseenter=${() => (this.hoverWidget = type)} @click=${() => this.addWidget(type)}>${anyIcon(WIDGETS[type].icon)} ${t(WIDGETS[type].name)}</button>`,
+                  )}
+                </span>
+              </div>`,
+            )}
+        </div>
         ${d.templates?.widgets?.length || this.clip
           ? html`<div class="palette">
               <span class="hint">${t("Eigene Vorlagen:")}</span>
@@ -749,6 +802,9 @@ export class AfPageEditor extends LitElement {
                     ${this.advanced
                       ? html`<button class="small" @click=${() => void this.exportPage()} title=${t("Als YAML kopieren")}>${t("Exportieren")}</button>
                           <button class="small" @click=${this.savePageTemplate} title=${t("Als eigene Seitenvorlage speichern")}>${t("Vorlage")}</button>`
+                      : nothing}
+                    ${this.targetDisplay && !this.targetDisplay.playlist.some((e) => e.page === this.page!.id)
+                      ? html`<button class="small primary" @click=${this.showOnDisplay}>${t("Auf „{name}“ zeigen", { name: this.targetDisplay.name })}</button>`
                       : nothing}
                     <button class="small" @click=${this.duplicatePage}>${t("Duplizieren")}</button>
                     <button class="small danger" @click=${this.removePage}>${t("Löschen")}</button>
@@ -952,6 +1008,16 @@ export class AfPageEditor extends LitElement {
     }
     .entry.off {
       opacity: 0.55;
+    }
+    .find {
+      font: inherit;
+      color: var(--primary-text-color);
+      background: var(--card-background-color, #1c1c1c);
+      border: 1px solid var(--divider-color, rgba(127, 127, 127, 0.25));
+      border-radius: 8px;
+      padding: 8px 12px;
+      width: min(320px, 100%);
+      box-sizing: border-box;
     }
     .palette {
       display: flex;

@@ -564,6 +564,117 @@ class AfCommute extends AfTickingWidget {
   }
 }
 
+/* ───────── Wer war an der Tür? ───────── */
+
+interface DoorEntry {
+  event: string;
+  title: string;
+  where?: string;
+  at: string;
+  url: string;
+}
+
+/**
+ * Die letzten Klingel- und Kamera-Momente mit Standbild – HA schreibt sie mit (letzte 20). Optionen: max (Standard 4),
+ * label. Aktualisiert sich, sobald ein Auslöser anspringt.
+ */
+class AfDoorlog extends AfTickingWidget {
+  static properties = { ...AfTickingWidget.properties, entries: { state: true } };
+
+  static styles = [
+    widgetStyles,
+    css`
+      ul {
+        list-style: none;
+        margin: 12px 0 0;
+        padding: 0;
+        display: grid;
+        gap: 12px;
+      }
+      li {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr);
+        gap: 12px;
+        align-items: center;
+      }
+      img {
+        width: calc(96px * var(--af-fs, 1));
+        aspect-ratio: 4 / 3;
+        object-fit: cover;
+        border-radius: 8px;
+        background: var(--af-surface);
+      }
+      .t {
+        font-size: calc(19px * var(--af-fs, 1));
+      }
+      .s {
+        font-size: calc(15px * var(--af-fs, 1));
+        color: var(--af-ink-2);
+      }
+    `,
+  ];
+
+  entries: DoorEntry[] = [];
+  private refresh?: number;
+  private poll?: number;
+
+  connectedCallback(): void {
+    super.connectedCallback();
+    // Links sind 2 h gültig – alle 5 min neu holen hält Bilder und Liste frisch
+    this.poll = window.setInterval(() => void this.load(), 5 * 60e3);
+    void this.load();
+  }
+
+  disconnectedCallback(): void {
+    super.disconnectedCallback();
+    clearInterval(this.poll);
+    clearTimeout(this.refresh);
+  }
+
+  /** Auslöser aller Momente mit Kamera – springt einer an, kommt gleich ein neuer Eintrag */
+  protected watched() {
+    return (this.ctx?.config?.events ?? []).filter((e) => (e.kind === "alarm" || e.kind === "live") && e.camera).flatMap((e) => [e.entity, ...(e.entities ?? [])]);
+  }
+
+  protected updated(changed: PropertyValues): void {
+    super.updated(changed);
+    const old = changed.get("hass") as typeof this.hass | undefined;
+    if (old && this.watched().some((id) => id && old.states[id] !== this.hass?.states[id])) {
+      clearTimeout(this.refresh);
+      // HA braucht einen Moment für das Standbild
+      this.refresh = window.setTimeout(() => void this.load(), 4000);
+    }
+  }
+
+  private async load(): Promise<void> {
+    if (!this.hass) return;
+    try {
+      this.entries = await this.hass.callWS<DoorEntry[]>({ type: "ambiframe/doorlog" });
+    } catch {
+      /* ältere Version oder kurz nicht erreichbar – beim nächsten Mal */
+    }
+  }
+
+  render() {
+    const shown = this.entries.slice(0, Number(this.options.max ?? 4));
+    return html`${label(this.options, t("Wer war an der Tür?"))}
+      ${shown.length
+        ? html`<ul>
+            ${shown.map(
+              (e) => html`<li>
+                <img alt="" src=${e.url} loading="lazy" />
+                <div>
+                  <div class="t">${e.title}</div>
+                  <div class="s num">${[e.where, fmtTime(new Date(e.at)), ago(e.at)].filter(Boolean).join(" · ")}</div>
+                </div>
+              </li>`,
+            )}
+          </ul>`
+        : html`<div class="calm">${t("Noch niemand – Klingel und Bewegung an Kameras erscheinen hier mit Bild.")}</div>`}`;
+  }
+}
+
+define("af-doorlog", AfDoorlog);
 define("af-map", AfMap);
 define("af-todo", AfTodo);
 define("af-commute", AfCommute);

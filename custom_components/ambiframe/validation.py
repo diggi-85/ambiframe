@@ -543,8 +543,14 @@ def _migrate(raw: Any) -> Any:
     raw = copy.deepcopy(raw)
     design = raw.get("design")
     if isinstance(design, dict) and design.get("theme") == "weissgold":
-        design["theme"] = "gold"
+        design["theme"] = "ruhig"
         design.setdefault("mode", "light")
+    # Zusammengelegte Stile (0.12): Gold → Ruhig, Minimal → Klar – überall, wo ein Stil stehen kann
+    merged = {"gold": "ruhig", "minimal": "klar"}
+    holders = [design, *(raw.get("displays") or []), *[p.get("design") for p in ((design or {}).get("presets") or []) if isinstance(p, dict)]]
+    for holder in holders:
+        if isinstance(holder, dict) and holder.get("theme") in merged:
+            holder["theme"] = merged[holder["theme"]]
     # Reste eines Editor-Fehlers (bis 0.2.0): einzelne Buchstaben eines Entitätsnamens als Schlüssel "0", "1", …
     for key in ("displays", "pages", "events"):
         for item in raw.get(key) or []:
@@ -553,7 +559,7 @@ def _migrate(raw: Any) -> Any:
                     del item[junk]
     for display in raw.get("displays") or []:
         if isinstance(display, dict) and display.get("theme") == "weissgold":
-            display["theme"] = "gold"
+            display["theme"] = "ruhig"
             display.setdefault("mode", "light")
     # Bis 0.6: nur Bing an/aus („bing“, „bing_mix“) – seit 0.7 eine Platzhalter-Quelle zur Wahl
     photo_sets = [raw.get("photos")] + [d.get("photos") for d in raw.get("displays") or [] if isinstance(d, dict)]

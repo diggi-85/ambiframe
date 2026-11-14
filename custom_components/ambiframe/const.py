@@ -53,7 +53,7 @@ PORTRAIT_ROWS: Final = 12
 EVENT_KINDS: Final = ("alarm", "live", "info", "page", "media", "effect")
 # Diese Arten zeigen Titel/Ort und brauchen deshalb einen Titel
 EVENT_KINDS_TITLED: Final = ("alarm", "live", "info")
-THEMES: Final = ("ruhig", "klar", "gold", "glass", "aurora", "editorial", "minimal", "pixel", "arcade", "cockpit", "tonal", "kacheln", "klartext", "fallblatt", "millennium", "glanz", "handheld", "bauhaus", "softui", "boho", "landhaus", "natur", "galerie", "papier", "eink", "zeitung", "artdeco", "terminal", "verspielt", "leitsystem", "swiss", "rams", "lobby", "bilderbuch", "weihnachten", "saisonal")
+THEMES: Final = ("ruhig", "klar", "glass", "aurora", "editorial", "pixel", "arcade", "cockpit", "tonal", "kacheln", "klartext", "fallblatt", "millennium", "glanz", "handheld", "bauhaus", "softui", "boho", "landhaus", "natur", "galerie", "papier", "eink", "zeitung", "artdeco", "terminal", "verspielt", "leitsystem", "swiss", "rams", "lobby", "bilderbuch", "weihnachten", "rgb", "saisonal")
 THEME_MODES: Final = ("auto", "light", "dark")
 AMBIENTS: Final = (
     "none",

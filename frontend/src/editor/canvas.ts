@@ -1,5 +1,6 @@
 // Leinwand: echte Vorschau der Seite plus Bearbeitungsebene (auswählen, ziehen, Größe ändern) – quer 12×8 oder hoch 8×12.
 // Mehrfachauswahl mit ⇧/⌘ – die Gruppe wird gemeinsam verschoben; beim Ziehen zeigen Hilfslinien bündige Kanten.
+import { airOf, withAir } from "../styles";
 import { LitElement, css, html, nothing } from "lit";
 import { t } from "../i18n";
 import "../display/display";
@@ -45,8 +46,10 @@ export class AfCanvas extends LitElement {
   private drag?: Drag;
   private resize = new ResizeObserver(() => this.measure());
 
+  /** Dasselbe Raster wie das Display – samt der Ränder des Stils, damit die Griffe genau auf den Widgets liegen */
   private get stage() {
-    return BASE[this.orientation];
+    const display = this.config?.displays.find((x) => x.id === this.displayId);
+    return withAir(BASE[this.orientation], airOf(display?.theme ?? this.config?.design?.theme));
   }
 
   /** Hochkant: so hoch wie möglich, aber nicht höher als der sichtbare Bereich */

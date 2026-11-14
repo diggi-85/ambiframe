@@ -548,3 +548,22 @@ describe("Energie jetzt", () => {
     expect(await first({ ...options, consumption_first: true })).toContain("Wohnung");
   });
 });
+
+describe("Wer war an der Tür?", () => {
+  it("zeigt die letzten Einträge mit Bild, Ort und Uhrzeit – und einen Hinweis, solange es keine gibt", async () => {
+    const hass = hassOf([]);
+    const at = new Date(2026, 10, 13, 7, 15).toISOString();
+    (hass as unknown as Record<string, unknown>).callWS = vi.fn(async () => [{ event: "klingel", title: "Es klingelt", where: "Haustür", at, url: "/api/ambiframe/snapshot/1-klingel.jpg?authSig=x" }]);
+    const el = await mount("af-doorlog", hass);
+    await vi.waitFor(() => expect(el.shadowRoot!.querySelector("img")).toBeTruthy());
+    expect(text(el)).toContain("Es klingelt");
+    expect(text(el)).toContain("Haustür");
+    expect(el.shadowRoot!.querySelector("img")!.getAttribute("src")).toContain("authSig=");
+    el.remove();
+    (hass as unknown as Record<string, unknown>).callWS = vi.fn(async () => []);
+    const empty = await mount("af-doorlog", hass);
+    await empty.updateComplete;
+    expect(text(empty)).toContain("Noch niemand");
+    empty.remove();
+  });
+});

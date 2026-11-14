@@ -5,7 +5,7 @@
 version: 1
 
 design:
-  theme: gold           # ruhig | klar | gold | weissgold | …
+  theme: ruhig          # ruhig | klar | editorial | …
   evening: sun          # abends wärmer, sobald die Sonne unter dem Horizont ist
 
 photos:

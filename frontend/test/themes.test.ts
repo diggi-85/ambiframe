@@ -65,3 +65,26 @@ describe("Stile insgesamt", () => {
     expect(pyTuple("CARD_STYLES").sort()).toEqual(["glass", "none", "outline", "solid"]);
   });
 });
+
+describe("Zusammengelegte Stile", () => {
+  it("zeigt Gold als Ruhig und Minimal als Klar, Weißgold als Ruhig in hell", async () => {
+    const { normalizeTheme } = await import("../src/styles");
+    expect(normalizeTheme("gold")).toEqual({ theme: "ruhig", light: false });
+    expect(normalizeTheme("minimal")).toEqual({ theme: "klar", light: false });
+    expect(normalizeTheme("weissgold")).toEqual({ theme: "ruhig", light: true });
+    expect(normalizeTheme("gibtsnicht").theme).toBe("ruhig");
+  });
+});
+
+describe("Ränder pro Stil", () => {
+  it("gibt Display und Seiteneditor dasselbe Raster", async () => {
+    const { airOf, withAir } = await import("../src/styles");
+    expect(airOf("lobby")).toBeGreaterThan(1);
+    expect(airOf("leitsystem")).toBeLessThan(1);
+    expect(airOf("ruhig")).toBe(1);
+    expect(airOf("gold")).toBe(1); // zusammengelegt → Ruhig
+    const g = { padX: 40, padY: 20, w: 1280 };
+    expect(withAir(g, 1)).toBe(g);
+    expect(withAir(g, 1.5)).toEqual({ padX: 60, padY: 30, w: 1280 });
+  });
+});

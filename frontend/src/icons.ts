@@ -160,6 +160,7 @@ export const MDI_MAP: Record<string, string> = {
   "mdi:book-open-page-variant-outline": "page",
   "mdi:map-marker-radius": "pin",
   "mdi:car-clock": "car",
+  "mdi:doorbell-video": "bell",
   "mdi:card-outline": "page",
   "mdi:car-electric": "car",
   "mdi:robot-vacuum": "robot",

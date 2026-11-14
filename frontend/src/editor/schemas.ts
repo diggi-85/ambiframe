@@ -502,6 +502,10 @@ export const WIDGET_FIELDS: Record<string, Field[]> = {
     { key: "attribute", label: "Attribut mit der Liste", type: "text", placeholder: "automatisch" },
     LABEL,
   ],
+  doorlog: [
+    { key: "max", label: "Höchstens", type: "number", min: 1, max: 20, placeholder: "4", help: "HA merkt sich die letzten 20 Klingel- und Kamera-Momente mit Bild." },
+    LABEL,
+  ],
   map: [
     { key: "entities", label: "Personen und Fahrzeuge", type: "entities", domains: ["person", "device_tracker"], help: "Leer = alle Personen mit Standort. Autos als device_tracker hinzufügen." },
     { key: "exclude", label: "Ausblenden", type: "entities", domains: ["person", "device_tracker"], help: "Erscheinen nie – auch wenn oben niemand gewählt ist (dann alle Personen)" },

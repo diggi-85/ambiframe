@@ -6,7 +6,7 @@ import { repeat } from "lit/directives/repeat.js";
 import { ForecastStore, PhotoProvider, preload, type DisplayContext } from "../data";
 import { fontStack } from "../fonts";
 import { MDI_MAP, iconSvg } from "../icons";
-import { THEME_DEFS, digitFace, normalizeTheme, seasonTheme, stillStyles, themeTokens, PALETTES, dayHue } from "../styles";
+import { THEME_DEFS, digitFace, normalizeTheme, seasonTheme, stillStyles, themeTokens, PALETTES, dayHue, airOf, withAir } from "../styles";
 import type { CardStyle, DisplayConfig, EventConfig, Hass, HassEntity, PageConfig, Photo, TapAction, TransitionConfig, AmbiframeConfig } from "../types";
 import { triggered } from "../events";
 import { playSound, stopSound } from "../sound";
@@ -185,6 +185,17 @@ const wakeScreen = () => {
   }
 };
 
+// Farbton als animierbare Eigenschaft anmelden – sonst springt er, statt zu wandern (nur global möglich, nicht im Shadow-DOM)
+try {
+  (CSS as unknown as { registerProperty?: (d: object) => void }).registerProperty?.({ name: "--af-rgb-hue", syntax: "<angle>", inherits: true, initialValue: "280deg" });
+} catch {
+  /* schon angemeldet oder nicht unterstützt – dann steht die Farbe still */
+}
+
+/** Einblendungen, die sich wegwischen lassen, und ab welcher Strecke (px) */
+const SWIPEABLE = ["pip", "mcard", "notice", "alarm", "chip"];
+const SWIPE_AWAY = 90;
+
 export class AfDisplay extends LitElement {
   static properties = {
     hass: { attribute: false },
@@ -306,6 +317,8 @@ export class AfDisplay extends LitElement {
   private menuTimer?: number;
   private pressTimer?: number;
   private pressAt?: { x: number; y: number };
+  /** Einblendung, die gerade mit dem Finger zur Seite geschoben wird */
+  private swipe?: { el: HTMLElement; kind: string; x: number; y: number; dx: number };
   private swallowTap = false;
   /** Töne von Hand stumm bis zu diesem Zeitpunkt (ms) */
   private muteUntil = Number(readLocal("ambiframe-mute-until") ?? 0);
@@ -388,10 +401,12 @@ export class AfDisplay extends LitElement {
     const aspect = width / height;
     const wanted = this.forceOrientation ?? this.display?.orientation;
     const orient: Orientation = wanted === "portrait" || wanted === "landscape" ? wanted : aspect < 1 ? "portrait" : "landscape";
-    const grid = gridFor(orient, aspect);
+    const base = gridFor(orient, aspect);
+    // Luft des Stils: breitere oder schmalere Ränder (Lobby großzügig, Leitsystem nutzt die Fläche)
+    const grid = withAir(base, airOf(this.theme));
     const scale = Math.min(width / grid.w, height / grid.h);
     if (orient !== this.orient) this.orient = orient;
-    if (grid.w !== this.grid.w || grid.h !== this.grid.h) this.grid = grid;
+    if (grid.w !== this.grid.w || grid.h !== this.grid.h || grid.padX !== this.grid.padX) this.grid = grid;
     if (scale > 0 && Math.abs(scale - this.scale) > 0.0005) this.scale = scale;
   }
 
@@ -417,7 +432,10 @@ export class AfDisplay extends LitElement {
     const resolved = normalizeTheme(d?.theme ?? design?.theme);
     // „Jahreszeiten“: heute gültige Jahreszeit bzw. Anlass
     if (resolved.theme === "saisonal") resolved.theme = seasonTheme(new Date());
+    const themeChanged = this.theme !== resolved.theme;
     this.theme = resolved.theme;
+    // Ränder hängen am Stil
+    if (themeChanged) this.measure();
     // E-Ink: das ganze Display ohne Bewegung (Stil mit „still“)
     this.eink = !!THEME_DEFS.find((t) => t.id === resolved.theme)?.still;
     if (changed.has("config") || changed.has("preview") || changed.has("still") || changed.has("displayId") || changed.has("streamMode") || changed.has("eink")) {
@@ -775,6 +793,8 @@ export class AfDisplay extends LitElement {
       }
       return;
     }
+    // Kamera auf diesem Gerät für eine Weile ausgeblendet: kein Bild, kein Ton, kein Wecken
+    if (ev.kind === "live" && this.snoozed(ev.id)) return;
     if (ev.kind !== "media") this.remember(ev);
     if (ev.sound && ev.kind !== "media" && !quiet && !this.displayMuted()) this.ring(ev);
     if (ev.kind === "media") {
@@ -1109,6 +1129,31 @@ export class AfDisplay extends LitElement {
 
   /* ───────── Mitteilungszentrale ───────── */
 
+  /** „Später wieder zeigen“: bis wann ein Kamera-Moment auf diesem Gerät ruht */
+  private snoozed(id: string): boolean {
+    try {
+      return (JSON.parse(readLocal(`ambiframe-snooze-${this.display?.id ?? ""}`) ?? "{}")[id] ?? 0) > Date.now();
+    } catch {
+      return false;
+    }
+  }
+
+  private snooze(ev: EventConfig, minutes: number): void {
+    const key = `ambiframe-snooze-${this.display?.id ?? ""}`;
+    let all: Record<string, number> = {};
+    try {
+      all = JSON.parse(readLocal(key) ?? "{}");
+    } catch {
+      /* kaputter Eintrag – neu anfangen */
+    }
+    // Abgelaufene gleich aufräumen
+    all = Object.fromEntries(Object.entries(all).filter(([, until]) => until > Date.now()));
+    all[ev.id] = Date.now() + minutes * 60e3;
+    writeLocal(key, JSON.stringify(all));
+    this.closePip();
+    this.showToast(t("{name} bis {time} ausgeblendet", { name: ev.title, time: fmtTime(new Date(all[ev.id])) }));
+  }
+
   private get historyKey(): string {
     return `ambiframe-history-${this.display?.id ?? ""}`;
   }
@@ -1378,6 +1423,8 @@ export class AfDisplay extends LitElement {
     if (this.alarm) return this.closeAlarm();
     if (this.notice) return this.closeNotice();
     if (this.media && (this.media.style === "fullscreen" || hit("mcard"))) return this.closeMedia();
+    const snz = path.find((el) => el.dataset?.snooze);
+    if (snz && this.pip) return this.snooze(this.pip.ev, Number(snz.dataset.snooze));
     if (hit("pip")) return this.closePip();
     const mini = path.find((el) => el.classList?.contains("mmini"));
     if (mini?.dataset.entity) {
@@ -1424,6 +1471,10 @@ export class AfDisplay extends LitElement {
       <div class="m">
         <div class="r">${icon(p.ev.icon ?? "cam")}<span>${p.ev.title}</span><span class="tm num">${fmtTime(p.at)}</span></div>
         <div class="q">${p.text === t("Bewegung erkannt") ? p.text : `„${p.text}“`}</div>
+        <div class="snz">
+          <button data-snooze="30">${t("30 min ausblenden")}</button>
+          <button data-snooze="60">${t("1 h ausblenden")}</button>
+        </div>
       </div>
       ${this.renderTimer(p, "var(--af-accent)")}
     </div>`;
@@ -1589,6 +1640,13 @@ export class AfDisplay extends LitElement {
 
   private onPress = (e: PointerEvent): void => {
     clearTimeout(this.pressTimer);
+    // Einblendungen lassen sich zur Seite wegwischen (Kamera, Musik, Hinweis, Klingel, Erinnerung)
+    // Rückfragen („ask“) warten auf eine Antwort – die lassen sich nicht wegwischen
+    const card = (e.composedPath() as HTMLElement[]).find((el) => el.classList && !el.classList.contains("ask") && SWIPEABLE.some((c) => el.classList.contains(c)));
+    if (card && !this.preview) {
+      const kind = SWIPEABLE.find((c) => card.classList.contains(c))!;
+      this.swipe = { el: kind === "notice" ? ((card.querySelector(".box") as HTMLElement | null) ?? card) : card, kind, x: e.clientX, y: e.clientY, dx: 0 };
+    }
     if (!this.touchable || this.menu || this.alarm || this.controlOpen || this.popup || this.ask) return;
     const path = e.composedPath() as HTMLElement[];
     // Widgets mit eigener Aktion, Pfeile, Karten und Einblendungen behalten ihr Verhalten
@@ -1602,11 +1660,34 @@ export class AfDisplay extends LitElement {
 
   private onPressMove = (e: PointerEvent): void => {
     if (this.pressAt && Math.hypot(e.clientX - this.pressAt.x, e.clientY - this.pressAt.y) > 12) clearTimeout(this.pressTimer);
+    const s = this.swipe;
+    if (!s) return;
+    const dx = e.clientX - s.x;
+    // Nur waagerecht – senkrecht bleibt Scrollen
+    if (!s.dx && Math.abs(e.clientY - s.y) > Math.abs(dx)) return;
+    s.dx = dx;
+    s.el.style.transition = "none";
+    s.el.style.transform = `translateX(${dx}px)`;
+    s.el.style.opacity = String(Math.max(0.2, 1 - Math.abs(dx) / 320));
   };
 
   private onPressEnd = (): void => {
     clearTimeout(this.pressTimer);
     this.pressAt = undefined;
+    const s = this.swipe;
+    this.swipe = undefined;
+    if (!s || Math.abs(s.dx) < 8) return;
+    // Gewischt, nicht getippt: der Klick danach soll nichts mehr auslösen
+    this.swallowTap = true;
+    const reset = (): void => void Object.assign(s.el.style, { transition: "", transform: "", opacity: "" });
+    if (Math.abs(s.dx) < SWIPE_AWAY) return reset();
+    if (s.kind === "pip") this.closePip();
+    else if (s.kind === "mcard") this.closeMedia();
+    else if (s.kind === "notice") this.closeNotice();
+    else if (s.kind === "alarm") this.closeAlarm();
+    else if (s.kind === "chip") this.removeChip(s.el.dataset.id ?? "");
+    // Dasselbe Element kann gleich für die nächste Einblendung wiederverwendet werden
+    reset();
   };
 
   private openMenu(): void {
@@ -1785,6 +1866,23 @@ export class AfDisplay extends LitElement {
         inset: 0;
         z-index: 2147483647;
         background: #000;
+      }
+      /* RGB: der Farbton wandert einmal in 14 s durch den Farbkreis (nicht bei „Bewegung reduzieren“) */
+      @keyframes af-rgb {
+        from {
+          --af-rgb-hue: 280deg;
+        }
+        to {
+          --af-rgb-hue: 640deg;
+        }
+      }
+      :host([theme="rgb"]) {
+        animation: af-rgb 14s linear infinite;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        :host([theme="rgb"]) {
+          animation: none;
+        }
       }
       :host([eink]) .layer.out {
         display: none;
@@ -2435,6 +2533,29 @@ export class AfDisplay extends LitElement {
         color: var(--af-ink-3);
       }
 
+      /* Waagerechtes Wischen gehört der Einblendung (wegwischen), senkrecht bleibt dem Browser */
+      .pip,
+      .mcard,
+      .chip,
+      .ov.notice .box,
+      .ov.alarm {
+        touch-action: pan-y;
+      }
+      .pip .snz {
+        display: flex;
+        gap: 8px;
+        margin-top: 8px;
+      }
+      .pip .snz button {
+        font: inherit;
+        font-size: calc(13px * var(--af-fs, 1));
+        padding: 4px 12px;
+        border-radius: 8px;
+        border: 1px solid var(--af-line);
+        background: var(--af-chip);
+        color: var(--af-ink);
+        cursor: pointer;
+      }
       .pip {
         position: absolute;
         right: 40px;

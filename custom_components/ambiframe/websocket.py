@@ -44,6 +44,7 @@ def async_register_commands(hass: HomeAssistant) -> None:
         ws_placeholder_photos,
         ws_google_photos,
         ws_route,
+        ws_doorlog,
         ws_summary_subscribe,
         ws_summary_generate,
         ws_template_subscribe,
@@ -320,6 +321,14 @@ async def ws_route(hass: HomeAssistant, connection: websocket_api.ActiveConnecti
             connection.send_error(msg["id"], "unknown_route", "Dieser Sensor ist in keiner Karte und keiner Pendelzeit eingetragen")
             return
         connection.send_result(msg["id"], await store.routes.async_route(msg["entity"]))
+
+
+@websocket_api.websocket_command({vol.Required("type"): "ambiframe/doorlog"})
+@callback
+def ws_doorlog(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
+    """„Wer war an der Tür?“ – letzte Klingel- und Kamera-Momente mit Bild (Links signiert, 2 h gültig)."""
+    if (store := _store(hass, connection, msg)) is not None:
+        connection.send_result(msg["id"], store.doorlog.listing())
 
 
 @websocket_api.websocket_command({vol.Required("type"): "ambiframe/summary/subscribe"})

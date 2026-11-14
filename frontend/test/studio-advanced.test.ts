@@ -187,3 +187,63 @@ describe("Studio: Dashboard beim Verlassen", () => {
     expect(dashboardOptions("/dashboard-kueche")).toHaveLength(3);
   });
 });
+
+describe("Studio: Stil-Auswahl", () => {
+  it("führt jeden wählbaren Stil in genau einer Gruppe", async () => {
+    const { themeGroups } = await import("../src/panel/studio");
+    const { THEMES } = await import("../src/styles");
+    const ids = themeGroups().flatMap(([, list]) => list);
+    expect([...ids].sort()).toEqual(THEMES.map((x) => x.id as string).sort());
+    expect(new Set(ids).size).toBe(ids.length);
+    // Filter teilen die Stile vollständig auf
+    const tiles = themeGroups("tiles").flatMap(([, list]) => list);
+    const plain = themeGroups("plain").flatMap(([, list]) => list);
+    expect(tiles).toContain("bauhaus");
+    expect(plain).toContain("editorial");
+    expect([...tiles, ...plain].sort()).toEqual([...ids].sort());
+  });
+});
+
+describe("Studio: Wiedergabe sortieren", () => {
+  it("verschiebt einen Eintrag an die gezogene Stelle und lässt Unsinn in Ruhe", async () => {
+    const { el } = await mount();
+    el.mutate((c: { pages: unknown[]; displays: { playlist: { page: string }[] }[] }) => {
+      c.pages.push({ id: "b", name: "B", duration: 30, background: { type: "none" }, palette: "normal", widgets: [] }, { id: "c", name: "C", duration: 30, background: { type: "none" }, palette: "normal", widgets: [] });
+      c.displays[0].playlist = [{ page: "a" }, { page: "b" }, { page: "c" }];
+    });
+    el.openDisplay("kueche");
+    const order = () => el.draft.displays[0].playlist.map((e: { page: string }) => e.page);
+    el.movePlaylist(0, 2);
+    expect(order()).toEqual(["b", "c", "a"]);
+    el.movePlaylist(5, 0);
+    el.movePlaylist(NaN, 1);
+    expect(order()).toEqual(["b", "c", "a"]);
+  });
+});
+
+describe("Studio: Hinweis auf „Erweitert“", () => {
+  it("zeigt, wie viele Einstellungen verborgen sind, und schaltet sie mit einem Klick ein", async () => {
+    const { el } = await mount();
+    el.setAdvanced(false);
+    el.openDisplay("kueche");
+    el.step = "technik";
+    await el.updateComplete;
+    const more = el.shadowRoot!.querySelector("button.more") as HTMLButtonElement;
+    expect(more.textContent).toMatch(/\d/);
+    more.click();
+    await el.updateComplete;
+    expect(el.advanced).toBe(true);
+    expect(el.shadowRoot!.querySelector("button.more")).toBeNull();
+    el.setAdvanced(false);
+  });
+});
+
+describe("Studio: Was läuft wann?", () => {
+  it("rechnet Zeitfenster in Abschnitte des Tages – auch über Mitternacht", async () => {
+    const { dayBands } = await import("../src/panel/studio");
+    expect(dayBands()).toEqual([[0, 1440]]);
+    expect(dayBands([{ condition: "time", after: "05:00", before: "11:00" }])).toEqual([[300, 660]]);
+    expect(dayBands([{ condition: "time", after: "22:00", before: "05:00" }])).toEqual([[0, 300], [1320, 1440]]);
+    expect(dayBands([{ condition: "time", after: "04:00" }])).toEqual([[240, 1440]]);
+  });
+});

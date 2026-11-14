@@ -48,6 +48,9 @@ Ausführen: `cd frontend && npm test` (Frontend) · `.venv/bin/python -m pytest`
 | Konfiguration aus 0.6 lädt unverändert, Bing bleibt Bing | `test_older_config_loads_unchanged_after_update` |
 | Bing an/aus → Platzhalter-Wahl, auch pro Display | `tests/test_validation.py::test_placeholder_sources_and_migration`, `test_display_own_design_sound_and_photos` |
 | Studio speichert nur, was geändert wurde | `frontend/test/studio.test.ts` |
+| Kamera später wieder zeigen: 30 min / 1 h auf diesem Gerät ohne Bild und Ton | `display.test.ts` › Kamera später wieder zeigen (mit Gegenprobe) |
+| Wer war an der Tür: Standbild beim Auslösen, höchstens eins pro Minute, Links signiert, fremde Dateinamen abgelehnt; Widget zeigt Liste | `test_doorlog_records_snapshot_once_per_minute`, `test_snapshot_view_rejects_foreign_names`, `widgets.test.ts` › Wer war an der Tür? |
+| Einblendungen wegwischen (Kamera, Musik, Hinweis, Klingel, Erinnerung): weit genug zur Seite schließt, zu kurz springt zurück, senkrecht bleibt Scrollen, Rückfragen nicht | `display.test.ts` › Einblendungen wegwischen |
 | Dashboard beim Verlassen: Auswahl aus den Dashboards von HA, eigene Adresse bleibt; ohne Angabe das Standard-Dashboard des Benutzers („/“) | `studio-advanced.test.ts` › Dashboard beim Verlassen, `test_dashboard_defaults_to_users_own_default_dashboard` |
 | Offenes Studio übernimmt Änderungen von anderswo; mit eigenen offenen Änderungen überschreibt es nur nach Rückfrage | `studio-advanced.test.ts` › Änderungen von anderswo |
 | Bildschirm aus, wenn alle gewählten Personen weg sind; an, sobald jemand heimkommt; unbekannter Zustand zählt nicht als weg | `display.test.ts` › Bildschirm aus, `test_screen_off_when_everyone_is_away` |
@@ -82,7 +85,10 @@ Ausführen: `cd frontend && npm test` (Frontend) · `.venv/bin/python -m pytest`
 | Tagesuhr: Tageszeit in Worten (auch an den Grenzen), Wochentag groß, eigene Wörter je Sprache | `widgets.test.ts` › Tagesuhr |
 | Jahreszeiten: Ostern, Anlässe vor Jahreszeit | `logic.test.ts` › Jahreszeiten |
 | E-Ink: keine Animation, keine Überblendung, kein Seitenwechsel-Effekt, Fotos in Graustufen | `display.test.ts` › E-Ink, `visual.mjs` zählt bewegte Elemente (muss 0 sein) |
-| Aussehen aller 36 Stile auf Zuhause, Wetter und Tagesvorschau bleibt gleich (Uhrzeit und Zufall eingefroren) | `frontend/tools/visual.mjs`, Referenzbilder in `frontend/test/visual/` |
+| Zusammengelegte Stile (Gold → Ruhig, Minimal → Klar) laufen weiter – global, pro Display, in eigenen Stilen | `test_merged_styles_keep_working`, `themes.test.ts` › Zusammengelegte Stile |
+| Aussehen aller 35 Stile auf Zuhause, Wetter und Tagesvorschau bleibt gleich (Uhrzeit und Zufall eingefroren) | `frontend/tools/visual.mjs`, Referenzbilder in `frontend/test/visual/` |
+| Studio: Wiedergabe per Ziehen sortieren, Tagesband „Was läuft wann?“ (auch über Mitternacht), Hinweis auf verborgene Einstellungen | `studio-advanced.test.ts` › Wiedergabe sortieren, Was läuft wann?, Erweitert |
+| Seiteneditor: Widget-Suche, Vorschau unter der Maus ändert nichts, Seite direkt aufs Display nehmen | `page-editor.test.ts` › Widget-Liste, Seite in die Wiedergabe aufnehmen |
 
 ## Noch ohne automatischen Test (vor Releases von Hand)
 
@@ -90,4 +96,5 @@ Ausführen: `cd frontend && npm test` (Frontend) · `.venv/bin/python -m pytest`
 - Echtes geteiltes Google-Album: von Hand geprüft am 31.10.2026 (11 von 11 Fotos, volle Größe). Vor Releases erneut prüfen – Google kann den Seitenaufbau ändern.
 - Erreichbarkeit der echten Anbieter (Wikimedia, NASA, Picsum).
 - Geräte: iPad (HA-App-Karte), Android mit Fully, Fernseher per Videostream – von Hand geprüft am 10.11.2026. Vor Releases mit größeren Änderungen am Display erneut prüfen.
+- Studio am Handy (375 px breit: Leiste, Schritte, Wiedergabe, Seiteneditor): von Hand geprüft am 14.11.2026.
 - Studio im hellen HA-Theme (Übersicht, Momente, Seiteneditor, Assistent): von Hand geprüft am 10.11.2026.

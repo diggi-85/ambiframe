@@ -343,3 +343,38 @@ async def test_route_only_for_configured_sensors(hass: HomeAssistant, setup_ambi
     await client.send_json_auto_id({"type": "ambiframe/route", "entity": "sensor.weg"})
     msg = await client.receive_json()
     assert msg["success"] and msg["result"]["end"] == [51.4, 7.2]
+
+
+async def test_doorlog_records_snapshot_once_per_minute(hass: HomeAssistant, setup_ambiframe: MockConfigEntry, hass_ws_client: Any, tmp_path: Any) -> None:
+    """„Wer war an der Tür?“: Klingel springt an → Standbild + Eintrag; gleich danach noch einmal → kein zweites Bild."""
+    from homeassistant.components.camera import Image
+
+    from custom_components.ambiframe.doorlog import fires
+
+    assert fires({"to": "on"}, "off", "on") and not fires({"to": "on"}, "on", "on") and fires({"to": "*"}, "a", "b")
+    assert not fires({"to": "on", "from": "off"}, "unavailable", "on")
+    config = minimal_config()
+    config["events"] = [{"id": "klingel", "kind": "alarm", "entity": "binary_sensor.klingel", "to": "on", "title": "Es klingelt", "where": "Haustür", "camera": "camera.tuer", "enabled": True}]
+    client = await hass_ws_client(hass)
+    await client.send_json_auto_id({"type": "ambiframe/config/save", "config": config})
+    assert (await client.receive_json())["success"]
+    store = hass.data["ambiframe"]
+    store.doorlog.dir = tmp_path
+    hass.states.async_set("binary_sensor.klingel", "off")
+    await hass.async_block_till_done()
+    with patch("custom_components.ambiframe.doorlog.camera.async_get_image", return_value=Image("image/jpeg", b"\xff\xd8jpeg")) as grab:
+        for state in ("on", "off", "on"):
+            hass.states.async_set("binary_sensor.klingel", state)
+            await hass.async_block_till_done()
+    assert grab.call_count == 1  # zweites Klingeln binnen einer Minute: kein neues Bild
+    await client.send_json_auto_id({"type": "ambiframe/doorlog"})
+    entries = (await client.receive_json())["result"]
+    assert len(entries) == 1 and entries[0]["title"] == "Es klingelt" and entries[0]["where"] == "Haustür"
+    assert "authSig=" in entries[0]["url"]  # ohne Anmeldung kein Bild
+    assert (tmp_path / entries[0]["file"]).read_bytes() == b"\xff\xd8jpeg"
+
+
+async def test_snapshot_view_rejects_foreign_names(hass: HomeAssistant, setup_ambiframe: MockConfigEntry, hass_client: Any) -> None:
+    client = await hass_client()
+    assert (await client.get("/api/ambiframe/snapshot/..%2F..%2Fsecrets.yaml")).status in (400, 404)
+    assert (await client.get("/api/ambiframe/snapshot/123-fehlt.jpg")).status == 404

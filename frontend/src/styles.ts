@@ -17,6 +17,8 @@ interface ThemeDef {
   flap?: boolean;
   /** Nur intern (Jahreszeiten) – nicht in der Auswahl */
   hidden?: boolean;
+  /** Ränder der Seite als Faktor (1 = normal): mehr Luft oder mehr Fläche */
+  air?: number;
   /** Ganz ohne Bewegung (E-Ink): keine Animationen, Übergänge, Effekte, Farbverläufe */
   still?: boolean;
   /** Schriften und Formen – gelten hell wie dunkel */
@@ -246,45 +248,6 @@ export const THEME_DEFS: ThemeDef[] = [
     },
   },
   {
-    id: "gold",
-    name: "Gold",
-    hint: "Weiß und Gold – dunkel auf Schwarz, hell auf Elfenbein",
-    ambient: "none",
-    shared: SHARED,
-    dark: {
-      ...DARK,
-      bg: "#09090a",
-      ink: "#ffffff",
-      "ink-2": "rgba(255, 255, 255, 0.68)",
-      "ink-3": "rgba(255, 255, 255, 0.42)",
-      line: "rgba(255, 255, 255, 0.1)",
-      surface: "rgba(255, 255, 255, 0.045)",
-      accent: "#d9b45f",
-      "accent-soft": "rgba(217, 180, 95, 0.15)",
-      cold: "#a9c4dc",
-      colon: "var(--af-accent)",
-      "colon-opacity": "1",
-    },
-    light: {
-      ...LIGHT,
-      bg: "#f6f3ec",
-      ink: "#16130f",
-      "ink-2": "rgba(22, 19, 15, 0.64)",
-      "ink-3": "rgba(22, 19, 15, 0.42)",
-      line: "rgba(22, 19, 15, 0.11)",
-      surface: "rgba(255, 255, 255, 0.7)",
-      accent: "#a8803a",
-      "accent-soft": "rgba(168, 128, 58, 0.13)",
-      cold: "#3f6f9c",
-      panel: "rgba(255, 255, 255, 0.94)",
-      chip: "rgba(255, 255, 255, 0.78)",
-      shadow: "0 30px 80px rgba(60, 45, 20, 0.18)",
-      veil: "rgba(246, 243, 236, 0.55)",
-      colon: "var(--af-accent)",
-      "colon-opacity": "1",
-    },
-  },
-  {
     id: "glass",
     name: "Glas",
     hint: "Glasflächen mit Lichtkante über weichen Farben",
@@ -444,56 +407,6 @@ export const THEME_DEFS: ThemeDef[] = [
     },
   },
   {
-    id: "minimal",
-    name: "Minimal",
-    hint: "Schweizer Stil: klare Schrift, hoher Kontrast, nur Typografie",
-    ambient: "none",
-    shared: {
-      ...SHARED,
-      ...RULED,
-      display: fontStack("geist"),
-      sans: fontStack("geist"),
-      "clock-weight": "400",
-      "clock-track": "-0.055em",
-      "card-rule": "1px solid color-mix(in srgb, currentColor 22%, transparent)",
-    },
-    dark: {
-      ...DARK,
-      bg: "#000000",
-      ink: "#ffffff",
-      "ink-2": "rgba(255, 255, 255, 0.6)",
-      "ink-3": "rgba(255, 255, 255, 0.38)",
-      line: "rgba(255, 255, 255, 0.14)",
-      surface: "rgba(255, 255, 255, 0.06)",
-      accent: "#ff5a36",
-      "accent-soft": "rgba(255, 90, 54, 0.14)",
-      cold: "#7fb2ff",
-      panel: "rgba(16, 16, 16, 0.96)",
-      chip: "rgba(0, 0, 0, 0.7)",
-      veil: "rgba(0, 0, 0, 0.55)",
-      colon: "var(--af-accent)",
-      "colon-opacity": "1",
-    },
-    light: {
-      ...LIGHT,
-      bg: "#f6f6f4",
-      ink: "#0b0b0b",
-      "ink-2": "rgba(11, 11, 11, 0.6)",
-      "ink-3": "rgba(11, 11, 11, 0.4)",
-      line: "rgba(11, 11, 11, 0.12)",
-      surface: "rgba(11, 11, 11, 0.05)",
-      accent: "#e8401c",
-      "accent-soft": "rgba(232, 64, 28, 0.1)",
-      cold: "#2f6fe0",
-      panel: "rgba(250, 250, 248, 0.97)",
-      chip: "rgba(250, 250, 248, 0.85)",
-      veil: "rgba(246, 246, 244, 0.6)",
-      shadow: "0 30px 80px rgba(0, 0, 0, 0.12)",
-      colon: "var(--af-accent)",
-      "colon-opacity": "1",
-    },
-  },
-  {
     id: "pixel",
     name: "Pixel",
     hint: "LED-Punktmatrix wie eine Pixel-Uhr – kräftige Farben auf Schwarz",
@@ -509,8 +422,7 @@ export const THEME_DEFS: ThemeDef[] = [
       "card-radius": "18px",
       "label-font": fontStack("doto"),
       "label-weight": "800",
-      "label-track": "0.12em",
-    },
+      "label-track": "0.12em", "bar-h": "12px", "bar-radius": "0", "bar-mask": "repeating-linear-gradient(90deg, #000 0 6px, transparent 6px 9px)", "curve-dash": "1 7", "curve-w": "4", "curve-area": "0", },
     dark: {
       ...DARK,
       bg: "#000000",
@@ -575,8 +487,7 @@ export const THEME_DEFS: ThemeDef[] = [
       "card-radius": "6px",
       "label-font": fontStack("doto"),
       "label-weight": "900",
-      "label-track": "0.18em",
-    },
+      "label-track": "0.18em", "bar-h": "12px", "bar-radius": "0", "bar-mask": "repeating-linear-gradient(90deg, #000 0 6px, transparent 6px 9px)", "curve-dash": "1 7", "curve-w": "4", "curve-area": "0", },
     dark: {
       ...DARK,
       bg: "#0a0518",
@@ -653,6 +564,7 @@ export const THEME_DEFS: ThemeDef[] = [
     dark: {
       ...DARK,
       bg: "#0b0c0d",
+      "bg-art": "radial-gradient(circle at 100% 100%, transparent 0 21%, color-mix(in srgb, var(--af-accent) 70%, transparent) 21% 21.25%, transparent 21.25% 23.5%, color-mix(in srgb, var(--af-ink) 22%, transparent) 23.5% 23.65%, transparent 23.65%), linear-gradient(180deg, var(--af-bg) 0 97.6%, transparent 97.6%), repeating-linear-gradient(90deg, color-mix(in srgb, var(--af-ink) 35%, transparent) 0 1px, transparent 1px 2.0833%)",
       ink: "#f2f3f5",
       "ink-2": "rgba(242, 243, 245, 0.62)",
       "ink-3": "rgba(242, 243, 245, 0.4)",
@@ -673,6 +585,7 @@ export const THEME_DEFS: ThemeDef[] = [
     light: {
       ...LIGHT,
       bg: "#f4f5f7",
+      "bg-art": "radial-gradient(circle at 100% 100%, transparent 0 21%, color-mix(in srgb, var(--af-accent) 70%, transparent) 21% 21.25%, transparent 21.25% 23.5%, color-mix(in srgb, var(--af-ink) 22%, transparent) 23.5% 23.65%, transparent 23.65%), linear-gradient(180deg, var(--af-bg) 0 97.6%, transparent 97.6%), repeating-linear-gradient(90deg, color-mix(in srgb, var(--af-ink) 35%, transparent) 0 1px, transparent 1px 2.0833%)",
       ink: "#171a20",
       "ink-2": "rgba(23, 26, 32, 0.62)",
       "ink-3": "rgba(23, 26, 32, 0.42)",
@@ -721,7 +634,7 @@ export const THEME_DEFS: ThemeDef[] = [
       cold: "#a8c7fa",
       good: "#80d99a",
       alert: "#ffb4ab",
-      card: "#2b2930",
+      card: "color-mix(in srgb, var(--af-accent) 22%, var(--af-bg))",
       "card-border": "0 solid transparent",
       colon: "var(--af-accent)",
       "colon-opacity": "1",
@@ -742,7 +655,7 @@ export const THEME_DEFS: ThemeDef[] = [
       cold: "#2b62c4",
       good: "#2e7d4f",
       alert: "#ba1a1a",
-      card: "#f3edf7",
+      card: "color-mix(in srgb, var(--af-accent) 22%, var(--af-bg))",
       "card-border": "0 solid transparent",
       colon: "var(--af-accent)",
       "colon-opacity": "1",
@@ -815,6 +728,7 @@ export const THEME_DEFS: ThemeDef[] = [
   },
   {
     id: "klartext",
+    air: 0.75,
     name: "Klartext",
     hint: "Große, kräftige Schrift mit starkem Kontrast – gut lesbar aus der Ferne",
     ambient: "none",
@@ -831,8 +745,7 @@ export const THEME_DEFS: ThemeDef[] = [
       // kleinere Texte größer, gedämpfte Schrift kräftiger (wie „Lesbarkeit: groß, hoher Kontrast“)
       fs: "1.2",
       c2: "0.92",
-      c3: "0.78",
-    },
+      c3: "0.78", "bar-h": "10px", "curve-w": "4", },
     dark: {
       ...DARK,
       bg: "#000000",
@@ -1052,8 +965,7 @@ export const THEME_DEFS: ThemeDef[] = [
       "label-weight": "900",
       "label-track": "0.12em",
       // LCD-Raster
-      "bg-size": "4px 4px, 4px 4px",
-    },
+      "bg-size": "4px 4px, 4px 4px", "bar-h": "12px", "bar-radius": "0", "bar-mask": "repeating-linear-gradient(90deg, #000 0 6px, transparent 6px 9px)", "curve-dash": "1 7", "curve-w": "4", "curve-area": "0", },
     dark: {
       ...DARK,
       bg: "#0f380f",
@@ -1105,7 +1017,7 @@ export const THEME_DEFS: ThemeDef[] = [
     hint: "Grundfarben, klare Formen, kräftige Kanten",
     ambient: "none",
     tiles: true,
-    shared: { ...SHARED, display: fontStack("outfit"), sans: fontStack("space-grotesk"), "clock-weight": "800", "clock-track": "-0.03em", "card-radius": "0", "label-weight": "800", "label-track": "0.14em" },
+    shared: { ...SHARED, display: fontStack("outfit"), sans: fontStack("space-grotesk"), "clock-weight": "800", "clock-track": "-0.03em", "card-radius": "0", "label-weight": "800", "label-track": "0.14em", "bar-h": "14px", "bar-radius": "0", "bar-fill": "var(--af-accent)", "curve-w": "5", "curve-area": "0", },
     dark: {
       ...DARK,
       bg: "#161616",
@@ -1195,8 +1107,7 @@ export const THEME_DEFS: ThemeDef[] = [
     dark: {
       ...DARK,
       bg: "#2a201b",
-      "bg-art":
-        "radial-gradient(60% 80% at 100% 100%, rgba(224, 154, 116, 0.18) 0 40%, transparent 40.5%), radial-gradient(40% 55% at 100% 100%, rgba(214, 170, 90, 0.16) 0 60%, transparent 60.5%), " +
+      "bg-art": "radial-gradient(circle at 90% 104%, transparent 0 11%, color-mix(in srgb, var(--af-accent) 60%, transparent) 11% 13%, transparent 13% 15.5%, color-mix(in srgb, var(--af-accent) 38%, transparent) 15.5% 17.5%, transparent 17.5% 20%, color-mix(in srgb, var(--af-accent) 20%, transparent) 20% 22%, transparent 22%), " + "radial-gradient(60% 80% at 100% 100%, rgba(224, 154, 116, 0.18) 0 40%, transparent 40.5%), radial-gradient(40% 55% at 100% 100%, rgba(214, 170, 90, 0.16) 0 60%, transparent 60.5%), " +
         "radial-gradient(30% 30% at 6% 10%, rgba(140, 160, 100, 0.14) 0 50%, transparent 51%)",
       ink: "#f3e6d6",
       "ink-2": "rgba(243, 230, 214, 0.72)",
@@ -1215,8 +1126,7 @@ export const THEME_DEFS: ThemeDef[] = [
     light: {
       ...LIGHT,
       bg: "#f3e7d7",
-      "bg-art":
-        "radial-gradient(60% 80% at 100% 100%, rgba(192, 108, 70, 0.22) 0 40%, transparent 40.5%), radial-gradient(40% 55% at 100% 100%, rgba(224, 169, 86, 0.25) 0 60%, transparent 60.5%), " +
+      "bg-art": "radial-gradient(circle at 90% 104%, transparent 0 11%, color-mix(in srgb, var(--af-accent) 60%, transparent) 11% 13%, transparent 13% 15.5%, color-mix(in srgb, var(--af-accent) 38%, transparent) 15.5% 17.5%, transparent 17.5% 20%, color-mix(in srgb, var(--af-accent) 20%, transparent) 20% 22%, transparent 22%), " + "radial-gradient(60% 80% at 100% 100%, rgba(192, 108, 70, 0.22) 0 40%, transparent 40.5%), radial-gradient(40% 55% at 100% 100%, rgba(224, 169, 86, 0.25) 0 60%, transparent 60.5%), " +
         "radial-gradient(30% 30% at 6% 10%, rgba(138, 154, 91, 0.2) 0 50%, transparent 51%)",
       ink: "#3d2b22",
       "ink-2": "rgba(61, 43, 34, 0.72)",
@@ -1250,12 +1160,12 @@ export const THEME_DEFS: ThemeDef[] = [
       "label-track": "0.16em",
       "label-color": "var(--af-accent)",
       // feines Leinengewebe
-      "bg-size": "3px 3px, 3px 3px",
+      "bg-size": "56px 56px, 56px 56px, 3px 3px, 3px 3px",
     },
     dark: {
       ...DARK,
       bg: "#1d211b",
-      "bg-art": "linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px)",
+      "bg-art": "linear-gradient(90deg, color-mix(in srgb, var(--af-accent) 8%, transparent) 50%, transparent 50%), linear-gradient(color-mix(in srgb, var(--af-accent) 8%, transparent) 50%, transparent 50%), " + "linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px)",
       ink: "#ece6d6",
       "ink-2": "rgba(236, 230, 214, 0.72)",
       "ink-3": "rgba(236, 230, 214, 0.48)",
@@ -1272,7 +1182,7 @@ export const THEME_DEFS: ThemeDef[] = [
     light: {
       ...LIGHT,
       bg: "#f4efe4",
-      "bg-art": "linear-gradient(rgba(120, 100, 70, 0.045) 1px, transparent 1px), linear-gradient(90deg, rgba(120, 100, 70, 0.045) 1px, transparent 1px)",
+      "bg-art": "linear-gradient(90deg, color-mix(in srgb, var(--af-accent) 8%, transparent) 50%, transparent 50%), linear-gradient(color-mix(in srgb, var(--af-accent) 8%, transparent) 50%, transparent 50%), " + "linear-gradient(rgba(120, 100, 70, 0.045) 1px, transparent 1px), linear-gradient(90deg, rgba(120, 100, 70, 0.045) 1px, transparent 1px)",
       ink: "#3a3426",
       "ink-2": "rgba(58, 52, 38, 0.72)",
       "ink-3": "rgba(58, 52, 38, 0.48)",
@@ -1297,7 +1207,7 @@ export const THEME_DEFS: ThemeDef[] = [
     dark: {
       ...DARK,
       bg: "#0d1a12",
-      "bg-art": blobs("rgba(60, 120, 60, 0.4)", "rgba(120, 110, 50, 0.28)", "rgba(40, 100, 80, 0.32)"),
+      "bg-art": "radial-gradient(ellipse 16% 34% at 0% 100%, color-mix(in srgb, var(--af-accent) 26%, var(--af-bg)) 0 99%, transparent 100%), radial-gradient(ellipse 26% 16% at 6% 104%, color-mix(in srgb, var(--af-accent) 16%, var(--af-bg)) 0 99%, transparent 100%), radial-gradient(ellipse 14% 30% at 100% 0%, color-mix(in srgb, var(--af-accent) 22%, var(--af-bg)) 0 99%, transparent 100%), radial-gradient(ellipse 24% 12% at 96% -3%, color-mix(in srgb, var(--af-accent) 13%, var(--af-bg)) 0 99%, transparent 100%), " + blobs("rgba(60, 120, 60, 0.4)", "rgba(120, 110, 50, 0.28)", "rgba(40, 100, 80, 0.32)"),
       ink: "#e6efe0",
       "ink-2": "rgba(230, 239, 224, 0.72)",
       "ink-3": "rgba(230, 239, 224, 0.48)",
@@ -1315,7 +1225,7 @@ export const THEME_DEFS: ThemeDef[] = [
     light: {
       ...LIGHT,
       bg: "#eef2e6",
-      "bg-art": blobs("rgba(120, 170, 90, 0.38)", "rgba(210, 195, 120, 0.32)", "rgba(90, 150, 110, 0.32)"),
+      "bg-art": "radial-gradient(ellipse 16% 34% at 0% 100%, color-mix(in srgb, var(--af-accent) 26%, var(--af-bg)) 0 99%, transparent 100%), radial-gradient(ellipse 26% 16% at 6% 104%, color-mix(in srgb, var(--af-accent) 16%, var(--af-bg)) 0 99%, transparent 100%), radial-gradient(ellipse 14% 30% at 100% 0%, color-mix(in srgb, var(--af-accent) 22%, var(--af-bg)) 0 99%, transparent 100%), radial-gradient(ellipse 24% 12% at 96% -3%, color-mix(in srgb, var(--af-accent) 13%, var(--af-bg)) 0 99%, transparent 100%), " + blobs("rgba(120, 170, 90, 0.38)", "rgba(210, 195, 120, 0.32)", "rgba(90, 150, 110, 0.32)"),
       ink: "#23301f",
       "ink-2": "rgba(35, 48, 31, 0.72)",
       "ink-3": "rgba(35, 48, 31, 0.48)",
@@ -1333,6 +1243,7 @@ export const THEME_DEFS: ThemeDef[] = [
   },
   {
     id: "galerie",
+    air: 1.35,
     name: "Galerie",
     hint: "Fotos im Passepartout wie im Museum, still und ohne Zoom – kleine Schilder statt Kacheln",
     ambient: "none",
@@ -1389,8 +1300,7 @@ export const THEME_DEFS: ThemeDef[] = [
       "card-radius": "0",
       "label-weight": "700",
       "label-track": "0.14em",
-      "photo-motion": "none",
-    },
+      "photo-motion": "none", "bar-h": "3px", "bar-radius": "0", "bar-fill": "var(--af-ink)", "curve-w": "1.5", "curve-area": "0", },
     dark: {
       ...DARK,
       bg: "#000000",
@@ -1451,8 +1361,7 @@ export const THEME_DEFS: ThemeDef[] = [
       "label-track": "0.12em",
       "photo-motion": "none",
       "photo-filter": "grayscale(1) contrast(1.3)",
-      still: "1",
-    },
+      still: "1", "bar-h": "8px", "bar-radius": "0", "bar-fill": "var(--af-ink)", "curve-w": "3.5", "curve-area": "0", },
     light: {
       ...LIGHT,
       bg: "#ffffff",
@@ -1521,11 +1430,11 @@ export const THEME_DEFS: ThemeDef[] = [
       "label-weight": "700",
       "label-track": "0.2em",
       ...RULED,
-      "card-pad": "22px 0 0",
-    },
+      "card-pad": "22px 0 0", "bar-h": "3px", "bar-radius": "0", "bar-fill": "var(--af-ink)", "curve-w": "1.5", "curve-area": "0", },
     dark: {
       ...DARK,
       bg: "#171614",
+      "bg-art": "linear-gradient(180deg, transparent 12.2%, color-mix(in srgb, var(--af-ink) 80%, transparent) 12.2% 12.75%, transparent 12.75% 13.3%, color-mix(in srgb, var(--af-ink) 80%, transparent) 13.3% 13.5%, transparent 13.5% 96.3%, color-mix(in srgb, var(--af-ink) 60%, transparent) 96.3% 96.5%, transparent 96.5%)",
       ink: "#ece6d8",
       "ink-2": "rgba(236, 230, 216, 0.74)",
       "ink-3": "rgba(236, 230, 216, 0.5)",
@@ -1537,6 +1446,7 @@ export const THEME_DEFS: ThemeDef[] = [
     light: {
       ...LIGHT,
       bg: "#f3efe6",
+      "bg-art": "linear-gradient(180deg, transparent 12.2%, color-mix(in srgb, var(--af-ink) 80%, transparent) 12.2% 12.75%, transparent 12.75% 13.3%, color-mix(in srgb, var(--af-ink) 80%, transparent) 13.3% 13.5%, transparent 13.5% 96.3%, color-mix(in srgb, var(--af-ink) 60%, transparent) 96.3% 96.5%, transparent 96.5%)",
       ink: "#141414",
       "ink-2": "rgba(20, 20, 20, 0.74)",
       "ink-3": "rgba(20, 20, 20, 0.52)",
@@ -1553,7 +1463,7 @@ export const THEME_DEFS: ThemeDef[] = [
     ambient: "none",
     tiles: true,
     shared: {
-      ...SHARED,
+      ...SHARED, "card-clip": "polygon(14px 0, calc(100% - 14px) 0, 100% 14px, 100% calc(100% - 14px), calc(100% - 14px) 100%, 14px 100%, 0 calc(100% - 14px), 0 14px)",
       display: fontStack("cormorant"),
       sans: fontStack("outfit"),
       "clock-weight": "300",
@@ -1566,8 +1476,7 @@ export const THEME_DEFS: ThemeDef[] = [
     dark: {
       ...DARK,
       bg: "#0d0c0a",
-      "bg-art":
-        "repeating-conic-gradient(from -90deg at 50% 118%, rgba(201, 164, 92, 0.07) 0deg 1.2deg, transparent 1.2deg 7deg), " +
+      "bg-art": "radial-gradient(circle at 50% 0%, transparent 0 16%, var(--af-bg) 16.2%), repeating-conic-gradient(from 90deg at 50% 0%, color-mix(in srgb, var(--af-accent) 45%, transparent) 0 0.6deg, transparent 0.6deg 6deg), " + "repeating-conic-gradient(from -90deg at 50% 118%, rgba(201, 164, 92, 0.07) 0deg 1.2deg, transparent 1.2deg 7deg), " +
         "radial-gradient(70% 60% at 50% 115%, rgba(201, 164, 92, 0.12), transparent 70%)",
       ink: "#efe6d2",
       "ink-2": "rgba(239, 230, 210, 0.72)",
@@ -1586,8 +1495,7 @@ export const THEME_DEFS: ThemeDef[] = [
     light: {
       ...LIGHT,
       bg: "#f1eadb",
-      "bg-art":
-        "repeating-conic-gradient(from -90deg at 50% 118%, rgba(150, 110, 40, 0.08) 0deg 1.2deg, transparent 1.2deg 7deg), " +
+      "bg-art": "radial-gradient(circle at 50% 0%, transparent 0 16%, var(--af-bg) 16.2%), repeating-conic-gradient(from 90deg at 50% 0%, color-mix(in srgb, var(--af-accent) 45%, transparent) 0 0.6deg, transparent 0.6deg 6deg), " + "repeating-conic-gradient(from -90deg at 50% 118%, rgba(150, 110, 40, 0.08) 0deg 1.2deg, transparent 1.2deg 7deg), " +
         "radial-gradient(70% 60% at 50% 115%, rgba(150, 110, 40, 0.1), transparent 70%)",
       ink: "#1a1712",
       "ink-2": "rgba(26, 23, 18, 0.72)",
@@ -1620,8 +1528,7 @@ export const THEME_DEFS: ThemeDef[] = [
       "clock-track": "0",
       "card-radius": "0",
       "label-weight": "500",
-      "label-track": "0.12em",
-    },
+      "label-track": "0.12em", "bar-h": "12px", "bar-radius": "0", "bar-mask": "repeating-linear-gradient(90deg, #000 0 6px, transparent 6px 9px)", "curve-dash": "1 7", "curve-w": "4", "curve-area": "0", },
     dark: {
       ...DARK,
       bg: "#030805",
@@ -1676,8 +1583,7 @@ export const THEME_DEFS: ThemeDef[] = [
       "label-case": "none",
       "label-track": "0",
       "label-weight": "800",
-      "label-color": "var(--af-accent)",
-    },
+      "label-color": "var(--af-accent)", "bar-h": "14px", "bar-radius": "7px", "curve-w": "5", },
     dark: {
       ...DARK,
       bg: "#1d1a33",
@@ -1721,6 +1627,7 @@ export const THEME_DEFS: ThemeDef[] = [
   },
   {
     id: "leitsystem",
+    air: 0.75,
     name: "Leitsystem",
     hint: "Wie Wegweiser am Flughafen: Gelb auf Anthrazit, große klare Schrift – auch aus der Ferne lesbar",
     ambient: "none",
@@ -1733,8 +1640,7 @@ export const THEME_DEFS: ThemeDef[] = [
       "clock-track": "-0.02em",
       "card-radius": "6px",
       "label-weight": "800",
-      "label-track": "0.08em",
-    },
+      "label-track": "0.08em", "bar-h": "10px", "bar-radius": "0", "bar-fill": "var(--af-accent)", "curve-w": "4", },
     dark: {
       ...DARK,
       bg: "#1b1e21",
@@ -1797,8 +1703,7 @@ export const THEME_DEFS: ThemeDef[] = [
       "label-color": "var(--af-accent)",
       "card-rule": "4px solid currentColor",
       // 12 Spalten wie das Raster der Seite
-      "bg-size": "calc(100% / 12) 100%",
-    },
+      "bg-size": "calc(100% / 12) 100%", "bar-h": "2px", "bar-radius": "0", "bar-fill": "var(--af-ink)", "curve-w": "1.5", "curve-area": "0", },
     dark: {
       ...DARK,
       bg: "#0f0f0f",
@@ -1839,7 +1744,7 @@ export const THEME_DEFS: ThemeDef[] = [
     ambient: "none",
     tiles: true,
     shared: {
-      ...SHARED,
+      ...SHARED, "card-art": "radial-gradient(circle at 13px 13px, color-mix(in srgb, var(--af-ink) 38%, transparent) 0 2.5px, transparent 3.2px), radial-gradient(circle at calc(100% - 13px) 13px, color-mix(in srgb, var(--af-ink) 38%, transparent) 0 2.5px, transparent 3.2px), radial-gradient(circle at 13px calc(100% - 13px), color-mix(in srgb, var(--af-ink) 38%, transparent) 0 2.5px, transparent 3.2px), radial-gradient(circle at calc(100% - 13px) calc(100% - 13px), color-mix(in srgb, var(--af-ink) 38%, transparent) 0 2.5px, transparent 3.2px)",
       display: fontStack("manrope"),
       sans: fontStack("manrope"),
       "clock-weight": "300",
@@ -1892,6 +1797,7 @@ export const THEME_DEFS: ThemeDef[] = [
   },
   {
     id: "lobby",
+    air: 1.5,
     name: "Lobby",
     hint: "Wie die Rezeption eines guten Hotels: viel Luft, feine Serifen, Messinglinien – nur das Nötigste",
     ambient: "none",
@@ -1910,7 +1816,7 @@ export const THEME_DEFS: ThemeDef[] = [
     dark: {
       ...DARK,
       bg: "#12100e",
-      "bg-art": "radial-gradient(120% 90% at 50% 0%, rgba(195, 164, 107, 0.08), transparent 70%)",
+      "bg-art": "linear-gradient(180deg, transparent 2%, color-mix(in srgb, var(--af-accent) 55%, transparent) 2% 2.2%, transparent 2.2% 97.8%, color-mix(in srgb, var(--af-accent) 55%, transparent) 97.8% 98%, transparent 98%), linear-gradient(90deg, transparent 16px, color-mix(in srgb, var(--af-accent) 55%, transparent) 16px 17px, transparent 17px calc(100% - 17px), color-mix(in srgb, var(--af-accent) 55%, transparent) calc(100% - 17px) calc(100% - 16px), transparent calc(100% - 16px)), " + "radial-gradient(120% 90% at 50% 0%, rgba(195, 164, 107, 0.08), transparent 70%)",
       ink: "#efe6d6",
       "ink-2": "rgba(239, 230, 214, 0.68)",
       "ink-3": "rgba(239, 230, 214, 0.44)",
@@ -1928,7 +1834,7 @@ export const THEME_DEFS: ThemeDef[] = [
     light: {
       ...LIGHT,
       bg: "#f5f0e8",
-      "bg-art": "radial-gradient(120% 90% at 50% 0%, rgba(140, 109, 58, 0.07), transparent 70%)",
+      "bg-art": "linear-gradient(180deg, transparent 2%, color-mix(in srgb, var(--af-accent) 55%, transparent) 2% 2.2%, transparent 2.2% 97.8%, color-mix(in srgb, var(--af-accent) 55%, transparent) 97.8% 98%, transparent 98%), linear-gradient(90deg, transparent 16px, color-mix(in srgb, var(--af-accent) 55%, transparent) 16px 17px, transparent 17px calc(100% - 17px), color-mix(in srgb, var(--af-accent) 55%, transparent) calc(100% - 17px) calc(100% - 16px), transparent calc(100% - 16px)), " + "radial-gradient(120% 90% at 50% 0%, rgba(140, 109, 58, 0.07), transparent 70%)",
       ink: "#2a2420",
       "ink-2": "rgba(42, 36, 32, 0.68)",
       "ink-3": "rgba(42, 36, 32, 0.46)",
@@ -1960,8 +1866,7 @@ export const THEME_DEFS: ThemeDef[] = [
       "label-case": "none",
       "label-track": "0",
       "label-weight": "800",
-      "label-color": "var(--af-accent)",
-    },
+      "label-color": "var(--af-accent)", "bar-h": "14px", "bar-radius": "7px", "curve-w": "5", },
     dark: {
       ...DARK,
       bg: "#1c2552",
@@ -2098,6 +2003,64 @@ export const THEME_DEFS: ThemeDef[] = [
     },
   },
   {
+    id: "rgb",
+    name: "RGB",
+    hint: "Wie ein Gaming-PC: Schwarz mit leuchtenden Kanten, die langsam durch alle Farben wandern",
+    ambient: "none",
+    tiles: true,
+    shared: {
+      ...SHARED,
+      display: fontStack("space-grotesk"),
+      sans: fontStack("geist"),
+      "clock-weight": "700",
+      "clock-track": "-0.03em",
+      "card-radius": "12px",
+      "label-weight": "700",
+      "label-track": "0.14em",
+      "label-color": "var(--af-accent)", "bar-h": "8px", "bar-radius": "0", "bar-fill": "linear-gradient(90deg, hsl(calc(var(--af-rgb-hue, 280deg) + 120deg) 100% 60%), var(--af-accent))", "curve-w": "3.5", },
+    dark: {
+      ...DARK,
+      bg: "#050507",
+      // Der Farbton --af-rgb-hue wandert (display.ts) – Akzent, Kanten, Leuchten und LED-Leiste folgen
+      "bg-art": "linear-gradient(0deg, var(--af-accent) 0 5px, transparent 5px), radial-gradient(60% 70% at 8% 10%, hsl(var(--af-rgb-hue, 280deg) 100% 50% / 0.3), transparent 60%), radial-gradient(60% 70% at 92% 92%, hsl(calc(var(--af-rgb-hue, 280deg) + 120deg) 100% 50% / 0.3), transparent 60%), radial-gradient(50% 60% at 60% 0%, hsl(calc(var(--af-rgb-hue, 280deg) + 240deg) 100% 50% / 0.3), transparent 60%)",
+      ink: "#ffffff",
+      "ink-2": "rgba(255, 255, 255, 0.74)",
+      "ink-3": "rgba(255, 255, 255, 0.5)",
+      line: "rgba(255, 255, 255, 0.14)",
+      surface: "rgba(255, 255, 255, 0.06)",
+      accent: "hsl(var(--af-rgb-hue, 280deg) 100% 62%)",
+      "accent-soft": "hsl(var(--af-rgb-hue, 280deg) 100% 62% / 0.18)",
+      cold: "#4fd8ff",
+      good: "#5dff8f",
+      alert: "#ff4d6d",
+      card: "rgba(10, 10, 14, 0.82)",
+      "card-border": "2px solid var(--af-accent)",
+      "card-shadow": "0 0 26px hsl(var(--af-rgb-hue, 280deg) 100% 55% / 0.5), inset 0 0 18px hsl(var(--af-rgb-hue, 280deg) 100% 55% / 0.12)",
+      colon: "var(--af-accent)",
+      "colon-opacity": "1",
+    },
+    light: {
+      ...LIGHT,
+      bg: "#f4f4f8",
+      "bg-art": "linear-gradient(0deg, var(--af-accent) 0 5px, transparent 5px), radial-gradient(60% 70% at 8% 10%, hsl(var(--af-rgb-hue, 280deg) 100% 50% / 0.2), transparent 60%), radial-gradient(60% 70% at 92% 92%, hsl(calc(var(--af-rgb-hue, 280deg) + 120deg) 100% 50% / 0.2), transparent 60%), radial-gradient(50% 60% at 60% 0%, hsl(calc(var(--af-rgb-hue, 280deg) + 240deg) 100% 50% / 0.2), transparent 60%)",
+      ink: "#0b0b12",
+      "ink-2": "rgba(11, 11, 18, 0.74)",
+      "ink-3": "rgba(11, 11, 18, 0.52)",
+      line: "rgba(11, 11, 18, 0.14)",
+      surface: "rgba(255, 255, 255, 0.7)",
+      accent: "hsl(var(--af-rgb-hue, 280deg) 90% 42%)",
+      "accent-soft": "hsl(var(--af-rgb-hue, 280deg) 90% 42% / 0.14)",
+      cold: "#0a84c8",
+      good: "#12903f",
+      alert: "#d81b46",
+      card: "#ffffff",
+      "card-border": "2px solid var(--af-accent)",
+      "card-shadow": "0 0 22px hsl(var(--af-rgb-hue, 280deg) 90% 50% / 0.35)",
+      colon: "var(--af-accent)",
+      "colon-opacity": "1",
+    },
+  },
+  {
     id: "saisonal",
     name: "Jahreszeiten",
     hint: "Wechselt von selbst: Frühling, Sommer, Herbst, Winter – und zu Weihnachten, Silvester, Valentinstag, Ostern und Halloween",
@@ -2165,10 +2128,23 @@ export const dayHue = (d: Date): number => {
 export const THEMES = THEME_DEFS.filter((t) => !t.hidden).map(({ id, name, hint, ambient, tiles, flap }) => ({ id, name, hint, ambient, tiles, flap }));
 
 /** Alte Stilnamen: „Weißgold“ ist jetzt „Gold“ in hell. */
-export const normalizeTheme = (theme?: string): { theme: Theme; light: boolean } =>
-  theme === "weissgold"
-    ? { theme: "gold", light: true }
-    : { theme: (THEME_DEFS.some((t) => t.id === theme) ? theme : "ruhig") as Theme, light: false };
+/** Ränder-Faktor des Stils („Luft“) – „Jahreszeiten“ folgt der Fassung von heute */
+export const airOf = (theme?: string): number => {
+  const id = MERGED_THEMES[theme ?? ""] ?? theme;
+  return THEME_DEFS.find((t) => t.id === (id === "saisonal" ? seasonTheme(new Date()) : id))?.air ?? 1;
+};
+
+/** Raster mit den Rändern des Stils – Display und Seiteneditor rechnen damit gleich */
+export const withAir = <G extends { padX: number; padY: number }>(g: G, air: number): G =>
+  air === 1 ? g : { ...g, padX: Math.round(g.padX * air), padY: Math.round(g.padY * air) };
+
+/** Zusammengelegte Stile (0.12): Gold glich Ruhig, Minimal glich Klar – alte Einstellungen laufen weiter */
+export const MERGED_THEMES: Record<string, string> = { gold: "ruhig", minimal: "klar", weissgold: "ruhig" };
+
+export const normalizeTheme = (theme?: string): { theme: Theme; light: boolean } => {
+  const id = MERGED_THEMES[theme ?? ""] ?? theme;
+  return { theme: (THEME_DEFS.some((t) => t.id === id) ? id : "ruhig") as Theme, light: theme === "weissgold" };
+};
 
 const decl = (t: Tokens) =>
   Object.entries(t)

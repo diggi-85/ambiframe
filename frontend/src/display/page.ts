@@ -148,11 +148,15 @@ export class AfPage extends LitElement {
       /* Darstellung „als Karte“ – Fläche, Rand und Radius des Stils */
       .cell.boxed {
         background:
+          /* Zierde des Stils auf der Karte (z. B. Schrauben) */
+          var(--af-card-art, none),
           linear-gradient(var(--af-card-tint, var(--af-cover-tint)), var(--af-card-tint, var(--af-cover-tint))),
           color-mix(in srgb, var(--af-card, var(--af-surface)) var(--af-card-alpha, 100%), transparent);
         border: var(--af-card-border, 1px solid var(--af-line));
         border-top: var(--af-card-rule, var(--af-card-border, 1px solid var(--af-line)));
         border-radius: var(--af-card-radius, 32px);
+        /* eigene Kartenform des Stils (z. B. abgeschrägte Ecken) */
+        clip-path: var(--af-card-clip, none);
         box-shadow: var(--af-card-shadow, none);
         backdrop-filter: var(--af-card-filter, none);
         -webkit-backdrop-filter: var(--af-card-filter, none);

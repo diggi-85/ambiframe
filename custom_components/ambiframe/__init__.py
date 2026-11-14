@@ -21,6 +21,7 @@ from . import panel, services, websocket
 from .const import DATA_STREAM_VIEW, DOMAIN, SIGNAL_CONFIG_UPDATED
 from .store import AmbiframeStore
 from .stream import StreamView
+from .doorlog import SnapshotView
 
 PLATFORMS = [Platform.BINARY_SENSOR, Platform.BUTTON, Platform.CAMERA, Platform.SELECT, Platform.SENSOR, Platform.SWITCH]
 
@@ -46,12 +47,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: AmbiframeConfigEntry) ->
     if not hass.data.get(DATA_STREAM_VIEW):
         hass.data[DATA_STREAM_VIEW] = True
         hass.http.register_view(StreamView(hass))
+        hass.http.register_view(SnapshotView(hass))
     await panel.async_register_panels(hass)
 
     store.hub.async_start()
     entry.async_on_unload(store.hub.async_stop)
     await store.summarizer.async_start()
     entry.async_on_unload(store.summarizer.async_stop)
+    await store.doorlog.async_start()
+    entry.async_on_unload(store.doorlog.async_stop)
     _async_sync_devices(hass, entry, store.config)
     store.fully.async_listen()
     entry.async_on_unload(store.fully.async_stop)

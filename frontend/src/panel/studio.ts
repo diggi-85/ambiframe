@@ -76,6 +76,18 @@ const WHEN: { id: string; name: string; show_if: Condition[] }[] = [
   { id: "day", name: "nur tagsüber", show_if: [{ condition: "time", after: "08:00", before: "18:00" }] },
   { id: "evening", name: "nur abends", show_if: [{ condition: "time", after: "17:00", before: "23:00" }] },
 ];
+/** Zeitfenster eines Eintrags als Abschnitte des Tages in Minuten – für das Band „Was läuft wann?“ */
+// shortcut: nur die erste Uhrzeit-Bedingung zählt; bei mehreren Zeitfenstern je Eintrag die Schnittmenge rechnen
+export const dayBands = (show_if?: Condition[]): [number, number][] => {
+  const c = show_if?.find((x) => x.condition === "time") as { after?: string; before?: string } | undefined;
+  const min = (v?: string) => {
+    const m = /^(\d{1,2}):(\d{2})/.exec(v ?? "");
+    return m ? Number(m[1]) * 60 + Number(m[2]) : null;
+  };
+  const a = min(c?.after) ?? 0;
+  const b = min(c?.before) ?? 1440;
+  return a > b ? [[0, b], [a, 1440]] : [[a, b]]; // über Mitternacht: zwei Abschnitte
+};
 const whenOf = (show_if?: Condition[]) =>
   !show_if?.length ? "always" : (WHEN.find((w) => JSON.stringify(w.show_if) === JSON.stringify(show_if))?.id ?? "custom");
 
@@ -146,6 +158,23 @@ const WEATHER_SIM: [string, string][] = [
   ["clear-night", "klare Nacht"],
 ];
 
+/** Stile nach Wirkung gruppiert – 36 in einer Reihe findet niemand; Unbekanntes landet unter „Weitere“ */
+const THEME_GROUPS: [string, string[]][] = [
+  ["Ruhig", ["ruhig", "klar", "editorial", "galerie", "lobby", "landhaus", "natur", "rams", "tonal", "softui"]],
+  ["Kräftig", ["glass", "aurora", "cockpit", "kacheln", "klartext", "bauhaus", "swiss", "leitsystem", "glanz", "rgb"]],
+  ["Verspielt", ["verspielt", "bilderbuch", "boho", "weihnachten", "saisonal"]],
+  ["Retro", ["pixel", "arcade", "fallblatt", "millennium", "handheld", "terminal", "zeitung", "artdeco"]],
+  ["Spezial", ["papier", "eink"]],
+];
+
+export const themeGroups = (filter: "" | "tiles" | "plain" = ""): [string, string[]][] => {
+  const all = THEME_DEFS.filter((td) => !td.hidden && (!filter || !!td.tiles === (filter === "tiles"))).map((td) => td.id as string);
+  const listed = new Set(THEME_GROUPS.flatMap(([, ids]) => ids));
+  return [...THEME_GROUPS, ["Weitere", all.filter((id) => !listed.has(id))] as [string, string[]]]
+    .map(([g, ids]) => [g, ids.filter((id) => all.includes(id))] as [string, string[]])
+    .filter(([, ids]) => ids.length);
+};
+
 export class AmbiframeStudio extends LitElement {
   static properties = {
     hass: { attribute: false },
@@ -158,6 +187,7 @@ export class AmbiframeStudio extends LitElement {
     previewMode: { state: true },
     previewWeather: { state: true },
     hoverTheme: { state: true },
+    themeFilter: { state: true },
     openEvent: { state: true },
     dirty: { state: true },
     saving: { state: true },
@@ -214,6 +244,8 @@ export class AmbiframeStudio extends LitElement {
   previewMode: "" | "light" | "dark" | "night" = "";
   previewWeather = "";
   hoverTheme = "";
+  /** Stil-Auswahl eingrenzen: alle, nur Kachel-Stile oder nur Stile ohne Kacheln */
+  themeFilter: "" | "tiles" | "plain" = "";
   openEvent = "";
   dirty = false;
   saving = false;
@@ -400,6 +432,16 @@ export class AmbiframeStudio extends LitElement {
     this.note = note;
     clearTimeout(this.noteTimer);
     this.noteTimer = window.setTimeout(() => (this.note = null), note.kind === "error" ? 12e3 : 6e3);
+  }
+
+  /** Eintrag der Wiedergabeliste an eine andere Stelle ziehen */
+  movePlaylist(from: number, to: number): void {
+    if (!Number.isInteger(from) || from === to) return;
+    this.mutateDisplay((d) => {
+      if (from < 0 || from >= d.playlist.length || to < 0 || to >= d.playlist.length) return;
+      d.playlist.splice(to, 0, ...d.playlist.splice(from, 1));
+    });
+    this.pageIdx = to;
   }
 
   private mutateDisplay(fn: (d: DisplayConfig) => void): void {
@@ -685,7 +727,18 @@ export class AmbiframeStudio extends LitElement {
         ${d.playlist.map((e, i) => {
           const p = pageOf(e.page);
           const when = whenOf(e.show_if);
-          return html`<li class=${at === i ? "on" : ""} @click=${() => (this.pageIdx = i)}>
+          return html`<li
+            class=${at === i ? "on" : ""}
+            draggable="true"
+            title=${t("Ziehen zum Sortieren")}
+            @dragstart=${(ev: DragEvent) => ev.dataTransfer?.setData("text/plain", String(i))}
+            @dragover=${(ev: DragEvent) => ev.preventDefault()}
+            @drop=${(ev: DragEvent) => {
+              ev.preventDefault();
+              this.movePlaylist(Number(ev.dataTransfer?.getData("text/plain")), i);
+            }}
+            @click=${() => (this.pageIdx = i)}
+          >
             <span class="num">${i + 1}</span>
             <div class="what">
               <b>${p?.name ?? e.page}</b>
@@ -745,6 +798,24 @@ export class AmbiframeStudio extends LitElement {
             </button>`
           : nothing}
       </div>
+      ${d.playlist.some((e) => e.show_if?.length)
+        ? html`<h3>${t("Was läuft wann?")}</h3>
+            <div class="day">
+              ${d.playlist.map(
+                (e) =>
+                  html`<span>${pageOf(e.page)?.name ?? e.page}</span>
+                    <div class="track">
+                      ${dayBands(e.show_if).map(
+                        ([a, b]) => html`<i class=${e.show_if?.some((x) => x.condition !== "time") ? "if" : ""} style="left:${a / 14.4}%;width:${(b - a) / 14.4}%"></i>`,
+                      )}
+                      <b style="left:${(new Date().getHours() * 60 + new Date().getMinutes()) / 14.4}%"></b>
+                    </div>`,
+              )}
+              <span></span>
+              <div class="hours">${[0, 6, 12, 18, 24].map((h) => html`<small>${h}</small>`)}</div>
+            </div>
+            <p class="hint">${t("Der Strich zeigt jetzt. Gestrichelt: hängt zusätzlich von einer anderen Bedingung ab.")}</p>`
+        : nothing}
       <h3>${t("Nachts")}</h3>
       ${this.form(
         displayFields(c).filter((f) => f.key.startsWith("night.")),
@@ -849,14 +920,25 @@ export class AmbiframeStudio extends LitElement {
         ${this.origin(d?.theme, () => this.mutateDisplay((x) => delete x.theme))}
       </div>
       <p class="muted">${t("Mit der Maus über einen Stil fahren zeigt ihn rechts mit deinen Inhalten – Klicken übernimmt ihn.")}</p>
-      <div class="themes" @mouseleave=${() => (this.hoverTheme = "")}>
-        ${THEME_DEFS.filter((td) => !td.hidden).map((td) => {
+      <div class="seg">
+        ${(
+          [
+            ["", "Alle"],
+            ["tiles", "Mit Kacheln"],
+            ["plain", "Ohne Kacheln"],
+          ] as const
+        ).map(([id, name]) => html`<button class=${this.themeFilter === id ? "on" : ""} @click=${() => (this.themeFilter = id)}>${t(name)}</button>`)}
+      </div>
+      <div @mouseleave=${() => (this.hoverTheme = "")}>
+        ${themeGroups(this.themeFilter).map(([group, ids]) => html`<span class="glabel">${t(group)}</span>
+        <div class="themes">
+        ${ids.map((id) => THEME_DEFS.find((x) => x.id === id)!).map((td) => {
           // „Jahreszeiten“ zeigt die Farben von heute
           const look = td.id === "saisonal" ? (THEME_DEFS.find((x) => x.id === seasonTheme(new Date())) ?? td) : td;
           const tok = look.dark;
           return html`<button
             class="theme ${theme === td.id ? "on" : ""}"
-            style="--bg:${tok.bg};--ink:${tok.ink};--acc:${tok.accent};--font:${look.shared.display}"
+            style="--bg:${tok.bg};--ink:${tok.ink};--acc:${tok.accent};--font:${look.shared.display};--af-bg:${tok.bg};--af-ink:${tok.ink};--af-accent:${tok.accent};--art:${tok["bg-art"] ?? "none"};--bs:${look.shared["bg-size"] ?? "auto"};--card:${tok.card ?? "transparent"};--cb:${tok["card-border"] ?? "1px solid transparent"};--cr:${look.shared["card-radius"] ?? "8px"}"
             @mouseenter=${() => (this.hoverTheme = td.id)}
             @focus=${() => (this.hoverTheme = td.id)}
             @click=${() => {
@@ -864,10 +946,11 @@ export class AmbiframeStudio extends LitElement {
               this.setTop("theme", td.id);
             }}
           >
-            <span class="sample"><span class="clock">12<i>:</i>34</span><span class="dot"></span></span>
+            <span class="sample"><span class="clock">12<i>:</i>34</span><span class="tile"></span></span>
             <b>${t(td.name)}</b>
           </button>`;
         })}
+        </div>`)}
       </div>
 
       <div class="row-head">
@@ -1328,7 +1411,12 @@ export class AmbiframeStudio extends LitElement {
         onChange(e.detail.value);
         this.formKey = "";
       }}
-    ></af-form>`;
+      ></af-form>
+      ${!this.advanced && fields.some((f) => f.advanced)
+        ? html`<button class="more" @click=${() => this.setAdvanced(true)}>
+            ${t("+ {n} weitere Einstellungen mit „Erweitert“", { n: fields.filter((f) => f.advanced).length })}
+          </button>`
+        : nothing}`;
   }
 
   /* ───────── Seite eines Displays bzw. „Alle Displays“ ───────── */
@@ -1643,6 +1731,14 @@ export class AmbiframeStudio extends LitElement {
     select:focus-visible {
       outline: 2px solid var(--s-acc);
       outline-offset: 2px;
+    }
+    /* Hinweis auf verborgene Felder – wie ein Link, schaltet „Erweitert“ ein */
+    button.more {
+      border: 0;
+      background: none;
+      padding: 4px 0;
+      font-size: 12px;
+      color: var(--s-acc-ink);
     }
     button.ghost {
       background: transparent;
@@ -1994,6 +2090,10 @@ export class AmbiframeStudio extends LitElement {
       grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
       gap: 8px;
     }
+    .themes + .glabel,
+    .seg + div > .glabel:first-child {
+      margin-top: 16px;
+    }
     .theme {
       padding: 0;
       overflow: hidden;
@@ -2002,8 +2102,10 @@ export class AmbiframeStudio extends LitElement {
     }
     .theme .sample {
       position: relative;
-      height: 64px;
-      background: var(--bg);
+      height: 76px;
+      /* Hintergrund-Motiv des Stils – daran erkennt man ihn eher als an der Farbe */
+      background: var(--art) var(--bg);
+      background-size: var(--bs);
       color: var(--ink);
       display: grid;
       place-items: center;
@@ -2016,14 +2118,17 @@ export class AmbiframeStudio extends LitElement {
       font-style: normal;
       color: var(--acc);
     }
-    .theme .dot {
+    /* Mini-Kachel in der Form des Stils (Fläche, Rahmen, Ecken) mit Akzentstrich */
+    .theme .tile {
       position: absolute;
       right: 8px;
       bottom: 8px;
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      background: var(--acc);
+      width: 28px;
+      height: 18px;
+      background: var(--card);
+      border: var(--cb);
+      border-radius: min(var(--cr), 6px);
+      box-shadow: inset 0 -3px 0 -1px var(--acc);
     }
     .theme b {
       padding: 8px 12px;
@@ -2193,6 +2298,11 @@ export class AmbiframeStudio extends LitElement {
       padding: 40px;
     }
     @media (max-width: 1000px) {
+      /* Am Handy bricht die Leiste um – „Speichern“ bleibt erreichbar */
+      .bar {
+        flex-wrap: wrap;
+        row-gap: 8px;
+      }
       .workspace {
         grid-template-columns: 1fr;
         overflow: auto;
@@ -2203,22 +2313,43 @@ export class AmbiframeStudio extends LitElement {
         border-right: 0;
         border-bottom: 1px solid var(--s-line);
       }
+      /* Eine Spalte scrollt als Ganzes – sonst blieben dem Inhalt am Handy nur wenige Zeilen */
+      .steps,
+      .content,
+      .preview {
+        overflow: visible;
+      }
       .steps h2,
       .step small,
       .jump {
         display: none;
       }
-      /* Vorschau oben, damit man das Ergebnis immer sieht */
+      /* Vorschau oben – das Ergebnis steht vor den Einstellungen */
       .preview {
         order: -1;
         border-left: 0;
         border-bottom: 1px solid var(--s-line);
       }
+      /* Eintrag in zwei Zeilen: Name und „Wann?“, darunter Dauer und Knöpfe */
       .playlist li {
-        grid-template-columns: 24px minmax(0, 1fr) auto;
+        display: flex;
+        flex-wrap: wrap;
+      }
+      .playlist li .what {
+        flex: 1 1 50%;
+        min-width: 0;
+      }
+      .playlist li .dur {
+        width: 70px;
+      }
+      .playlist li .cond {
+        flex-basis: 100%;
       }
       .allcard {
         grid-template-columns: auto 1fr;
+      }
+      .allcard .chips {
+        grid-column: 1 / -1;
       }
     }
     /* Hinweis oben (gespeichert, kopiert, Fehler) */
@@ -2369,6 +2500,48 @@ export class AmbiframeStudio extends LitElement {
       display: flex;
       flex-wrap: wrap;
       gap: 8px;
+    }
+    /* „Was läuft wann?“ – ein Band je Seite über 24 Stunden */
+    .day {
+      display: grid;
+      grid-template-columns: minmax(60px, max-content) minmax(0, 1fr);
+      gap: 6px 10px;
+      align-items: center;
+      font-size: 12px;
+    }
+    .day span {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 140px;
+    }
+    .day .track {
+      position: relative;
+      height: 12px;
+      border-radius: 6px;
+      background: var(--s-line);
+    }
+    .day .track i {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      border-radius: 6px;
+      background: var(--s-acc);
+    }
+    .day .track i.if {
+      background: repeating-linear-gradient(90deg, var(--s-acc) 0 6px, transparent 6px 10px);
+    }
+    .day .track b {
+      position: absolute;
+      top: -3px;
+      bottom: -3px;
+      width: 2px;
+      background: var(--s-ink, currentColor);
+    }
+    .day .hours {
+      display: flex;
+      justify-content: space-between;
+      color: var(--s-mute);
     }
     /* Wiedergabeliste: eigene Bedingung unter dem Eintrag */
     .playlist li .cond {

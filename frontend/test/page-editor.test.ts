@@ -219,3 +219,36 @@ describe("Seite duplizieren", () => {
     expect(el.config.displays[0].playlist).toEqual([{ page: "a_kopie" }]);
   });
 });
+
+describe("Seite in die Wiedergabe aufnehmen", () => {
+  it("bietet den Knopf nur an, solange die Seite auf dem Display nicht läuft", async () => {
+    const cfg = config();
+    cfg.displays[0].playlist = [];
+    const { el } = await mount(cfg);
+    const btn = () => [...el.shadowRoot!.querySelectorAll("button")].find((b: HTMLButtonElement) => /zeigen|Show on/.test(b.textContent!)) as HTMLButtonElement | undefined;
+    btn()!.click();
+    await el.updateComplete;
+    expect(el.config.displays[0].playlist).toEqual([{ page: "a" }]);
+    expect(btn()).toBeUndefined();
+  });
+});
+
+describe("Widget-Liste: Suche und Vorschau", () => {
+  it("filtert nach dem Suchtext und zeigt das Widget unter der Maus nur in der Vorschau", async () => {
+    const { el, page } = await mount();
+    const chips = () => [...el.shadowRoot!.querySelectorAll<HTMLButtonElement>(".palette .chip")];
+    const all = chips().length;
+    el.find = "timer"; // heißt in allen Sprachen so
+    await el.updateComplete;
+    expect(chips().length).toBeGreaterThan(0);
+    expect(chips().length).toBeLessThan(all);
+    chips()[0].dispatchEvent(new Event("mouseenter"));
+    await el.updateComplete;
+    const canvas = el.shadowRoot!.querySelector("af-canvas") as HTMLElement & { config: AmbiframeConfig };
+    expect(canvas.config.pages[0].widgets).toHaveLength(2); // Vorschau zeigt es …
+    expect(page().widgets).toHaveLength(1); // … der Entwurf bleibt unverändert
+    chips()[0].click();
+    await el.updateComplete;
+    expect(page().widgets).toHaveLength(2);
+  });
+});

@@ -29,7 +29,7 @@ appears. When the laundry is done, it says so briefly and then stays as a small 
   <tr>
     <td align="center"><sub><b>Animated backgrounds</b> – here aurora</sub></td>
     <td align="center"><sub><b>Word clock</b> in four languages</sub></td>
-    <td align="center"><sub><b>36 styles</b> – here “Gallery”</sub></td>
+    <td align="center"><sub><b>35 styles</b> – here “Gallery”</sub></td>
   </tr>
   <tr>
     <td width="33%"><img src="https://raw.githubusercontent.com/diggi-85/ambiframe/main/docs/screenshots/en/clocks-split-flap.jpg" alt="Analogue clocks and split-flap displays"></td>
@@ -48,7 +48,7 @@ Dutch and French).</sub>
 
 ## Features
 
-- **Pages built from 51 widgets** on a 12×8 grid with half-cell steps: clock, date, day clock, map, to-do list, commute, text, weather (current, card,
+- **Pages built from 52 widgets** on a 12×8 grid with half-cell steps: clock, date, day clock, map, to-do list, commute, text, weather (current, card,
   hourly, daily, rain preview, line), value, rooms, status ("right now"), calendar/waste, info line, camera and **any
   Lovelace card** – the full list is under [Widgets](#widgets).
 - **Everyday widgets:** kitchen timer (HA timers with quick-start buttons), notice board (text helpers, e.g. set from
@@ -63,7 +63,7 @@ Dutch and French).</sub>
   collection only the evening before.
 - **Events** interrupt the display:
   - `alarm`: full screen with live camera, e.g. for the doorbell
-  - `live`: picture-in-picture with a cooldown, e.g. for motion
+  - `live`: picture-in-picture with a cooldown, e.g. for motion – every overlay can be tapped or swiped away
   - `info`: a notice card, then a small reminder in the top right, e.g. for the washing machine
   - `page`: shows a specific page, e.g. while a motion sensor is on – at least `duration` s, then `hold_after` s,
     at most `max` s, with `cooldown` after it ends
@@ -85,14 +85,15 @@ Dutch and French).</sub>
 - **Night mode** (dimmed clock that drifts to prevent burn-in) and **evening mood**.
 - **Screen off when everyone is away:** pick the people per display; with Fully the screen turns off, the doorbell and
   other moments still wake it.
-- **36 styles, each light and dark:** Calm, Clear, Gold, Glass, Aurora, Editorial, Minimal, Pixel (LED dot matrix),
+- **35 styles, each light and dark:** Calm, Clear, Glass, Aurora, Editorial, Pixel (LED dot matrix),
   Arcade (neon), Cockpit, Tonal, Tiles, Clear text (large and high contrast), Split-flap, Millennium, Gloss, Handheld,
   Bauhaus, Soft UI, Boho, Country house, Nature, **Gallery** (photos in a mount like in a museum), **Paper** (pure black
   and white), **E-Ink** (no motion or fades at all, bold type, greyscale photos – for e-paper displays),
   **Newspaper**, **Art Deco**, **Terminal**, **Playful**, **Wayfinding** (yellow on anthracite like airport signs),
   **Swiss Grid** (strict grid, huge numbers, signal red), **Rams** (warm grey, orange accent, speaker grille), **Lobby**
   (hotel reception: fine serifs, brass lines), **Picture book** (for children: hills, sun or moon, cut-out cards), **Christmas** (fir green and candle gold,
-  fairy lights along the top, gentle snow) – and
+  fairy lights along the top, gentle snow), **RGB** (like a gaming PC: glowing edges that cycle through all
+  colours) – and
   **Seasons**, which changes by
   itself: spring, summer, autumn, winter, plus Christmas, New Year's Eve, Valentine's Day, Easter and Halloween. Tile
   styles put widgets into cards automatically. Light/dark automatically by the sun (with a soft fade) or fixed,
@@ -218,7 +219,7 @@ currently showing it, plus the **All displays** card. Each display answers the s
 | Step | Question | What you set there |
 |---|---|---|
 | **Location & device** | Where is it? | Location (sets sensible defaults), device (Fully, browser or HA app) with the address to copy |
-| **Contents** | What should it show? | Pages of the playlist, order, duration, “When?” (e.g. only in the morning) and the night |
+| **Contents** | What should it show? | Pages of the playlist, order (drag to sort), duration, “When?” (e.g. only in the morning) with a day band showing what runs when, and the night |
 | **Look** | How should it feel? | Style, light/dark, colours, tiles, background animation |
 | **Moments** | When should something happen? | Doorbell, motion, laundry done, music, birthday … with **▶ Test**, custom sounds |
 | **Technical** | Control, sound, video stream | Control mode, restart button and offline notification, sounds, video stream to the TV, photos |
@@ -250,7 +251,7 @@ On first start a **setup wizard** guides you through location, contents, moments
 the left, the page as a live picture in the middle, the settings of the selected widget or page on the right. **Back**
 returns to where you came from.
 
-- Add widgets from the bar at the bottom, drag them, resize at the bottom-right corner; a grid with half cells and
+- Add widgets from the bar at the bottom (with search; hovering shows the widget on the page before you add it), drag them, resize at the bottom-right corner; a grid with half cells and
   guides for aligned edges.
 - Multi-select with ⇧/⌘-click (Windows: Shift/Ctrl), arrow keys move (with ⇧ resize), ⌘C/⌘V (Ctrl+C/V) copies as YAML – also between pages and
   devices, ⌘D duplicates, ⌫ deletes.
@@ -358,6 +359,7 @@ events:
 | `board` | `entities` (input_text/text, empty = names with "board", "message", "note"), `expire_hours`, `size`, `empty_text` |
 | `countdown` | `items: [{name, date \| entity, icon}]` (input_datetime, timestamp sensor, calendar), `max`, `show_past` |
 | `departures` | `entities` (public transport sensors, empty = automatic), `lines`, `walk` (minutes), `max`, `show_platform`, `attribute` |
+| `doorlog` | Who was at the door: the last doorbell and camera moments with a snapshot (HA keeps 20, stored in `/config/ambiframe/snapshots`): `max` |
 | `map` | People and vehicles on a map that fits itself (people at the same place as one avatar stack): `entities` (person.*, device_tracker.*; empty = everyone with a location), `exclude` (never shown), `away_only`, `tags` (full/name/none), `routes` (travel time sensors – their route is drawn; the start and destination addresses are sent once to OpenStreetMap's Nominatim and OSRM, an unknown start falls back to `zone.home`), `zone`, `max_zoom`, `map` (auto/light/dark/osm) |
 | `todo` | To-do or shopping list (todo.*), live; tap to check off with 4 s to undo: `entity`, `check: false`, `max`, `show_completed`, `size` |
 | `commute` | Travel time from Waze/Google/HERE sensors: `routes: [{entity, name, arrive ("08:00" → leave by), usual (minutes)}]` |

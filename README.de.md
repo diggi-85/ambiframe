@@ -29,7 +29,7 @@ Ist die Wäsche fertig, steht es kurz da und bleibt dann als kleine Erinnerung.
   <tr>
     <td align="center"><sub><b>Animierte Hintergründe</b> – hier Polarlicht</sub></td>
     <td align="center"><sub><b>Wortuhr</b> in vier Sprachen</sub></td>
-    <td align="center"><sub><b>36 Stile</b> – hier „Galerie“</sub></td>
+    <td align="center"><sub><b>35 Stile</b> – hier „Galerie“</sub></td>
   </tr>
   <tr>
     <td width="33%"><img src="https://raw.githubusercontent.com/diggi-85/ambiframe/main/docs/screenshots/uhren-fallblatt.jpg" alt="Analoge Uhren und Fallblatt-Anzeigen"></td>
@@ -47,7 +47,7 @@ Ist die Wäsche fertig, steht es kurz da und bleibt dann als kleine Erinnerung.
 
 ## Was Ambiframe kann
 
-- **Seiten aus 51 Widgets** in einem 12×8-Raster mit halben Schritten: Uhr, Datum, Tagesuhr, Karte, To-do-Liste, Pendelzeit, Text, Wetter (aktuell, Karte,
+- **Seiten aus 52 Widgets** in einem 12×8-Raster mit halben Schritten: Uhr, Datum, Tagesuhr, Karte, To-do-Liste, Pendelzeit, Text, Wetter (aktuell, Karte,
   Stunden, Tage, Regen-Vorschau, Zeile), Wert, Räume, Status („Gerade“), Kalender/Müll, Infozeile, Kamera und **jede
   Lovelace-Karte** – die vollständige Liste steht unter [Widgets](#widgets).
 - **Widgets für den Alltag:** Küchentimer (HA-Timer mit Schnellstart-Knöpfen), Pinnwand (Text-Helfer, z. B. vom
@@ -62,7 +62,7 @@ Ist die Wäsche fertig, steht es kurz da und bleibt dann als kleine Erinnerung.
   z. B. Müll nur am Vorabend.
 - **Ereignisse** unterbrechen die Anzeige:
   - `alarm`: Vollbild mit Livebild, etwa für die Klingel
-  - `live`: Bild-im-Bild mit Abklingzeit, etwa für Bewegung
+  - `live`: Bild-im-Bild mit Abklingzeit, etwa für Bewegung – jede Einblendung lässt sich antippen oder wegwischen
   - `info`: Hinweiskarte, danach eine Erinnerung oben rechts, etwa für die Waschmaschine
   - `page`: zeigt eine bestimmte Seite, etwa wenn ein Bewegungsmelder anschlägt – so lange er an ist,
     mindestens `duration` s, danach `hold_after` s Nachlauf, höchstens `max` s, mit `cooldown` nach dem Ende
@@ -85,7 +85,7 @@ Ist die Wäsche fertig, steht es kurz da und bleibt dann als kleine Erinnerung.
 - **Nachtmodus** (gedimmte Uhr, wandert gegen Einbrennen) und **Abendstimmung**.
 - **Bildschirm aus, wenn alle weg sind:** Personen pro Display wählen; mit Fully geht der Bildschirm aus, Klingel und
   andere Momente wecken ihn trotzdem.
-- **36 Stile, jeder hell und dunkel:** Ruhig, Klar, Gold, Glas, Aurora, Editorial, Minimal, Pixel (LED-Punktmatrix),
+- **35 Stile, jeder hell und dunkel:** Ruhig, Klar, Glas, Aurora, Editorial, Pixel (LED-Punktmatrix),
   Arcade (Neon), Cockpit, Tonal, Kacheln, Klartext (groß und kontrastreich), Fallblatt, Millennium, Glanz, Handheld,
   Bauhaus, Soft-UI, Boho, Landhaus, Natur, **Galerie** (Fotos im Passepartout wie im Museum), **Papier** (reines
   Schwarz-Weiß), **E-Ink** (ganz ohne Bewegung und Überblendungen, kräftige Schrift, Fotos in Graustufen – für
@@ -93,7 +93,8 @@ Ist die Wäsche fertig, steht es kurz da und bleibt dann als kleine Erinnerung.
   Anthrazit wie Wegweiser am Flughafen), **Swiss Grid** (strenges Raster, riesige Zahlen, Signalrot), **Rams** (warmes
   Grau, orangener Akzent, Lautsprecher-Raster), **Lobby** (Hotel-Rezeption: feine Serifen, Messinglinien),
   **Bilderbuch** (für Kinder: Hügel, Sonne oder Mond, ausgeschnittene Karten), **Weihnachten** (Tannengrün und
-  Kerzengold, Lichterkette am oberen Rand, leiser Schnee) – und **Jahreszeiten**, das
+  Kerzengold, Lichterkette am oberen Rand, leiser Schnee), **RGB** (wie ein Gaming-PC: leuchtende Kanten, die durch
+  alle Farben wandern) – und **Jahreszeiten**, das
   von selbst wechselt: Frühling, Sommer, Herbst, Winter, dazu Weihnachten, Silvester, Valentinstag, Ostern und
   Halloween. Kachel-Stile setzen Widgets automatisch in Karten. Hell/Dunkel automatisch nach Sonnenstand (weich
   überblendet) oder fest, pro Display änderbar.
@@ -226,7 +227,7 @@ gerade zeigen, dazu die Karte **Alle Displays**. Ein Display beantwortet in fün
 | Schritt | Frage | Was du dort einstellst |
 |---|---|---|
 | **Ort & Gerät** | Wo hängt es? | Ort (setzt passende Vorgaben), Gerät (Fully, Browser oder HA-App) mit Adresse zum Kopieren |
-| **Inhalte** | Was soll es zeigen? | Seiten der Wiedergabeliste, Reihenfolge, Dauer, „Wann?“ (z. B. nur morgens) und die Nacht |
+| **Inhalte** | Was soll es zeigen? | Seiten der Wiedergabeliste, Reihenfolge (per Ziehen sortieren), Dauer, „Wann?“ (z. B. nur morgens) mit Tagesband „Was läuft wann?“ und die Nacht |
 | **Aussehen** | Wie soll es wirken? | Stil, Hell/Dunkel, Farben, Kacheln, Hintergrund-Animation |
 | **Momente** | Wann soll etwas passieren? | Klingel, Bewegung, Wäsche fertig, Musik, Geburtstag … mit **▶ Testen**, eigene Töne |
 | **Technik** | Steuerung, Ton, Videostream | Bedienmodus, Neustart-Taste und Offline-Meldung, Töne, Videostream zum Fernseher, Fotos |
@@ -258,7 +259,7 @@ Beim ersten Start führt ein **Einrichtungsassistent** durch Ort, Inhalte, Momen
 links alle Seiten, in der Mitte die Seite als Live-Bild, rechts die Einstellungen des gewählten Widgets oder der Seite.
 **Zurück** führt dorthin, wo du herkamst.
 
-- Widgets aus der Leiste unten hinzufügen, ziehen, an der Ecke unten rechts vergrößern; Raster mit halben Zellen und
+- Widgets aus der Leiste unten hinzufügen (mit Suche; die Maus über einem Widget zeigt es vorab in der Seite), ziehen, an der Ecke unten rechts vergrößern; Raster mit halben Zellen und
   Hilfslinien für bündige Kanten.
 - Mehrfachauswahl mit ⇧/⌘-Klick (Windows: Umschalt/Strg), Pfeiltasten verschieben (mit ⇧ in der Größe), ⌘C/⌘V (Strg+C/V) kopiert als YAML – auch
   zwischen Seiten und Geräten, ⌘D dupliziert, ⌫ löscht.
@@ -366,6 +367,7 @@ events:
 | `board` | `entities` (input_text/text, leer = Namen mit „pinnwand“, „nachricht“, „notiz“), `expire_hours`, `size`, `empty_text` |
 | `countdown` | `items: [{name, date \| entity, icon}]` (input_datetime, Zeitstempel-Sensor, Kalender), `max`, `show_past` |
 | `departures` | `entities` (ÖPNV-Sensoren, leer = automatisch), `lines`, `walk` (Minuten), `max`, `show_platform`, `attribute` |
+| `doorlog` | Wer war an der Tür: die letzten Klingel- und Kamera-Momente mit Standbild (HA merkt sich 20, unter `/config/ambiframe/snapshots`): `max` |
 | `map` | Personen und Fahrzeuge auf einer Karte, die sich selbst einpasst (wer am selben Ort ist, erscheint als Avatar-Stapel): `entities` (person.*, device_tracker.*; leer = alle mit Standort), `exclude` (nie zeigen), `away_only` (nur wer unterwegs ist), `tags` (full/name/none), `routes` (Reisezeit-Sensoren – ihre Strecke wird eingezeichnet; Start- und Zieladresse gehen dafür einmal an Nominatim und OSRM von OpenStreetMap, ein unbekannter Start wird `zone.home`), `zone`, `max_zoom`, `map` (auto/light/dark/osm) |
 | `todo` | To-do- oder Einkaufsliste (todo.*), live; Antippen hakt ab, 4 s zurücknehmbar: `entity`, `check: false`, `max`, `show_completed`, `size` |
 | `commute` | Pendelzeit aus Waze-/Google-/HERE-Sensoren: `routes: [{entity, name, arrive („08:00“ → losfahren bis), usual (Minuten)}]` |

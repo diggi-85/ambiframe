@@ -149,18 +149,21 @@ class AfWeather extends AfWidget {
         color: var(--af-ink-3);
         text-align: right;
       }
+      /* Balken in der Handschrift des Stils: Höhe, Ecken, Füllung, auf Wunsch in Segmenten (Maske) */
       .bar {
         position: relative;
-        height: 6px;
-        border-radius: 3px;
+        height: var(--af-bar-h, 6px);
+        border-radius: var(--af-bar-radius, 3px);
         background: var(--af-line);
+        -webkit-mask-image: var(--af-bar-mask, none);
+        mask-image: var(--af-bar-mask, none);
       }
       .bar i {
         position: absolute;
         top: 0;
         bottom: 0;
-        border-radius: 3px;
-        background: linear-gradient(90deg, var(--af-cold), var(--af-accent));
+        border-radius: var(--af-bar-radius, 3px);
+        background: var(--af-bar-fill, linear-gradient(90deg, var(--af-cold), var(--af-accent)));
       }
       .line {
         display: flex;
@@ -304,8 +307,8 @@ class AfWeather extends AfWidget {
             <stop offset="1" stop-color="var(--af-accent)" stop-opacity="0" />
           </linearGradient>
         </defs>
-        <path d=${area} fill="url(#wg)" />
-        <path d=${d} fill="none" stroke="var(--af-accent)" stroke-width="2.4" stroke-linecap="round" />
+        <path d=${area} fill="url(#wg)" style="opacity:var(--af-curve-area, 1)" />
+        <path d=${d} fill="none" stroke="var(--af-accent)" stroke-linecap="round" style="stroke-width:var(--af-curve-w, 2.4);stroke-dasharray:var(--af-curve-dash, none)" />
         ${pts.map((p, i) => {
           if (i % step) return nothing;
           const cx = x(i);

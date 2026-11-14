@@ -277,11 +277,13 @@ class AfPower extends AfTickingWidget {
       }
       .bar {
         position: relative;
-        height: 8px;
-        border-radius: 4px;
+        height: var(--af-bar-h, 8px);
+        border-radius: var(--af-bar-radius, 4px);
         background: var(--af-line);
         margin-top: 26px;
         overflow: hidden;
+        -webkit-mask-image: var(--af-bar-mask, none);
+        mask-image: var(--af-bar-mask, none);
       }
       .bar i {
         position: absolute;

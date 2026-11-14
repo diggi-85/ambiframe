@@ -364,3 +364,64 @@ describe("Bildschirm aus, wenn alle weg sind", () => {
     expect((await mount(config(), hassWith(person("person.a", "not_home")))).hasAttribute("asleep")).toBe(false);
   });
 });
+
+describe("Einblendungen wegwischen", () => {
+  const swipe = async (el: El, target: Element, dx: number, dy = 0) => {
+    const at = (type: string, x: number, y: number) => target.dispatchEvent(new PointerEvent(type, { clientX: x, clientY: y, bubbles: true, composed: true }));
+    at("pointerdown", 200, 200);
+    at("pointermove", 200 + dx / 2, 200 + dy / 2);
+    at("pointermove", 200 + dx, 200 + dy);
+    at("pointerup", 200 + dx, 200 + dy);
+    await el.updateComplete;
+  };
+  const withPip = async () => {
+    const ev = { id: "tuer", kind: "live", entity: "binary_sensor.tuer", to: "on", title: "Haustür", camera: "camera.tuer", enabled: true } as EventConfig;
+    const el = await mount(config({}, [ev]));
+    el.testEvent("tuer");
+    await el.updateComplete;
+    return el;
+  };
+
+  it("schließt das Kamera-Bild, wenn man es weit genug zur Seite wischt", async () => {
+    const el = await withPip();
+    await swipe(el, el.shadowRoot!.querySelector(".pip")!, 40);
+    expect(el.shadowRoot!.querySelector(".pip")).toBeTruthy(); // zu kurz: springt zurück
+    await swipe(el, el.shadowRoot!.querySelector(".pip")!, -150);
+    expect(el.shadowRoot!.querySelector(".pip")).toBeNull();
+  });
+
+  it("lässt senkrechtes Wischen in Ruhe", async () => {
+    const el = await withPip();
+    await swipe(el, el.shadowRoot!.querySelector(".pip")!, 10, 160);
+    expect(el.shadowRoot!.querySelector(".pip")).toBeTruthy();
+  });
+});
+
+describe("Kamera später wieder zeigen", () => {
+  it("blendet einen Kamera-Moment auf diesem Gerät für die gewählte Zeit aus – auch ohne Ton", async () => {
+    const ev = { id: "tuer", kind: "live", entity: "binary_sensor.tuer", to: "on", title: "Haustür", camera: "camera.tuer", enabled: true, sound: "gong" } as EventConfig;
+    const off = ent("binary_sensor.tuer", "off");
+    const el = await mount(config({}, [ev]), hassWith(off));
+    el.testEvent("tuer");
+    await el.updateComplete;
+    (el.shadowRoot!.querySelector('[data-snooze="30"]') as HTMLElement).click();
+    await el.updateComplete;
+    expect(el.shadowRoot!.querySelector(".pip")).toBeNull();
+    played.length = 0;
+    // Bewegung kommt wieder: in den nächsten 30 min weder Bild noch Ton
+    el.hass = hassWith(ent("binary_sensor.tuer", "on"));
+    await el.updateComplete;
+    expect(el.shadowRoot!.querySelector(".pip")).toBeNull();
+    expect(played).toEqual([]);
+  });
+});
+
+describe("Kamera später wieder zeigen (Gegenprobe)", () => {
+  it("zeigt die Kamera bei Bewegung, wenn sie nicht ausgeblendet ist", async () => {
+    const ev = { id: "tuer2", kind: "live", entity: "binary_sensor.tuer2", to: "on", title: "Haustür", camera: "camera.tuer", enabled: true } as EventConfig;
+    const el = await mount(config({}, [ev]), hassWith(ent("binary_sensor.tuer2", "off")));
+    el.hass = hassWith(ent("binary_sensor.tuer2", "on"));
+    await el.updateComplete;
+    expect(el.shadowRoot!.querySelector(".pip")).toBeTruthy();
+  });
+});

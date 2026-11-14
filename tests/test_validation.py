@@ -46,7 +46,7 @@ def test_validation_does_not_mutate_input() -> None:
 
 def test_migrate_weissgold_to_gold_light() -> None:
     config = validate_config(minimal_config(design={"theme": "weissgold"}))
-    assert config["design"]["theme"] == "gold"
+    assert config["design"]["theme"] == "ruhig"
     assert config["design"]["mode"] == "light"
 
 
@@ -505,3 +505,14 @@ def test_dashboard_defaults_to_users_own_default_dashboard() -> None:
     assert validate_config(config)["displays"][0]["control"]["dashboard"] == "/"
     config["displays"][0]["control"] = {"enabled": True, "dashboard": "/dashboard-kueche"}
     assert validate_config(config)["displays"][0]["control"]["dashboard"] == "/dashboard-kueche"
+
+
+def test_merged_styles_keep_working() -> None:
+    """Gold und Minimal gibt es nicht mehr – alte Einstellungen laufen als Ruhig bzw. Klar weiter (auch pro Display, in eigenen Stilen)."""
+    config = minimal_config()
+    config["design"] = {"theme": "gold", "presets": [{"name": "Alt", "design": {"theme": "minimal"}}]}
+    config["displays"][0]["theme"] = "minimal"
+    out = validate_config(config)
+    assert out["design"]["theme"] == "ruhig"
+    assert out["displays"][0]["theme"] == "klar"
+    assert out["design"]["presets"][0]["design"]["theme"] == "klar"
