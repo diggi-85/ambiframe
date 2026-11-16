@@ -425,3 +425,78 @@ describe("Kamera später wieder zeigen (Gegenprobe)", () => {
     expect(el.shadowRoot!.querySelector(".pip")).toBeTruthy();
   });
 });
+
+describe("Laufband für Zuhause", () => {
+  const withTicker = (items: unknown[], display: Partial<DisplayConfig> = {}) => {
+    const c = config(display);
+    c.design = { ...c.design, home_ticker: items } as AmbiframeConfig["design"];
+    return c;
+  };
+  const band = (el: El) => el.shadowRoot!.querySelector(".hticker") as HTMLElement | null;
+  const fenster = ent("binary_sensor.fenster", "on", { friendly_name: "Fenster Bad" }, 40 * 60);
+  const akku = ent("sensor.akku", "8", { friendly_name: "Akku Flur", unit_of_measurement: "%" });
+
+  it("erscheint nur, solange eine Zeile zutrifft – mit „seit …“ bei Zuständen und dem Wert bei Schwellen", async () => {
+    const items = [{ entity: "binary_sensor.fenster" }, { entity: "sensor.akku", below: 15 }];
+    const el = await mount(withTicker(items), hassWith(fenster, akku));
+    expect(band(el)!.textContent).toMatch(/Fenster Bad · (seit|for) 40 min/);
+    expect(band(el)!.textContent).toMatch(/Akku Flur 8[,.]0 %/);
+    expect(band(el)!.classList.contains("run")).toBe(false); // zwei Zeilen stehen
+    const quiet = await mount(withTicker(items), hassWith(ent("binary_sensor.fenster", "off"), ent("sensor.akku", "80")));
+    expect(band(quiet)).toBeNull();
+  });
+
+  it("wartet mit „erst nach“ und nimmt den eigenen Text", async () => {
+    const items = [{ entity: "binary_sensor.fenster", after: 60, text: "Bad lüftet" }];
+    expect(band(await mount(withTicker(items), hassWith(fenster)))).toBeNull(); // erst 40 Minuten offen
+    const late = await mount(withTicker([{ ...items[0], after: 30 }]), hassWith(fenster));
+    expect(band(late)!.textContent).toContain("Bad lüftet");
+  });
+
+  it("läuft ab drei Zeilen, steht im Videostream und lässt sich pro Display abschalten", async () => {
+    const three = [{ entity: "binary_sensor.fenster" }, { entity: "sensor.akku", below: 15 }, { entity: "sensor.akku", above: 5, text: "Noch eins" }];
+    expect(band(await mount(withTicker(three), hassWith(fenster, akku)))!.classList.contains("run")).toBe(true);
+    expect(band(await mount(withTicker(three), hassWith(fenster, akku), true))!.classList.contains("run")).toBe(false);
+    expect(band(await mount(withTicker(three, { home_ticker: false }), hassWith(fenster, akku)))).toBeNull();
+  });
+});
+
+describe("Textgröße „aus der Ferne“", () => {
+  it("vergrößert um 60 % und meldet den Widgets, dass Kleingedrucktes entfällt", async () => {
+    const el = await mount(config({ text_size: "far" }));
+    expect(el.style.getPropertyValue("--af-fs")).toBe("1.6");
+    expect(el.style.getPropertyValue("--af-far")).toBe("1");
+    expect((await mount(config({ text_size: "xlarge" }))).style.getPropertyValue("--af-far")).toBe("");
+  });
+
+  it("schaltet wachsende Balken mit „Zahlen und Balken bewegen: aus“ ab", async () => {
+    const c = config();
+    c.design = { ...c.design, count_up: false } as AmbiframeConfig["design"];
+    expect((await mount(c)).style.getPropertyValue("--af-grow")).toBe("none");
+  });
+});
+
+describe("Nachrichten-Laufband über allen Seiten", () => {
+  const withBand = (display: Partial<DisplayConfig> = {}) => {
+    const c = config(display);
+    c.design = { ...c.design, news_band: { enabled: true, feeds: [{ value: "tagesschau" }] } } as AmbiframeConfig["design"];
+    return c;
+  };
+  const band = (el: El) => el.shadowRoot!.querySelector("af-news.newsband") as El | null;
+
+  it("liegt als Laufband am unteren Rand – unabhängig von der Seite – und lädt nicht bei jedem Neuzeichnen neu", async () => {
+    const el = await mount(withBand());
+    expect(band(el)!.options).toMatchObject({ variant: "ticker", feeds: [{ value: "tagesschau" }] });
+    const first = band(el)!.options;
+    el.requestUpdate();
+    await el.updateComplete;
+    expect(band(el)!.options).toBe(first);
+    expect(band(await mount(config()))).toBeNull(); // nicht eingeschaltet
+  });
+
+  it("bleibt aus, wo ein Laufband aus ist: pro Display abgeschaltet, Fernseher, Videostream", async () => {
+    expect(band(await mount(withBand({ ticker: false })))).toBeNull();
+    expect(band(await mount(withBand({ profile: "tv" })))).toBeNull();
+    expect(band(await mount(withBand(), hassWith(), true))).toBeNull();
+  });
+});

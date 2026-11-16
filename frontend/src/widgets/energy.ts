@@ -292,6 +292,18 @@ class AfPower extends AfTickingWidget {
         bottom: 0;
         border-radius: 4px;
         background: var(--af-accent);
+        transform-origin: left;
+        animation: var(--af-grow, af-grow 0.9s var(--af-ease) both);
+      }
+      @keyframes af-grow {
+        from {
+          transform: scaleX(0);
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .bar i {
+          animation: none;
+        }
       }
       .share {
         font-size: calc(16px * var(--af-fs, 1));

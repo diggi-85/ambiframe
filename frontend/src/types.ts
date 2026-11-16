@@ -284,6 +284,8 @@ export interface DisplayConfig {
   profile?: string;
   /** Nachrichten-Laufband zeigen; fehlt = an, außer beim Profil Fernseher (im Videostream immer aus) */
   ticker?: boolean;
+  /** Laufband für Zuhause (design.home_ticker) auf diesem Display zeigen; fehlt = an */
+  home_ticker?: boolean;
   /** Erinnerungen oben rechts zeigen (fehlt = an) */
   reminders?: boolean;
   /** Ab so vielen Erinnerungen zu einem Stapel mit Zahl zusammenfassen (fehlt = 3, 0 = nie) */
@@ -305,7 +307,22 @@ export type DisplayDesign = Partial<
   Pick<AmbiframeConfig["design"], "accent" | "evening" | "fonts" | "ambient" | "colors" | "radius" | "card_style" | "gap" | "css" | "language" | "cover_colors" | "cover_players" | "palette">
 >;
 
-export type TextSize = "normal" | "large" | "xlarge";
+/** far: aus der Ferne – deutlich größer, Kleingedrucktes (Zweitzeilen, Details) entfällt */
+export type TextSize = "normal" | "large" | "xlarge" | "far";
+
+/** Zeile im Laufband für Zuhause: erscheint, solange die Entität den Zustand hat bzw. der Wert darüber/darunter liegt */
+export interface HomeTickerItem {
+  entity: string;
+  /** Zustand, bei dem die Zeile erscheint (fehlt = on) – entfällt, wenn above/below gesetzt ist */
+  state?: string;
+  above?: number;
+  below?: number;
+  /** erst nach so vielen Minuten in diesem Zustand */
+  after?: number;
+  /** eigener Text statt des Namens der Entität */
+  text?: string;
+  icon?: string;
+}
 
 export type Theme = "ruhig" | "klar" | "glass" | "editorial" | "aurora" | "pixel" | "arcade" | "cockpit" | "tonal" | "kacheln" | "klartext" | "fallblatt" | "millennium" | "glanz" | "handheld" | "bauhaus" | "softui" | "boho" | "landhaus" | "natur" | "galerie" | "papier" | "eink" | "zeitung" | "artdeco" | "terminal" | "verspielt" | "leitsystem" | "swiss" | "rams" | "lobby" | "bilderbuch" | "weihnachten" | "rgb" | "saisonal"
   // „Jahreszeiten“ zur Laufzeit – nicht in der Konfiguration
@@ -354,6 +371,12 @@ export interface AmbiframeConfig {
     cover_colors?: boolean;
     /** Nur diese Player; leer = alle */
     cover_players?: string[];
+    /** Große Zahlen zählen zum neuen Wert, Balken wachsen (fehlt = an) */
+    count_up?: boolean;
+    /** Nachrichten-Laufband am unteren Rand über allen Seiten (Optionen wie beim Nachrichten-Widget) */
+    news_band?: { enabled?: boolean; feeds?: unknown[]; max?: number; speed?: number };
+    /** Laufband am unteren Rand über allen Seiten – nur sichtbar, wenn eine Zeile zutrifft */
+    home_ticker?: HomeTickerItem[];
     /** Gespeicherte eigene Stile (Momentaufnahme des Designs) */
     presets?: { name: string; design: Record<string, unknown> }[];
   };

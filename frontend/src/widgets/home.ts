@@ -74,6 +74,27 @@ class AfValue extends AfWidget {
         line-height: 1;
         margin-top: 12px;
       }
+      /* Riesig: ein Wert füllt das Feld – lesbar von weit weg */
+      :host([huge]) {
+        container-type: size;
+      }
+      .huge {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+      }
+      .huge .name {
+        font-size: max(22px, 7cqh);
+        color: var(--af-ink-2);
+      }
+      .huge .big {
+        font-size: min(62cqh, calc(165cqw / var(--n, 4)));
+        line-height: 1.05;
+        white-space: nowrap;
+      }
     `,
   ];
 
@@ -99,6 +120,13 @@ class AfValue extends AfWidget {
       const n = numberOf(this.hass, entity, attribute);
       return o.cold != null && n != null && n < Number(o.cold);
     };
+    this.toggleAttribute("huge", o.style === "huge");
+    if (o.style === "huge") {
+      return html`<div class="huge">
+        <div class="name">${o.icon ? html`${icon(o.icon)} ` : nothing}${name}</div>
+        <div class="big display num ${cold(o.entity, o.attribute) ? "cold" : ""}" style="--n:${Math.max(2, value.length)}">${value}</div>
+      </div>`;
+    }
     if (o.style !== "card") {
       return html`<div class="plain">
         <div class="name">${o.icon ? html`${icon(o.icon)} ` : nothing}${name}</div>

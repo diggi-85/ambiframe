@@ -80,7 +80,7 @@ export const WIDGET_FIELDS: Record<string, Field[]> = {
     },
     { key: "markdown", label: "Formatierung (Markdown)", type: "boolean", help: "# Titel, - Liste, **fett**, *Akzent*, [mdi:icon], --- Linie" },
     { key: "typewriter", label: "Schreibmaschine", type: "boolean", help: "Text erscheint Zeichen für Zeichen, bei jeder Änderung neu", when: (v) => !v.markdown },
-    { key: "style", label: "Stil", type: "select", options: [[undefined, "Fließtext"], ["label", "Überschrift klein"], ["title", "Titel"], ["big", "Groß"]] },
+    { key: "style", label: "Stil", type: "select", options: [[undefined, "Fließtext"], ["label", "Überschrift klein"], ["title", "Titel"], ["big", "Groß"], ["huge", "Riesig (füllt das Feld)"]] },
     { key: "size", label: "Schriftgröße", type: "number", min: 10, max: 200 },
     { key: "icon", label: "Icon", type: "icon" },
     COLOR,
@@ -168,7 +168,7 @@ export const WIDGET_FIELDS: Record<string, Field[]> = {
     { key: "entity", label: "Entität", type: "entity" },
     { key: "attribute", label: "Attribut", type: "text" },
     { key: "name", label: "Name", type: "text" },
-    { key: "style", label: "Darstellung", type: "select", options: [[undefined, "Schlicht"], ["card", "Karte"]] },
+    { key: "style", label: "Darstellung", type: "select", options: [[undefined, "Schlicht"], ["card", "Karte"], ["huge", "Riesig (füllt das Feld)"]] },
     { ...LABEL, when: (v) => v.style === "card" },
     { key: "icon", label: "Icon", type: "icon" },
     { key: "unit", label: "Einheit", type: "text", placeholder: "automatisch" },
@@ -1511,7 +1511,18 @@ export const displayFields = (config: AmbiframeConfig): Field[] => [
       ["normal", "normal"],
       ["large", "groß (+15 %)"],
       ["xlarge", "sehr groß (+30 %)"],
+      ["far", "aus der Ferne (+60 %, ohne Kleingedrucktes)"],
     ],
+  },
+  {
+    key: "home_ticker",
+    label: "Laufband für Zuhause",
+    type: "select",
+    options: [
+      [undefined, "an"],
+      [false, "aus"],
+    ],
+    help: "Die Zeilen legst du unter „Alle Displays → Momente“ fest.",
   },
   {
     key: "contrast",
@@ -1694,6 +1705,7 @@ export const LOOK_FIELDS: Field[] = [
       [undefined, "normal"],
       ["large", "groß (+15 %)"],
       ["xlarge", "sehr groß (+30 %)"],
+      ["far", "aus der Ferne (+60 %, ohne Kleingedrucktes)"],
     ],
     help: "Kleinere Texte (Beschriftungen, Listen, Details) – für Lesen aus der Entfernung",
   },
@@ -1754,6 +1766,45 @@ export const MOTION_FIELDS: Field[] = [
     help: "Läuft Musik, nehmen Hintergrund, Akzent und Karten die Farben des Album-Covers an – danach blendet es weich zurück.",
   },
   { key: "design.cover_players", label: "Nur diese Player", type: "entities", domains: ["media_player"], help: "Leer = alle", when: (v) => !!v.design?.cover_colors },
+  { key: "design.count_up", label: "Zahlen und Balken bewegen", type: "boolean", default: true, help: "Große Zahlen zählen zum neuen Wert, Balken wachsen beim Seitenwechsel. Auf E-Ink und bei „weniger Bewegung“ immer aus." },
+];
+
+/** Nachrichten-Laufband über allen Seiten (Alle Displays → Momente) */
+export const NEWS_BAND_FIELDS: Field[] = [
+  { key: "design.news_band.enabled", label: "Auf allen Seiten zeigen", type: "boolean", help: "Läuft am unteren Rand – unabhängig davon, welche Seite gerade zu sehen ist. Pro Display abschaltbar (Technik → Nachrichten-Laufband)." },
+  {
+    key: "design.news_band.feeds",
+    label: "Quellen",
+    type: "list",
+    addLabel: "Quelle",
+    help: "Leer = Quellen in der Sprache der Anzeige.",
+    itemLabel: (f) => NEWS_PRESETS.find(([id]) => id === f.value)?.[1] ?? f.value ?? "Quelle",
+    newItem: () => ({ value: defaultFeeds()[0] }),
+    fields: [{ key: "value", label: "Quelle", type: "text", suggestions: NEWS_PRESETS, placeholder: "bbc, tagesschau … oder https://…" }],
+    when: (v) => !!v.design?.news_band?.enabled,
+  },
+  { key: "design.news_band.speed", label: "Tempo (px/s)", type: "number", min: 10, max: 200, placeholder: "45", when: (v) => !!v.design?.news_band?.enabled, advanced: true },
+];
+
+/** Laufband für Zuhause (Alle Displays → Momente) */
+export const HOME_TICKER_FIELDS: Field[] = [
+  {
+    key: "design.home_ticker",
+    label: "",
+    type: "list",
+    addLabel: "Zeile",
+    itemLabel: (it) => it.text || it.entity || "Zeile",
+    newItem: () => ({ entity: "", state: "on" }),
+    fields: [
+      { key: "entity", label: "Entität", type: "entity" },
+      { key: "text", label: "Text", type: "text", placeholder: "Name der Entität" },
+      { key: "state", label: "Zeigen bei Zustand", type: "text", placeholder: "on", when: (v) => v.above == null && v.below == null },
+      { key: "below", label: "… oder Wert unter", type: "number" },
+      { key: "above", label: "… oder Wert über", type: "number" },
+      { key: "after", label: "Erst nach (Minuten)", type: "number", min: 0, help: "z. B. 20: Fenster erst melden, wenn es 20 Minuten offen steht" },
+      { key: "icon", label: "Icon", type: "icon" },
+    ],
+  },
 ];
 
 export const DESIGN_FIELDS: Field[] = [
@@ -1891,6 +1942,37 @@ export const PAGE_TEMPLATES: { id: string; name: string; build: (hass?: Hass) =>
     id: "wortuhr",
     name: "Wortuhr",
     build: () => ({ duration: 60, background: { type: "none" }, palette: "normal", widgets: [w("wortuhr", "wordclock", 0, 0, 12, 8, { face: "black" })] }),
+  },
+  {
+    id: "fern_uhr",
+    name: "Fernseite: Uhrzeit",
+    build: () => ({
+      duration: 30,
+      background: { type: "none" },
+      palette: "normal",
+      widgets: [w("uhr", "clock", 0, 1, 12, 5, { align: "center", valign: "center" }), w("datum", "date", 0, 6, 12, 1, { align: "center", size: 44 })],
+    }),
+  },
+  {
+    id: "fern_wert",
+    name: "Fernseite: ein Wert",
+    // Startwert: Außentemperatur des ersten Wetters – die Entität lässt sich im Widget tauschen
+    build: (hass) => ({
+      duration: 30,
+      background: { type: "none" },
+      palette: "normal",
+      widgets: [w("wert", "value", 0, 0, 12, 8, { style: "huge", entity: firstOf(hass, "weather"), attribute: "temperature", name: t("Draußen"), unit: "°", decimals: 0 })],
+    }),
+  },
+  {
+    id: "fern_satz",
+    name: "Fernseite: ein Satz",
+    build: () => ({
+      duration: 30,
+      background: { type: "none" },
+      palette: "normal",
+      widgets: [w("satz", "text", 0, 0, 12, 8, { style: "huge", text: t("Guten Tag") })],
+    }),
   },
   {
     id: "foto",

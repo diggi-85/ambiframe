@@ -98,7 +98,7 @@ CONDITION = vol.Any(
 
 _PERCENT = vol.All(vol.Coerce(int), vol.Range(min=0, max=100))
 # Lesbarkeit: Größe kleinerer Texte und Kontrast gedämpfter Schrift
-TEXT_SIZES = ("normal", "large", "xlarge")
+TEXT_SIZES = ("normal", "large", "xlarge", "far")
 CONTRASTS = ("normal", "high")
 _COLORS = vol.Schema(
     {
@@ -380,6 +380,8 @@ DISPLAY = vol.Schema(
         vol.Optional("screen_off"): vol.Schema({vol.Optional("away"): [cv.entity_id]}),
         # Nachrichten-Laufband; fehlt = an, außer beim Profil „tv“ (im Videostream ohnehin aus)
         vol.Optional("ticker"): cv.boolean,
+        # Laufband für Zuhause (design.home_ticker) auf diesem Display (fehlt = an)
+        vol.Optional("home_ticker"): cv.boolean,
         # Erinnerungen oben rechts (fehlt = an)
         vol.Optional("reminders"): cv.boolean,
         # ab so vielen Erinnerungen zu einem Stapel mit Zahl zusammenfassen (0 = nie)

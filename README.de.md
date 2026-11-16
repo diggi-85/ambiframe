@@ -122,6 +122,14 @@ Ist die Wäsche fertig, steht es kurz da und bleibt dann als kleine Erinnerung.
   Anordnen der Widgets, Rückgängig und Hinweisen, was fehlt – siehe [Das Studio](#das-studio).
 - **Bedienmodus:** Tippen holt das HA-Dashboard – aus einer Liste gewählt oder das Standard-Dashboard des jeweiligen
   Benutzers; nach einer Minute ohne Berührung kehrt Ambiframe zurück.
+- **Lesbar von weit weg:** Fernseiten zeigen eine Sache bildschirmfüllend (Uhrzeit, ein Wert, ein Satz – die
+  Darstellung *Riesig* von Wert und Text); die Textgröße *aus der Ferne* vergrößert alles um 60 % und lässt das
+  Kleingedruckte weg. Große Zahlen zählen zum neuen Wert, Balken wachsen beim Seitenwechsel (aus auf E-Ink, bei
+  „weniger Bewegung“, im Videostream – oder abschaltbar).
+- **Laufband für Zuhause:** ein Band am unteren Rand über allen Seiten, das nur erscheint, solange etwas zutrifft –
+  ein Fenster seit 20 Minuten offen, die Waschmaschine fertig, ein Akku unter 15 %. Die Zeilen stehen unter
+  *Alle Displays → Momente*. Dort lässt sich auch das **Nachrichten-Laufband** auf allen Seiten einschalten, statt nur
+  auf einer Nachrichtenseite.
 - **Kamera nativ** über HAs eigenen Stream (WebRTC/HLS) – alle Displays teilen sich eine Verbindung zur Kamera,
   wichtig bei Kameras, die nur wenige erlauben (z. B. Tapo). Bis das Livebild läuft, steht das letzte Standbild da
   statt einer leeren Fläche; MJPEG nur als Rückfall.
@@ -241,7 +249,7 @@ simulieren (Sonne, Regen, Schnee, Wind, klare Nacht) und Momente testen, ohne et
 einen Stil, zeigt die Vorschau ihn sofort.
 
 **Erweitert** (oben, wird pro Gerät gemerkt) blendet alles Weitere ein: zusätzliche Felder, eigene Bedingungen in der
-Wiedergabeliste, Schriften, Kontrast und Textgröße, eigene Farben je Hell/Dunkel, eigenes CSS, eigene Stile (speichern,
+Wiedergabeliste, Schriften, Kontrast und Textgröße (bis *aus der Ferne*: +60 %, ohne Kleingedrucktes), eigene Farben je Hell/Dunkel, eigenes CSS, eigene Stile (speichern,
 exportieren, importieren) und unter *Alle Displays → Fotos & KI* die ganze Konfiguration als **YAML**.
 
 ![Studio: Momente eines Displays](https://raw.githubusercontent.com/diggi-85/ambiframe/main/docs/screenshots/studio-momente.jpg)
@@ -329,12 +337,12 @@ events:
 | `pixel` | `items: [{type: time/date, entity, attribute, text, icon, unit, decimals, color}]`, `interval`, `frame` |
 | `date` | `format` (long/short), `size`, `color`, `style: card` |
 | `dayclock` | Tagesuhr für Senioren: Wochentag und Tageszeit in Worten („Dienstag – Nachmittag“), darunter das Datum; `date: false`, `time: true`, `color` |
-| `text` | `text` (darf Jinja enthalten), `markdown`, `style` (label/title/body/big), `size`, `color`, `icon` |
+| `text` | `text` (darf Jinja enthalten), `markdown`, `style` (label/title/body/big, `huge` füllt das Feld), `size`, `color`, `icon` |
 | `chart` | `entities: [{entity, name, color}]`, `kind` (line/area/bar), `hours`, `period` (hour/day), `value`, `min`, `max`, `unit`, `decimals`, `label`, `style: card` |
 | `gauge` | `entity`, `attribute`, `kind` (ring/half), `min`, `max`, `unit`, `decimals`, `color`, `severity: [{from, color}]`, `name`, `icon` |
 | `image` | `url` (Link, `/local/…`, `media-source://…`, Vorlage) oder `entity`, `fit` (cover/contain), `refresh`, `caption`, `radius` |
 | `weather` | `entity`, `variant` (now/card/hourly/daily/rain/line), `hours`, `days`, `name`, `rain_sensor`, `threshold` |
-| `value` | `entity`, `attribute`, `name`, `unit`, `decimals`, `style: card`, `label`, `icon`, `sub`, `secondary`, `cold` |
+| `value` | `entity`, `attribute`, `name`, `unit`, `decimals`, `style` (`card` oder `huge` – füllt das Feld), `label`, `icon`, `sub`, `secondary`, `cold` |
 | `rooms` | `rooms: [{name, temperature, humidity, climate, windows}]`, `cold`, `warm`, `columns` |
 | `status` | `windows` (auto/Liste), `appliances`, `lights: auto`, `waste`, `waste_days`, `extra`, `max` |
 | `calendar` | `entity`, `variant` (card/line), `waste`, `days`, `label` |

@@ -204,6 +204,8 @@ const TEXT_STYLES: Record<string, string> = {
   title: "font-size:44px;line-height:1.05",
   body: "font-size: calc(21px * var(--af-fs, 1));line-height:1.45;color:var(--af-ink-2)",
   big: "font-size:84px;line-height:1",
+  // füllt das Feld – lesbar von weit weg (--n: Zahl der Zeichen)
+  huge: "font-size:min(62cqh, calc(165cqw / var(--n, 8)));line-height:1.05;white-space:nowrap;width:100%;text-align:center",
 };
 
 /**
@@ -218,6 +220,10 @@ class AfText extends AfWidget {
     css`
       .md {
         width: 100%;
+      }
+      :host([huge]) {
+        container-type: size;
+        justify-content: center;
       }
       .wait {
         opacity: 0.35;
@@ -273,9 +279,11 @@ class AfText extends AfWidget {
   render() {
     const o = this.options;
     const style = TEXT_STYLES[o.style] ?? TEXT_STYLES.body;
-    const extra = [o.size ? `font-size:${Number(o.size)}px` : "", o.color ? `color:${color(o.color, "")}` : ""].join(";");
-    const font = o.font === "display" || o.style === "title" || o.style === "big" ? "display" : "";
     const text = this.tpl.text(o.text);
+    const huge = o.style === "huge";
+    this.toggleAttribute("huge", huge);
+    const extra = [o.size && !huge ? `font-size:${Number(o.size)}px` : "", o.color ? `color:${color(o.color, "")}` : "", huge ? `--n:${Math.max(2, ...(text ?? "").split("\n").map((l) => l.length))}` : ""].join(";");
+    const font = o.font === "display" || o.style === "title" || o.style === "big" || huge ? "display" : "";
     if (text === undefined) return html`<div class="wait" style="${style};${extra}">…</div>`;
     const icon = o.icon ? html`${anyIcon(o.icon)} ` : nothing;
     if (o.markdown) return html`<div style="${style};${extra};width:100%">${icon}${markdown(text)}</div>`;

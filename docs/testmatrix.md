@@ -89,6 +89,10 @@ Ausführen: `cd frontend && npm test` (Frontend) · `.venv/bin/python -m pytest`
 | Aussehen aller 35 Stile auf Zuhause, Wetter und Tagesvorschau bleibt gleich (Uhrzeit und Zufall eingefroren) | `frontend/tools/visual.mjs`, Referenzbilder in `frontend/test/visual/` |
 | Studio: Wiedergabe per Ziehen sortieren, Tagesband „Was läuft wann?“ (auch über Mitternacht), Hinweis auf verborgene Einstellungen | `studio-advanced.test.ts` › Wiedergabe sortieren, Was läuft wann?, Erweitert |
 | Seiteneditor: Widget-Suche, Vorschau unter der Maus ändert nichts, Seite direkt aufs Display nehmen | `page-editor.test.ts` › Widget-Liste, Seite in die Wiedergabe aufnehmen |
+| Laufband für Zuhause: nur bei zutreffender Zeile, „seit …“, Schwellen, „erst nach“, läuft ab drei Zeilen, steht im Videostream, pro Display abschaltbar | `display.test.ts` › Laufband für Zuhause |
+| Nachrichten-Laufband über allen Seiten: unabhängig von der Seite, lädt nicht bei jedem Neuzeichnen, aus bei abgeschaltetem Laufband/Fernseher/Videostream | `display.test.ts` › Nachrichten-Laufband über allen Seiten |
+| Textgröße „aus der Ferne“ (+60 %, Kleingedrucktes entfällt), auch im Backend erlaubt | `display.test.ts` › Textgröße „aus der Ferne“, `test_readability_settings` |
+| Zahlen, die sich bewegen: erkennt genau eine schlichte Zahl, lässt Uhrzeiten, Spannen und Tausenderpunkte in Ruhe; abschaltbar | `logic.test.ts` › Zahlen, die sich bewegen, `display.test.ts` › Textgröße „aus der Ferne“ |
 
 ## Noch ohne automatischen Test (vor Releases von Hand)
 
@@ -96,5 +100,6 @@ Ausführen: `cd frontend && npm test` (Frontend) · `.venv/bin/python -m pytest`
 - Echtes geteiltes Google-Album: von Hand geprüft am 31.10.2026 (11 von 11 Fotos, volle Größe). Vor Releases erneut prüfen – Google kann den Seitenaufbau ändern.
 - Erreichbarkeit der echten Anbieter (Wikimedia, NASA, Picsum).
 - Geräte: iPad (HA-App-Karte), Android mit Fully, Fernseher per Videostream – von Hand geprüft am 10.11.2026. Vor Releases mit größeren Änderungen am Display erneut prüfen.
+- Zählende Zahlen, wachsende Balken, Darstellung „Riesig“ und Fernseiten-Vorlagen: von Hand im Browser geprüft am 16.11.2026 (Zahl zählt 3 → 14, im Hintergrund-Tab steht sofort der echte Wert).
 - Studio am Handy (375 px breit: Leiste, Schritte, Wiedergabe, Seiteneditor): von Hand geprüft am 14.11.2026.
 - Studio im hellen HA-Theme (Übersicht, Momente, Seiteneditor, Assistent): von Hand geprüft am 10.11.2026.

@@ -2252,6 +2252,15 @@ export const stillStyles = css`
 `;
 
 export const widgetStyles = [stillStyles, css`
+  /* Textgröße „aus der Ferne“ (--af-far: 1): Zweitzeilen und Details entfallen, der Rest wird groß */
+  @container style(--af-far: 1) {
+    .b,
+    .desc,
+    .rm,
+    .meta {
+      display: none !important;
+    }
+  }
   :host {
     display: block;
     box-sizing: border-box;

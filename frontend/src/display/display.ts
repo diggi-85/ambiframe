@@ -5,12 +5,12 @@ import { keyed } from "lit/directives/keyed.js";
 import { repeat } from "lit/directives/repeat.js";
 import { ForecastStore, PhotoProvider, preload, type DisplayContext } from "../data";
 import { fontStack } from "../fonts";
-import { MDI_MAP, iconSvg } from "../icons";
+import { MDI_MAP, anyIcon, iconSvg } from "../icons";
 import { THEME_DEFS, digitFace, normalizeTheme, seasonTheme, stillStyles, themeTokens, PALETTES, dayHue, airOf, withAir } from "../styles";
 import type { CardStyle, DisplayConfig, EventConfig, Hass, HassEntity, PageConfig, Photo, TapAction, TransitionConfig, AmbiframeConfig } from "../types";
 import { triggered } from "../events";
 import { playSound, stopSound } from "../sound";
-import { checkCondition, checkConditions, customStyle, duration, effectiveConfig, fmt, fmtTime } from "../util";
+import { checkCondition, checkConditions, customStyle, duration, effectiveConfig, fmt, fmtTime, tickerLines } from "../util";
 import { define } from "../widgets/base";
 import "../widgets/media";
 import { BASE, gridFor, type Grid, type Orientation } from "./grid";
@@ -380,7 +380,8 @@ export class AfDisplay extends LitElement {
     this.mediaPoll = window.setInterval(() => this.mediaTick(), 15e3);
     // Mini-Karte: Fortschritt nachführen und nach der Pause wieder ausblenden
     this.miniTicker = window.setInterval(() => {
-      if (this.nowPlaying() || this.miniShown) this.requestUpdate();
+      // Laufband für Zuhause: „seit 40 min“ und „erst nach …“ laufen mit der Zeit weiter
+      if (this.nowPlaying() || this.miniShown || this.config?.design.home_ticker?.length) this.requestUpdate();
       this.pruneChips();
     }, 5e3);
     if (this.started) this.restart();
@@ -529,7 +530,10 @@ export class AfDisplay extends LitElement {
     const mix = (color: string | undefined, pct: number) => (color ? `color-mix(in srgb, ${color} ${pct}%, transparent)` : undefined);
     // Lesbarkeit: kleinere Texte größer, gedämpfte Schrift kräftiger (Display vor Design)
     const size = this.display?.text_size ?? design?.text_size ?? "normal";
-    set("--af-fs", size === "large" ? "1.15" : size === "xlarge" ? "1.3" : undefined);
+    set("--af-fs", size === "large" ? "1.15" : size === "xlarge" ? "1.3" : size === "far" ? "1.6" : undefined);
+    // aus der Ferne: Kleingedrucktes entfällt (widgetStyles) · Zahlen und Balken ohne Bewegung, wenn abgeschaltet
+    set("--af-far", size === "far" ? "1" : undefined);
+    set("--af-grow", design?.count_up === false ? "none" : undefined);
     const high = (this.display?.contrast ?? design?.contrast) === "high";
     set("--af-c2", high ? "0.9" : undefined);
     set("--af-c3", high ? "0.72" : undefined);
@@ -1101,6 +1105,39 @@ export class AfDisplay extends LitElement {
    * Erinnerungen oben rechts. Ab `reminders_stack` (Standard 3, 0 = nie) liegen sie als Stapel mit Zahl übereinander –
    * wie Mitteilungen bei iOS; Antippen klappt ihn auf (nach 20 s wieder zu), dort auch „Alle entfernen“.
    */
+  /**
+   * Laufband für Zuhause: unten über allen Seiten, nur solange eine Zeile zutrifft; nachts aus. Es läuft erst ab drei
+   * Zeilen und nur, wo ein Laufband flüssig ist (nicht im Videostream, auf E-Ink, am Fernseher) – sonst steht es.
+   */
+  private renderTicker() {
+    if (this.night || this.display?.home_ticker === false) return nothing;
+    const lines = tickerLines(this.hass, this.config?.design.home_ticker);
+    if (!lines.length) return nothing;
+    const run = lines.map((l) => html`<span>${l.icon ? anyIcon(l.icon) : nothing}${l.text}</span><i>•</i>`);
+    const move = this.ctx?.ticker !== false && lines.length > 2;
+    const up = this.config?.design.news_band?.enabled && this.ctx?.ticker !== false;
+    return html`<div class="hticker ${move ? "run" : ""} ${up ? "up" : ""}"><div class="track" style="--d:${lines.length * 9}s">${run}${move ? run : nothing}</div></div>`;
+  }
+
+  private bandKey = "";
+  private bandOptions: Record<string, unknown> = {};
+
+  /**
+   * Nachrichten-Laufband über allen Seiten (design.news_band) – dasselbe Widget wie auf einer Seite, nur am unteren
+   * Rand. Aus, wo ein Laufband nicht flüssig läuft oder abgeschaltet ist (ctx.ticker), und nachts.
+   */
+  private renderNewsBand() {
+    const band = this.config?.design.news_band;
+    if (!band?.enabled || this.night || this.ctx?.ticker === false) return nothing;
+    // Optionen nur bei Änderung neu – sonst lädt das Widget bei jedem Neuzeichnen die Meldungen neu
+    const key = JSON.stringify(band);
+    if (key !== this.bandKey) {
+      this.bandKey = key;
+      this.bandOptions = { ...band, variant: "ticker" };
+    }
+    return html`<af-news class="newsband" .hass=${this.hass} .ctx=${this.ctx} .options=${this.bandOptions}></af-news>`;
+  }
+
   private renderChips() {
     if (!this.chips.length || this.alarm) return nothing;
     const chip = (c: Chip) => html`<div class="chip" data-id=${c.id}>${icon(c.icon)}<span>${c.text}</span><span class="faint num">${fmtTime(c.at)}</span></div>`;
@@ -1848,7 +1885,7 @@ export class AfDisplay extends LitElement {
             .orientation=${this.orient}
           ></af-page>`,
       )}
-      ${this.renderChips()}
+      ${this.renderChips()} ${this.renderNewsBand()} ${this.renderTicker()}
       ${this.renderEffect()} ${this.renderMini()} ${this.renderMedia()} ${this.renderPip()} ${this.renderPopup()} ${this.renderNotice()} ${this.renderAlarm()}
       ${this.renderAsk()} ${this.renderToast()} ${this.renderNav()} ${this.renderMenu()} ${this.renderHistory()}
     </div>
@@ -2297,6 +2334,79 @@ export class AfDisplay extends LitElement {
         display: flex;
         gap: 10px;
         z-index: 20;
+      }
+      /* Laufband für Zuhause: liegt im unteren Seitenrand, verdeckt also keine Widgets */
+      .hticker {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        height: 38px;
+        z-index: 19;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+        white-space: nowrap;
+        background: var(--af-chip);
+        color: var(--af-ink);
+        font: 500 calc(17px * var(--af-fs, 1)) / 1 var(--af-sans);
+        border-top: 1px solid var(--af-line);
+      }
+      /* Nachrichten-Laufband über allen Seiten; das Laufband für Zuhause rückt dann eine Zeile höher */
+      .newsband {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        height: 38px;
+        z-index: 18;
+        background: var(--af-chip);
+        border-top: 1px solid var(--af-line);
+        --af-fs: 0.82;
+      }
+      .hticker.up {
+        bottom: 38px;
+      }
+      .hticker .track {
+        display: flex;
+        align-items: center;
+        gap: 18px;
+        padding: 0 18px;
+      }
+      .hticker span {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .hticker svg,
+      .hticker ha-icon {
+        width: 1.1em;
+        height: 1.1em;
+        color: var(--af-accent);
+      }
+      .hticker i {
+        font-style: normal;
+        color: var(--af-ink-3);
+      }
+      .hticker:not(.run) i:last-child {
+        display: none;
+      }
+      .hticker.run {
+        justify-content: flex-start;
+      }
+      .hticker.run .track {
+        animation: hticker var(--d, 30s) linear infinite;
+      }
+      @keyframes hticker {
+        to {
+          transform: translateX(-50%);
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .hticker.run .track {
+          animation: none;
+        }
       }
       .chip {
         display: flex;

@@ -164,6 +164,18 @@ class AfWeather extends AfWidget {
         bottom: 0;
         border-radius: var(--af-bar-radius, 3px);
         background: var(--af-bar-fill, linear-gradient(90deg, var(--af-cold), var(--af-accent)));
+        transform-origin: left;
+        animation: var(--af-grow, af-grow 0.9s var(--af-ease) both);
+      }
+      @keyframes af-grow {
+        from {
+          transform: scaleX(0);
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .bar i {
+          animation: none;
+        }
       }
       .line {
         display: flex;

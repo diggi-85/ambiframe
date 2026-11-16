@@ -1,7 +1,7 @@
 // Formatierung, Zustandshilfen und Bedingungen
 import { locale, t } from "./i18n";
 import { templateCondition } from "./template";
-import type { AmbiframeConfig, Condition, ConditionContext, Hass, HassEntity } from "./types";
+import type { AmbiframeConfig, Condition, ConditionContext, Hass, HassEntity, HomeTickerItem } from "./types";
 
 
 export const fmt = (n: unknown, digits = 1): string => {
@@ -141,6 +141,23 @@ export const dueWithin = (hass: Hass | undefined, id: string | undefined, days: 
   const diff = dayDiff(d);
   return diff >= 0 && diff <= days ? d : null;
 };
+
+/** Zeilen des Laufbands für Zuhause, die gerade zutreffen – mit „seit 40 min“ bei Zuständen */
+export const tickerLines = (hass: Hass | undefined, items?: HomeTickerItem[], now = Date.now()): { icon?: string; text: string }[] =>
+  (items ?? []).flatMap((it) => {
+    const s = stateOf(hass, it.entity);
+    if (!isAvailable(s)) return [];
+    const numeric = it.above != null || it.below != null;
+    const n = parseFloat(s!.state);
+    const hit = numeric ? Number.isFinite(n) && (it.above == null || n > Number(it.above)) && (it.below == null || n < Number(it.below)) : s!.state === String(it.state ?? "on");
+    const min = Math.floor((now - new Date(s!.last_changed).getTime()) / 60e3);
+    if (!hit || (it.after && min < Number(it.after))) return [];
+    const name = it.text || (s!.attributes.friendly_name as string | undefined) || it.entity;
+    const unit = s!.attributes.unit_of_measurement as string | undefined;
+    // Bei Werten ist last_changed die letzte Änderung des Werts, nicht der Moment der Überschreitung – daher ohne „seit“
+    const tail = numeric ? ` ${fmt(n, Math.abs(n) >= 100 ? 0 : 1)}${unit ? ` ${unit}` : ""}` : min >= 1 ? ` · ${min < 90 ? t("seit {n} min", { n: min }) : t("seit {n} h", { n: Math.round(min / 60) })}` : "";
+    return [{ icon: it.icon, text: `${name}${tail}` }];
+  });
 
 /** „gerade“, „vor 12 min“, „vor 3 h“, „gestern 18:04“ */
 export const ago = (iso?: string | Date): string => {

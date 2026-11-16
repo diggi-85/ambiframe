@@ -355,3 +355,17 @@ describe("Zahlen in der Titelschrift", () => {
     expect(digitFace(undefined)).toBe("");
   });
 });
+
+describe("Zahlen, die sich bewegen", () => {
+  it("findet genau eine schlichte Zahl samt Vorspann, Einheit und Trennzeichen", async () => {
+    const { parseCount } = await import("../src/widgets/base");
+    expect(parseCount("21,4 °C")).toMatchObject({ pre: "", post: " °C", sep: ",", decimals: 1, value: 21.4 });
+    expect(parseCount("−3°")).toMatchObject({ value: -3, decimals: 0, minus: "−", post: "°" });
+    expect(parseCount("ca. 80 %")).toMatchObject({ pre: "ca. ", value: 80 });
+  });
+
+  it("lässt Uhrzeiten, Spannen, Tausenderpunkte und Text in Ruhe", async () => {
+    const { parseCount } = await import("../src/widgets/base");
+    for (const text of ["07:42", "6° bis 14°", "1.234 W", "–", "bereit"]) expect(parseCount(text)).toBeNull();
+  });
+});

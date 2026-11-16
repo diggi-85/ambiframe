@@ -231,6 +231,12 @@ def test_readability_settings() -> None:
     raw["displays"][0].update(text_size="xlarge", contrast="normal")
     config = validate_config(raw)
     assert config["displays"][0]["text_size"] == "xlarge"
+    # „aus der Ferne“ und das Laufband für Zuhause (Zeilen im Design, Schalter pro Display)
+    far = minimal_config(design={"text_size": "far", "home_ticker": [{"entity": "binary_sensor.fenster", "after": 20}]})
+    far["displays"][0].update(text_size="far", home_ticker=False)
+    checked = validate_config(far)
+    assert checked["displays"][0]["home_ticker"] is False
+    assert checked["design"]["home_ticker"][0]["after"] == 20
     raw["design"]["text_size"] = "riesig"
     with pytest.raises(vol.Invalid):
         validate_config(raw)

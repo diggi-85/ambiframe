@@ -19,7 +19,7 @@ import "../editor/wizard";
 import type { Note } from "../editor/page-editor";
 import { checkHealth, type HealthGo, type PhotoHealth } from "../editor/health";
 import { PROFILES, displayFromProfile, profilePlaylist } from "../editor/profiles";
-import { AMBIENT_OPTIONS, colorFields, dashboardsOf, DESIGN_FIELDS, DISPLAY_DESIGN_FIELDS, DISPLAY_PHOTO_FIELDS, DISPLAY_SOUND_FIELDS, DISPLAY_STREAM_FIELDS, displayFields, eventFields, LOOK_FIELDS, MOTION_FIELDS, PAGE_TEMPLATES, SHAPE_FIELDS, slug, SUMMARY_FIELDS, uniqueId } from "../editor/schemas";
+import { AMBIENT_OPTIONS, colorFields, dashboardsOf, DESIGN_FIELDS, DISPLAY_DESIGN_FIELDS, HOME_TICKER_FIELDS, NEWS_BAND_FIELDS, DISPLAY_PHOTO_FIELDS, DISPLAY_SOUND_FIELDS, DISPLAY_STREAM_FIELDS, displayFields, eventFields, LOOK_FIELDS, MOTION_FIELDS, PAGE_TEMPLATES, SHAPE_FIELDS, slug, SUMMARY_FIELDS, uniqueId } from "../editor/schemas";
 import { define } from "../widgets/base";
 import { WIDGETS } from "../widgets/registry";
 
@@ -1298,6 +1298,13 @@ export class AmbiframeStudio extends LitElement {
           </article>`;
         })}
       </div>
+      ${this.all
+        ? html`<h3>${t("Laufband für Zuhause")}</h3>
+            <p class="muted">${t("Ein Band am unteren Rand über allen Seiten – es erscheint nur, solange eine Zeile zutrifft: Fenster offen, Waschmaschine fertig, Akku leer.")}</p>
+            ${this.form(HOME_TICKER_FIELDS, c, (v) => this.mutate((cc) => (cc.design = (v as AmbiframeConfig).design)))}
+            <h3>${t("Nachrichten-Laufband")}</h3>
+            ${this.form(NEWS_BAND_FIELDS, c, (v) => this.mutate((cc) => (cc.design = (v as AmbiframeConfig).design)))}`
+        : nothing}
       <h3>${t("Neuer Moment")}</h3>
       <div class="grid3">
         ${MOMENT_TEMPLATES.map(

@@ -116,6 +116,13 @@ Dutch and French).</sub>
   per page.
 - **Clocks:** word clock (German, English, Dutch, French; faces black, white, brass, copper), analogue clock (station,
   plain, elegant, dots), split-flap clock and departures, LED pixel display with 8×8 icons, typewriter text.
+- **Readable from across the room:** far-view pages show one thing filling the screen (time, one value, one
+  sentence – the *Huge* look of the value and text widgets); the text size *from afar* enlarges everything by 60 % and
+  drops the small print. Large numbers count to their new value and bars grow when the page changes (off on e-ink,
+  with reduced motion, in the video stream – or switch it off).
+- **Home ticker:** a band along the bottom over every page that only appears while something applies – a window open
+  for 20 minutes, the washing machine done, a battery below 15 %. Set the lines under *All displays → Moments*. The **news ticker** can
+  run there too, on every page instead of only on a news page.
 - **The Studio:** one editor for everything, always with a live preview – built around the display, with a page
   editor for arranging widgets, undo and hints about what's missing – see [The Studio](#the-studio).
 - **Control mode:** a tap brings up the HA dashboard – pick it from a list, or leave it on each user's own default
@@ -233,7 +240,7 @@ weather (sun, rain, snow, wind, clear night) and test moments without saving any
 in the preview right away.
 
 **Advanced** (at the top, remembered per device) reveals everything else: more fields, custom conditions in the
-playlist, fonts, contrast and text size, custom colours for light and dark, custom CSS, custom styles (save, export,
+playlist, fonts, contrast and text size (up to *from afar*: +60 %, no small print), custom colours for light and dark, custom CSS, custom styles (save, export,
 import) and, under *All displays → Photos & AI*, the whole configuration as **YAML**.
 
 ![Studio: the moments of a display](https://raw.githubusercontent.com/diggi-85/ambiframe/main/docs/screenshots/en/studio-moments.jpg)
@@ -321,12 +328,12 @@ events:
 | `pixel` | `items: [{type: time/date, entity, attribute, text, icon, unit, decimals, color}]`, `interval`, `frame` |
 | `date` | `format` (long/short), `size`, `color`, `style: card` |
 | `dayclock` | Day clock for older people: weekday and time of day in words (“Tuesday – Afternoon”), date below; `date: false`, `time: true`, `color` |
-| `text` | `text` (may contain Jinja), `markdown`, `style` (label/title/body/big), `size`, `color`, `icon` |
+| `text` | `text` (may contain Jinja), `markdown`, `style` (label/title/body/big, `huge` fills the box), `size`, `color`, `icon` |
 | `chart` | `entities: [{entity, name, color}]`, `kind` (line/area/bar), `hours`, `period` (hour/day), `value`, `min`, `max`, `unit`, `decimals`, `label`, `style: card` |
 | `gauge` | `entity`, `attribute`, `kind` (ring/half), `min`, `max`, `unit`, `decimals`, `color`, `severity: [{from, color}]`, `name`, `icon` |
 | `image` | `url` (link, `/local/…`, `media-source://…`, template) or `entity`, `fit` (cover/contain), `refresh`, `caption`, `radius` |
 | `weather` | `entity`, `variant` (now/card/hourly/daily/rain/line), `hours`, `days`, `name`, `rain_sensor`, `threshold` |
-| `value` | `entity`, `attribute`, `name`, `unit`, `decimals`, `style: card`, `label`, `icon`, `sub`, `secondary`, `cold` |
+| `value` | `entity`, `attribute`, `name`, `unit`, `decimals`, `style` (`card`, or `huge` – fills the box), `label`, `icon`, `sub`, `secondary`, `cold` |
 | `rooms` | `rooms: [{name, temperature, humidity, climate, windows}]`, `cold`, `warm`, `columns` |
 | `status` | `windows` (auto/list), `appliances`, `lights: auto`, `waste`, `waste_days`, `extra`, `max` |
 | `calendar` | `entity`, `variant` (card/line), `waste`, `days`, `label` |
