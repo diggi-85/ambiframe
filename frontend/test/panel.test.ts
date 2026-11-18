@@ -34,7 +34,7 @@ const hass = {
 };
 
 describe("Neustart-Erkennung", () => {
-  it("zählt mehrfaches Ein- und Aushängen der Karte nicht als Neustart-Schleife", async () => {
+  it("zählt Neuladungen und mehrfaches Ein- und Aushängen der Karte nie als Absturz", async () => {
     localStorage.clear();
     for (let i = 0; i < 6; i++) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -45,6 +45,6 @@ describe("Neustart-Erkennung", () => {
       expect(el.autoSafe, `Durchgang ${i + 1}`).toBeFalsy();
       el.remove();
     }
-    expect(JSON.parse(localStorage.getItem("ambiframe-starts") ?? "[]")).toHaveLength(1);
+    expect(localStorage.getItem("ambiframe-starts")).toBeNull(); // es wird gar nicht mehr mitgezählt
   });
 });

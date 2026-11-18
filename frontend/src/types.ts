@@ -312,7 +312,15 @@ export type TextSize = "normal" | "large" | "xlarge" | "far";
 
 /** Zeile im Laufband für Zuhause: erscheint, solange die Entität den Zustand hat bzw. der Wert darüber/darunter liegt */
 export interface HomeTickerItem {
-  entity: string;
+  /** false = Zeile bleibt in der Liste, wird aber nicht gezeigt */
+  enabled?: boolean;
+  /** Nur auf diesen Displays (leer = auf allen) */
+  displays?: string[];
+  /** batteries: eine Zeile je Akku unter `below` % (Standard 15) – statt jede Entität einzeln einzutragen */
+  kind?: "batteries";
+  /** Bei kind: batteries nicht melden (Auto, Saugroboter …) */
+  exclude?: string[];
+  entity?: string;
   /** Zustand, bei dem die Zeile erscheint (fehlt = on) – entfällt, wenn above/below gesetzt ist */
   state?: string;
   above?: number;
@@ -374,7 +382,7 @@ export interface AmbiframeConfig {
     /** Große Zahlen zählen zum neuen Wert, Balken wachsen (fehlt = an) */
     count_up?: boolean;
     /** Nachrichten-Laufband am unteren Rand über allen Seiten (Optionen wie beim Nachrichten-Widget) */
-    news_band?: { enabled?: boolean; feeds?: unknown[]; max?: number; speed?: number };
+    news_band?: { enabled?: boolean; feeds?: unknown[]; max?: number; speed?: number; /** Zeilen des Laufbands für Zuhause laufen im selben Band vorweg */ mix?: boolean };
     /** Laufband am unteren Rand über allen Seiten – nur sichtbar, wenn eine Zeile zutrifft */
     home_ticker?: HomeTickerItem[];
     /** Gespeicherte eigene Stile (Momentaufnahme des Designs) */

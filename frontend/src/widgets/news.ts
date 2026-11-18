@@ -1,4 +1,5 @@
 // Nachrichten: großes Bild mit Schlagzeile, Liste oder Laufband – die Feeds holt der Server (ambiframe/news)
+import { anyIcon } from "../icons";
 import { lang, t } from "../i18n";
 import { css, html, nothing, type PropertyValues } from "lit";
 import { keyed } from "lit/directives/keyed.js";
@@ -93,7 +94,10 @@ const preload = (url: string): Promise<void> =>
  * interval (s, Wechsel im Großbild), max (Anzahl), label, speed (Laufband, px/s).
  */
 class AfNews extends AfWidget {
-  static properties = { ...AfWidget.properties, items: { state: true }, idx: { state: true } };
+  static properties = { ...AfWidget.properties, items: { state: true }, idx: { state: true }, lead: { attribute: false } };
+
+  /** Laufband: Zeilen, die vor den Meldungen laufen (gemischtes Band: Laufband für Zuhause) */
+  lead: { icon?: string; text: string }[] = [];
 
   static styles = [
     widgetStyles,
@@ -264,6 +268,15 @@ class AfNews extends AfWidget {
       .track .sep {
         color: var(--af-ink-3);
       }
+      /* Zeilen von Zuhause im gemischten Band: kräftiger als die Meldungen */
+      .track .home {
+        color: var(--af-ink);
+        font-weight: 500;
+      }
+      .track .home .ic {
+        color: var(--af-accent);
+        margin-right: 8px;
+      }
       @keyframes marquee {
         to {
           transform: translateX(-50%);
@@ -366,14 +379,17 @@ class AfNews extends AfWidget {
 
   render() {
     const variant = this.options.variant ?? "hero";
-    if (!this.items.length) {
+    if (!this.items.length && !(variant === "ticker" && this.lead.length)) {
       return html`<div class="calm">${this.options.empty_text ?? t("Nachrichten werden geladen …")}</div>`;
     }
     if (variant === "ticker") {
       // Laufband nur, wo es flüssig läuft: nicht im Videostream und (ohne eigene Einstellung) nicht auf dem Fernseher
       if (this.ctx?.ticker === false) return nothing;
       const list = this.items.slice(0, Number(this.options.max ?? 12));
-      const run = list.map((i) => html`<span><b>${i.source}</b>${i.title}</span><span class="sep">•</span>`);
+      const run = [
+        ...this.lead.map((l) => html`<span class="home">${l.icon ? anyIcon(l.icon) : nothing}${l.text}</span><span class="sep">•</span>`),
+        ...list.map((i) => html`<span><b>${i.source}</b>${i.title}</span><span class="sep">•</span>`),
+      ];
       return html`<div class="tick"><div class="track">${run}${run}</div></div>`;
     }
     if (variant === "list") {

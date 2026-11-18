@@ -143,8 +143,14 @@ export const dueWithin = (hass: Hass | undefined, id: string | undefined, days: 
 };
 
 /** Zeilen des Laufbands für Zuhause, die gerade zutreffen – mit „seit 40 min“ bei Zuständen */
-export const tickerLines = (hass: Hass | undefined, items?: HomeTickerItem[], now = Date.now()): { icon?: string; text: string }[] =>
+export const tickerLines = (hass: Hass | undefined, items?: HomeTickerItem[], now = Date.now(), displayId?: string): { icon?: string; text: string }[] =>
   (items ?? []).flatMap((it) => {
+    if (it.enabled === false || (it.displays?.length && displayId && !it.displays.includes(displayId))) return [];
+    if (it.kind === "batteries")
+      return batteryOverview(hass, { threshold: Number(it.below ?? 15), exclude: it.exclude }).low.map((b) => ({
+        icon: it.icon ?? "mdi:battery-alert",
+        text: `${it.text || t("Akku")} ${b.name}${b.level == null ? "" : ` ${fmt(b.level, 0)} %`}`,
+      }));
     const s = stateOf(hass, it.entity);
     if (!isAvailable(s)) return [];
     const numeric = it.above != null || it.below != null;
@@ -152,7 +158,7 @@ export const tickerLines = (hass: Hass | undefined, items?: HomeTickerItem[], no
     const hit = numeric ? Number.isFinite(n) && (it.above == null || n > Number(it.above)) && (it.below == null || n < Number(it.below)) : s!.state === String(it.state ?? "on");
     const min = Math.floor((now - new Date(s!.last_changed).getTime()) / 60e3);
     if (!hit || (it.after && min < Number(it.after))) return [];
-    const name = it.text || (s!.attributes.friendly_name as string | undefined) || it.entity;
+    const name = it.text || (s!.attributes.friendly_name as string | undefined) || it.entity || "";
     const unit = s!.attributes.unit_of_measurement as string | undefined;
     // Bei Werten ist last_changed die letzte Änderung des Werts, nicht der Moment der Überschreitung – daher ohne „seit“
     const tail = numeric ? ` ${fmt(n, Math.abs(n) >= 100 ? 0 : 1)}${unit ? ` ${unit}` : ""}` : min >= 1 ? ` · ${min < 90 ? t("seit {n} min", { n: min }) : t("seit {n} h", { n: Math.round(min / 60) })}` : "";

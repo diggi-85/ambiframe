@@ -22,17 +22,9 @@ type Command =
 const VERSION = __WB_VERSION__;
 const HEARTBEAT_MS = 30e3;
 
-/* Notfallmodus: so viele Fehler / Starts in diesem Zeitraum gelten als „kaputt“ */
+/* Notfallmodus: so viele Fehler in diesem Zeitraum gelten als „kaputt“ – Neuladungen zählen nicht (Fully, Watchdog, Bildschirm an …) */
 const CRASH_ERRORS = 5;
 const CRASH_WINDOW_MS = 2 * 60e3;
-const LOOP_STARTS = 4;
-/**
- * Schon für diesen Seitenaufruf gezählt? Als Karte im Dashboard (HA-App, iPad) wird die Anzeige bei jedem Zurückkehren,
- * jedem Bildschirm-An und jedem Dashboard-Wechsel neu eingehängt – das ist kein Neustart. Gezählt wird nur ein echtes
- * Neuladen der Seite (das Modul wird dann frisch geladen).
- */
-let startCounted = false;
-const LOOP_WINDOW_MS = 10 * 60e3;
 /** Danach wird die normale Anzeige wieder versucht */
 const SAFE_RETRY_MS = 15 * 60e3;
 /** So lange ohne sichtbare Seite → Notfallmodus */
@@ -282,26 +274,6 @@ class AmbiframeDisplayPanel extends LitElement {
     if (this.errors.length >= CRASH_ERRORS && !this.safeReason) this.enterSafe("Anzeigefehler");
   };
 
-  /** Startet die Seite immer wieder neu (Update, Watchdog …)? Dann erst einmal ruhig im Notfallmodus bleiben. */
-  private checkStartLoop(): void {
-    if (startCounted) return;
-    startCounted = true;
-    const now = Date.now();
-    // Selbst ausgelöstes Neuladen (neue Version, Befehl aus HA) ist kein Absturz – nicht mitzählen
-    const planned = Number(local.get("ambiframe-planned-reload") ?? 0);
-    local.set("ambiframe-planned-reload", "0");
-    if (now - planned < 2 * 60e3) return;
-    let starts: number[] = [];
-    try {
-      starts = JSON.parse(local.get("ambiframe-starts") ?? "[]");
-    } catch {
-      starts = [];
-    }
-    starts = [...starts.filter((t) => typeof t === "number" && now - t < LOOP_WINDOW_MS), now];
-    local.set("ambiframe-starts", JSON.stringify(starts));
-    if (starts.length >= LOOP_STARTS) this.enterSafe("startet immer wieder neu");
-  }
-
   /** Kommt nach dem Laden nie eine Seite auf den Schirm (z. B. nur Seiten mit unerfüllten Bedingungen)? */
   private watchPage = (): void => {
     if (this.safeReason || !this.config || !this.displayId || document.hidden) {
@@ -333,7 +305,6 @@ class AmbiframeDisplayPanel extends LitElement {
     window.addEventListener("error", this.onError);
     window.addEventListener("unhandledrejection", this.onError);
     this.watchTimer = window.setInterval(this.watchPage, 15e3);
-    if (!this.streamMode) this.checkStartLoop();
   }
 
   disconnectedCallback(): void {
@@ -573,7 +544,6 @@ class AmbiframeDisplayPanel extends LitElement {
     const fresh = fetch(import.meta.url, { cache: "reload" }).catch(() => undefined);
     const timeout = new Promise((r) => setTimeout(r, 8000));
     void Promise.race([fresh, timeout]).then(() => {
-      local.set("ambiframe-planned-reload", String(Date.now()));
       location.reload();
     });
   }

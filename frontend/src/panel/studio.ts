@@ -47,7 +47,7 @@ const readAdvanced = (): boolean => {
   }
 };
 
-type Step = "ort" | "inhalte" | "aussehen" | "momente" | "technik";
+type Step = "ort" | "inhalte" | "aussehen" | "momente" | "laufband" | "technik";
 const DISPLAY_STEPS: [Step, string, string][] = [
   ["ort", "Ort & Gerät", "Wo hängt es?"],
   ["inhalte", "Inhalte", "Was soll es zeigen?"],
@@ -58,6 +58,7 @@ const DISPLAY_STEPS: [Step, string, string][] = [
 const ALL_STEPS: [Step, string, string][] = [
   ["aussehen", "Aussehen für alle", "Stil, Farben und Atmosphäre aller Displays"],
   ["momente", "Momente", "Wenn … dann … – für alle Displays"],
+  ["laufband", "Laufbänder", "Was unten durchläuft: Zuhause und Nachrichten"],
   ["inhalte", "Seiten-Bibliothek", "Alle Seiten, die Displays zeigen können"],
   ["technik", "Fotos & KI", "Gemeinsame Quellen und Dienste"],
 ];
@@ -1240,6 +1241,21 @@ export class AmbiframeStudio extends LitElement {
     }
   }
 
+  /** Alle Displays → Laufbänder: was am unteren Rand über allen Seiten läuft */
+  private renderLaufband() {
+    const c = this.draft!;
+    const set = (v: unknown) => this.mutate((cc) => (cc.design = (v as AmbiframeConfig).design));
+    const lines = c.design.home_ticker ?? [];
+    return html`
+      <h3>${t("Laufband für Zuhause")}</h3>
+      <p class="muted">${t("Ein Band am unteren Rand über allen Seiten – es erscheint nur, solange eine Zeile zutrifft: Fenster offen, Waschmaschine fertig, Akku leer.")}</p>
+      <p class="hint">${t("{on} von {n} Zeilen sind an. Jede Zeile lässt sich abschalten, ändern oder auf einzelne Displays beschränken.", { on: lines.filter((l) => l.enabled !== false).length, n: lines.length })}</p>
+      ${this.form(HOME_TICKER_FIELDS, c, set)}
+      <h3>${t("Nachrichten-Laufband")}</h3>
+      ${this.form(NEWS_BAND_FIELDS, c, set)}
+    `;
+  }
+
   private renderMomente() {
     const c = this.draft!;
     const d = this.all ? undefined : this.display;
@@ -1298,13 +1314,6 @@ export class AmbiframeStudio extends LitElement {
           </article>`;
         })}
       </div>
-      ${this.all
-        ? html`<h3>${t("Laufband für Zuhause")}</h3>
-            <p class="muted">${t("Ein Band am unteren Rand über allen Seiten – es erscheint nur, solange eine Zeile zutrifft: Fenster offen, Waschmaschine fertig, Akku leer.")}</p>
-            ${this.form(HOME_TICKER_FIELDS, c, (v) => this.mutate((cc) => (cc.design = (v as AmbiframeConfig).design)))}
-            <h3>${t("Nachrichten-Laufband")}</h3>
-            ${this.form(NEWS_BAND_FIELDS, c, (v) => this.mutate((cc) => (cc.design = (v as AmbiframeConfig).design)))}`
-        : nothing}
       <h3>${t("Neuer Moment")}</h3>
       <div class="grid3">
         ${MOMENT_TEMPLATES.map(
@@ -1445,7 +1454,9 @@ export class AmbiframeStudio extends LitElement {
             ? this.renderAussehen()
             : this.step === "momente"
               ? this.renderMomente()
-              : this.renderTechnik();
+              : this.step === "laufband"
+                ? this.renderLaufband()
+                : this.renderTechnik();
     return html`<div class="workspace">
       <nav class="steps">
         <button class="back" @click=${() => (this.view = "overview")}>${iconSvg("back")} ${t("Übersicht")}</button>

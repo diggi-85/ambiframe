@@ -128,8 +128,9 @@ Ist die Wäsche fertig, steht es kurz da und bleibt dann als kleine Erinnerung.
   „weniger Bewegung“, im Videostream – oder abschaltbar).
 - **Laufband für Zuhause:** ein Band am unteren Rand über allen Seiten, das nur erscheint, solange etwas zutrifft –
   ein Fenster seit 20 Minuten offen, die Waschmaschine fertig, ein Akku unter 15 %. Die Zeilen stehen unter
-  *Alle Displays → Momente*. Dort lässt sich auch das **Nachrichten-Laufband** auf allen Seiten einschalten, statt nur
-  auf einer Nachrichtenseite.
+  *Alle Displays → Laufbänder*: jede Zeile lässt sich abschalten, auf einzelne Displays beschränken, und eine Zeile
+  meldet auf einmal *alle* schwachen Akkus. Dort lässt sich auch das **Nachrichten-Laufband** auf allen Seiten
+  einschalten, statt nur auf einer Nachrichtenseite – und beide Bänder lassen sich zu einem **mischen**.
 - **Kamera nativ** über HAs eigenen Stream (WebRTC/HLS) – alle Displays teilen sich eine Verbindung zur Kamera,
   wichtig bei Kameras, die nur wenige erlauben (z. B. Tapo). Bis das Livebild läuft, steht das letzte Standbild da
   statt einer leeren Fläche; MJPEG nur als Rückfall.

@@ -500,3 +500,42 @@ describe("Nachrichten-Laufband über allen Seiten", () => {
     expect(band(await mount(withBand(), hassWith(), true))).toBeNull();
   });
 });
+
+describe("Laufband für Zuhause: Zeilen wählen und mischen", () => {
+  const cfg = (items: unknown[], news?: Record<string, unknown>, display: Partial<DisplayConfig> = {}) => {
+    const c = config(display);
+    c.design = { ...c.design, home_ticker: items, ...(news ? { news_band: news } : {}) } as AmbiframeConfig["design"];
+    return c;
+  };
+  const fenster = ent("binary_sensor.fenster", "on", { friendly_name: "Fenster Bad" }, 300);
+  const band = (el: El) => el.shadowRoot!.querySelector(".hticker") as HTMLElement | null;
+
+  it("lässt abgeschaltete Zeilen und Zeilen für andere Displays weg", async () => {
+    expect(band(await mount(cfg([{ entity: "binary_sensor.fenster", enabled: false }]), hassWith(fenster)))).toBeNull();
+    expect(band(await mount(cfg([{ entity: "binary_sensor.fenster", displays: ["anderes"] }]), hassWith(fenster)))).toBeNull();
+    expect(band(await mount(cfg([{ entity: "binary_sensor.fenster", displays: ["test"] }]), hassWith(fenster)))).not.toBeNull();
+  });
+
+  it("meldet mit einer Sammelzeile jeden Akku unter der Schwelle – außer den ausgenommenen", async () => {
+    const akku = (id: string, level: string, name: string) => ent(id, level, { friendly_name: name, device_class: "battery", unit_of_measurement: "%" });
+    const hass = hassWith(akku("sensor.flur_battery", "8", "Flur Battery"), akku("sensor.bad_battery", "60", "Bad Battery"), akku("sensor.auto_battery", "5", "Auto Battery"));
+    const el = await mount(cfg([{ kind: "batteries", below: 15, exclude: ["sensor.auto_battery"] }]), hass);
+    expect(band(el)!.textContent).toMatch(/Flur 8 %/);
+    expect(band(el)!.textContent).not.toMatch(/Bad|Auto/);
+  });
+
+  it("mischt auf Wunsch beide Bänder: Zeilen von Zuhause laufen im Nachrichten-Band vorweg", async () => {
+    const mixed = await mount(cfg([{ entity: "binary_sensor.fenster" }], { enabled: true, mix: true }), hassWith(fenster));
+    expect(band(mixed)).toBeNull(); // kein zweites Band
+    const news = mixed.shadowRoot!.querySelector("af-news.newsband") as El;
+    expect(news.lead.map((l: { text: string }) => l.text).join()).toContain("Fenster Bad");
+    await news.updateComplete;
+    expect(news.shadowRoot!.querySelector(".track .home")!.textContent).toContain("Fenster Bad"); // auch bevor Meldungen geladen sind
+    // ohne Mischen: zwei Bänder, das für Zuhause eine Zeile höher
+    const two = await mount(cfg([{ entity: "binary_sensor.fenster" }], { enabled: true }), hassWith(fenster));
+    expect(band(two)!.classList.contains("up")).toBe(true);
+    // wo das Nachrichten-Band aus ist (Fernseher), steht das Laufband für Zuhause weiter allein
+    const tv = await mount(cfg([{ entity: "binary_sensor.fenster" }], { enabled: true, mix: true }, { profile: "tv" }), hassWith(fenster));
+    expect(band(tv)).not.toBeNull();
+  });
+});

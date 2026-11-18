@@ -91,6 +91,8 @@ Ausführen: `cd frontend && npm test` (Frontend) · `.venv/bin/python -m pytest`
 | Seiteneditor: Widget-Suche, Vorschau unter der Maus ändert nichts, Seite direkt aufs Display nehmen | `page-editor.test.ts` › Widget-Liste, Seite in die Wiedergabe aufnehmen |
 | Laufband für Zuhause: nur bei zutreffender Zeile, „seit …“, Schwellen, „erst nach“, läuft ab drei Zeilen, steht im Videostream, pro Display abschaltbar | `display.test.ts` › Laufband für Zuhause |
 | Nachrichten-Laufband über allen Seiten: unabhängig von der Seite, lädt nicht bei jedem Neuzeichnen, aus bei abgeschaltetem Laufband/Fernseher/Videostream | `display.test.ts` › Nachrichten-Laufband über allen Seiten |
+| Laufband für Zuhause: Zeilen abschalten, auf Displays beschränken, Sammelzeile „alle schwachen Akkus“ (mit Ausnahmen), beide Bänder mischen (Zuhause-Zeilen laufen vorweg, am Fernseher bleibt es getrennt) | `display.test.ts` › Laufband für Zuhause: Zeilen wählen und mischen |
+| Neuladungen (Fully, Watchdog, Bildschirm an) lösen nie den Notfallmodus aus; nur Fehler im Ambiframe-Code und „keine Seite sichtbar“ | `panel.test.ts` › Neustart-Erkennung |
 | Textgröße „aus der Ferne“ (+60 %, Kleingedrucktes entfällt), auch im Backend erlaubt | `display.test.ts` › Textgröße „aus der Ferne“, `test_readability_settings` |
 | Zahlen, die sich bewegen: erkennt genau eine schlichte Zahl, lässt Uhrzeiten, Spannen und Tausenderpunkte in Ruhe; abschaltbar | `logic.test.ts` › Zahlen, die sich bewegen, `display.test.ts` › Textgröße „aus der Ferne“ |
 

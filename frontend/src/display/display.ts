@@ -1110,13 +1110,26 @@ export class AfDisplay extends LitElement {
    * Zeilen und nur, wo ein Laufband flüssig ist (nicht im Videostream, auf E-Ink, am Fernseher) – sonst steht es.
    */
   private renderTicker() {
-    if (this.night || this.display?.home_ticker === false) return nothing;
-    const lines = tickerLines(this.hass, this.config?.design.home_ticker);
+    // gemischt laufen die Zeilen im Nachrichten-Band vorweg (renderNewsBand)
+    if (this.mixedBand) return nothing;
+    const lines = this.homeLines();
     if (!lines.length) return nothing;
     const run = lines.map((l) => html`<span>${l.icon ? anyIcon(l.icon) : nothing}${l.text}</span><i>•</i>`);
     const move = this.ctx?.ticker !== false && lines.length > 2;
     const up = this.config?.design.news_band?.enabled && this.ctx?.ticker !== false;
     return html`<div class="hticker ${move ? "run" : ""} ${up ? "up" : ""}"><div class="track" style="--d:${lines.length * 9}s">${run}${move ? run : nothing}</div></div>`;
+  }
+
+  /** Zeilen des Laufbands für Zuhause für dieses Display (nachts und abgeschaltet: keine) */
+  private homeLines() {
+    if (this.night || this.display?.home_ticker === false) return [];
+    return tickerLines(this.hass, this.config?.design.home_ticker, Date.now(), this.display?.id);
+  }
+
+  /** Beide Laufbänder in einem – nur wo das Nachrichten-Band überhaupt läuft */
+  private get mixedBand(): boolean {
+    const band = this.config?.design.news_band;
+    return !!band?.enabled && !!band.mix && !this.night && this.ctx?.ticker !== false;
   }
 
   private bandKey = "";
@@ -1135,7 +1148,7 @@ export class AfDisplay extends LitElement {
       this.bandKey = key;
       this.bandOptions = { ...band, variant: "ticker" };
     }
-    return html`<af-news class="newsband" .hass=${this.hass} .ctx=${this.ctx} .options=${this.bandOptions}></af-news>`;
+    return html`<af-news class="newsband" .hass=${this.hass} .ctx=${this.ctx} .options=${this.bandOptions} .lead=${band.mix ? this.homeLines() : []}></af-news>`;
   }
 
   private renderChips() {
@@ -1788,8 +1801,6 @@ export class AfDisplay extends LitElement {
         this.openHistory(true);
         break;
       case "reload":
-        // Selbst ausgelöst – zählt nicht als Neustart-Schleife
-        writeLocal("ambiframe-planned-reload", String(Date.now()));
         location.reload();
         break;
     }

@@ -1522,7 +1522,7 @@ export const displayFields = (config: AmbiframeConfig): Field[] => [
       [undefined, "an"],
       [false, "aus"],
     ],
-    help: "Die Zeilen legst du unter „Alle Displays → Momente“ fest.",
+    help: "Die Zeilen legst du unter „Alle Displays → Laufbänder“ fest.",
   },
   {
     key: "contrast",
@@ -1769,7 +1769,7 @@ export const MOTION_FIELDS: Field[] = [
   { key: "design.count_up", label: "Zahlen und Balken bewegen", type: "boolean", default: true, help: "Große Zahlen zählen zum neuen Wert, Balken wachsen beim Seitenwechsel. Auf E-Ink und bei „weniger Bewegung“ immer aus." },
 ];
 
-/** Nachrichten-Laufband über allen Seiten (Alle Displays → Momente) */
+/** Nachrichten-Laufband über allen Seiten (Alle Displays → Laufbänder) */
 export const NEWS_BAND_FIELDS: Field[] = [
   { key: "design.news_band.enabled", label: "Auf allen Seiten zeigen", type: "boolean", help: "Läuft am unteren Rand – unabhängig davon, welche Seite gerade zu sehen ist. Pro Display abschaltbar (Technik → Nachrichten-Laufband)." },
   {
@@ -1783,26 +1783,38 @@ export const NEWS_BAND_FIELDS: Field[] = [
     fields: [{ key: "value", label: "Quelle", type: "text", suggestions: NEWS_PRESETS, placeholder: "bbc, tagesschau … oder https://…" }],
     when: (v) => !!v.design?.news_band?.enabled,
   },
+  {
+    key: "design.news_band.mix",
+    label: "Mit dem Laufband für Zuhause mischen",
+    type: "boolean",
+    help: "Ein Band statt zwei: Die Zeilen von Zuhause laufen vor den Meldungen. Wo das Nachrichten-Laufband aus ist (z. B. Fernseher), steht das Laufband für Zuhause weiter allein.",
+    when: (v) => !!v.design?.news_band?.enabled,
+  },
   { key: "design.news_band.speed", label: "Tempo (px/s)", type: "number", min: 10, max: 200, placeholder: "45", when: (v) => !!v.design?.news_band?.enabled, advanced: true },
 ];
 
-/** Laufband für Zuhause (Alle Displays → Momente) */
+/** Laufband für Zuhause (Alle Displays → Laufbänder) */
 export const HOME_TICKER_FIELDS: Field[] = [
   {
     key: "design.home_ticker",
     label: "",
     type: "list",
     addLabel: "Zeile",
-    itemLabel: (it) => it.text || it.entity || "Zeile",
+    itemLabel: (it) => `${it.enabled === false ? "○ " : "● "}${it.text || (it.kind === "batteries" ? t("Schwache Akkus") : it.entity) || t("Zeile")}`,
     newItem: () => ({ entity: "", state: "on" }),
     fields: [
-      { key: "entity", label: "Entität", type: "entity" },
-      { key: "text", label: "Text", type: "text", placeholder: "Name der Entität" },
-      { key: "state", label: "Zeigen bei Zustand", type: "text", placeholder: "on", when: (v) => v.above == null && v.below == null },
-      { key: "below", label: "… oder Wert unter", type: "number" },
-      { key: "above", label: "… oder Wert über", type: "number" },
-      { key: "after", label: "Erst nach (Minuten)", type: "number", min: 0, help: "z. B. 20: Fenster erst melden, wenn es 20 Minuten offen steht" },
+      { key: "enabled", label: "Zeigen", type: "boolean", default: true },
+      { key: "kind", label: "Art", type: "select", options: [[undefined, "Eine Entität"], ["batteries", "Alle schwachen Akkus"]] },
+      { key: "entity", label: "Entität", type: "entity", when: (v) => v.kind !== "batteries" },
+      { key: "text", label: "Text", type: "text", placeholder: "Name der Entität", when: (v) => v.kind !== "batteries" },
+      { key: "state", label: "Zeigen bei Zustand", type: "text", placeholder: "on", when: (v) => v.kind !== "batteries" && v.above == null && v.below == null },
+      { key: "below", label: "… oder Wert unter", type: "number", when: (v) => v.kind !== "batteries" },
+      { key: "above", label: "… oder Wert über", type: "number", when: (v) => v.kind !== "batteries" },
+      { key: "after", label: "Erst nach (Minuten)", type: "number", min: 0, help: "z. B. 20: Fenster erst melden, wenn es 20 Minuten offen steht", when: (v) => v.kind !== "batteries" },
+      { key: "below", label: "Melden unter (%)", type: "number", min: 1, max: 100, placeholder: "15", when: (v) => v.kind === "batteries" },
+      { key: "exclude", label: "Nicht melden", type: "entities", domains: ["sensor", "binary_sensor"], when: (v) => v.kind === "batteries" },
       { key: "icon", label: "Icon", type: "icon" },
+      { key: "displays", label: "Nur auf diesen Displays", type: "multi", options: () => formContext.displays, help: "Nichts gewählt = auf allen" },
     ],
   },
 ];
