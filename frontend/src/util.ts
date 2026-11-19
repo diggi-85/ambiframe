@@ -143,9 +143,50 @@ export const dueWithin = (hass: Hass | undefined, id: string | undefined, days: 
 };
 
 /** Zeilen des Laufbands für Zuhause, die gerade zutreffen – mit „seit 40 min“ bei Zuständen */
-export const tickerLines = (hass: Hass | undefined, items?: HomeTickerItem[], now = Date.now(), displayId?: string): { icon?: string; text: string }[] =>
-  (items ?? []).flatMap((it) => {
+export type TickerLine = { icon?: string; text: string; tone?: "warn" | "bad" };
+
+/** Stufen von NINA/Wetterwarnungen (severity) und der DWD (warning_N_level 1–4) → Wort und Farbe der Zeile */
+const WARN_LEVEL: Record<string, ["Hinweis" | "Warnung" | "Unwetter" | "Extrem", "warn" | "bad"]> = {
+  minor: ["Hinweis", "warn"],
+  moderate: ["Warnung", "warn"],
+  severe: ["Unwetter", "bad"],
+  extreme: ["Extrem", "bad"],
+};
+const DWD_LEVEL = ["", "minor", "moderate", "severe", "extreme"];
+
+/**
+ * Aktive Warnungen als Zeilen mit ihrem Text: NINA/Wetter-Binärsensoren (headline, severity, expires) und DWD-Sensoren
+ * (warning_count, warning_N_headline/_name/_level/_end). Ohne `ids` automatisch alles, was so aussieht.
+ */
+export const warningLines = (hass: Hass | undefined, ids?: string[]): TickerLine[] => {
+  const states = hass?.states ?? {};
+  const list = ids?.length ? ids : Object.keys(states);
+  const lines: TickerLine[] = [];
+  const line = (headline: unknown, level: string, until: unknown) => {
+    const [word, tone] = WARN_LEVEL[level.toLowerCase()] ?? WARN_LEVEL.moderate;
+    const end = parseDate(until);
+    const text = String(headline).replace(/\s+/g, " ").trim().slice(0, 160);
+    lines.push({ icon: "mdi:alert", tone, text: `${t(word)}: ${text}${end ? ` · ${t("bis {when}", { when: `${relDay(end)} ${fmtTime(end)}` })}` : ""}` });
+  };
+  for (const id of list) {
+    const s = states[id];
+    if (!s || !isAvailable(s)) continue;
+    const a = s.attributes;
+    if (id.startsWith("binary_sensor.") && s.state === "on" && a.headline && (ids?.length || a.sender !== undefined || a.severity !== undefined)) line(a.headline, String(a.severity ?? "moderate"), a.expires);
+    else if (id.startsWith("sensor.") && Number(a.warning_count) > 0) {
+      for (let n = 1; n <= Number(a.warning_count); n++) {
+        const headline = a[`warning_${n}_headline`] ?? a[`warning_${n}_name`];
+        if (headline) line(headline, DWD_LEVEL[Number(a[`warning_${n}_level`])] ?? "moderate", a[`warning_${n}_end`]);
+      }
+    }
+  }
+  return lines;
+};
+
+export const tickerLines = (hass: Hass | undefined, items?: HomeTickerItem[], now = Date.now(), displayId?: string): TickerLine[] =>
+  (items ?? []).flatMap((it): TickerLine[] => {
     if (it.enabled === false || (it.displays?.length && displayId && !it.displays.includes(displayId))) return [];
+    if (it.kind === "warnings") return warningLines(hass, it.warn_entities).map((l) => ({ ...l, icon: it.icon ?? l.icon }));
     if (it.kind === "batteries")
       return batteryOverview(hass, { threshold: Number(it.below ?? 15), exclude: it.exclude }).low.map((b) => ({
         icon: it.icon ?? "mdi:battery-alert",
@@ -163,7 +204,7 @@ export const tickerLines = (hass: Hass | undefined, items?: HomeTickerItem[], no
     // Bei Werten ist last_changed die letzte Änderung des Werts, nicht der Moment der Überschreitung – daher ohne „seit“
     const tail = numeric ? ` ${fmt(n, Math.abs(n) >= 100 ? 0 : 1)}${unit ? ` ${unit}` : ""}` : min >= 1 ? ` · ${min < 90 ? t("seit {n} min", { n: min }) : t("seit {n} h", { n: Math.round(min / 60) })}` : "";
     return [{ icon: it.icon, text: `${name}${tail}` }];
-  });
+  }).sort((a, b) => (b.tone === "bad" ? 2 : b.tone ? 1 : 0) - (a.tone === "bad" ? 2 : a.tone ? 1 : 0)); // Warnungen laufen vorweg
 
 /** „gerade“, „vor 12 min“, „vor 3 h“, „gestern 18:04“ */
 export const ago = (iso?: string | Date): string => {

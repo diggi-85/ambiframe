@@ -317,7 +317,9 @@ export interface HomeTickerItem {
   /** Nur auf diesen Displays (leer = auf allen) */
   displays?: string[];
   /** batteries: eine Zeile je Akku unter `below` % (Standard 15) – statt jede Entität einzeln einzutragen */
-  kind?: "batteries";
+  kind?: "batteries" | "warnings";
+  /** Bei kind: warnings – diese Warn-Entitäten (NINA, DWD); leer = automatisch alle gefundenen */
+  warn_entities?: string[];
   /** Bei kind: batteries nicht melden (Auto, Saugroboter …) */
   exclude?: string[];
   entity?: string;

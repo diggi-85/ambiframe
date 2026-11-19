@@ -97,7 +97,7 @@ class AfNews extends AfWidget {
   static properties = { ...AfWidget.properties, items: { state: true }, idx: { state: true }, lead: { attribute: false } };
 
   /** Laufband: Zeilen, die vor den Meldungen laufen (gemischtes Band: Laufband für Zuhause) */
-  lead: { icon?: string; text: string }[] = [];
+  lead: { icon?: string; text: string; tone?: "warn" | "bad" }[] = [];
 
   static styles = [
     widgetStyles,
@@ -277,6 +277,16 @@ class AfNews extends AfWidget {
         color: var(--af-accent);
         margin-right: 8px;
       }
+      /* Warnungen (DWD, NINA) im gemischten Band: Warnfarbe, schwere fett */
+      .track .home.warn,
+      .track .home.bad,
+      .track .home.warn .ic,
+      .track .home.bad .ic {
+        color: var(--af-alert);
+      }
+      .track .home.bad {
+        font-weight: 700;
+      }
       @keyframes marquee {
         to {
           transform: translateX(-50%);
@@ -387,7 +397,7 @@ class AfNews extends AfWidget {
       if (this.ctx?.ticker === false) return nothing;
       const list = this.items.slice(0, Number(this.options.max ?? 12));
       const run = [
-        ...this.lead.map((l) => html`<span class="home">${l.icon ? anyIcon(l.icon) : nothing}${l.text}</span><span class="sep">•</span>`),
+        ...this.lead.map((l) => html`<span class="home ${l.tone ?? ""}">${l.icon ? anyIcon(l.icon) : nothing}${l.text}</span><span class="sep">•</span>`),
         ...list.map((i) => html`<span><b>${i.source}</b>${i.title}</span><span class="sep">•</span>`),
       ];
       return html`<div class="tick"><div class="track">${run}${run}</div></div>`;

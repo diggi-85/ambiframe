@@ -1114,7 +1114,7 @@ export class AfDisplay extends LitElement {
     if (this.mixedBand) return nothing;
     const lines = this.homeLines();
     if (!lines.length) return nothing;
-    const run = lines.map((l) => html`<span>${l.icon ? anyIcon(l.icon) : nothing}${l.text}</span><i>•</i>`);
+    const run = lines.map((l) => html`<span class=${l.tone ?? ""}>${l.icon ? anyIcon(l.icon) : nothing}${l.text}</span><i>•</i>`);
     const move = this.ctx?.ticker !== false && lines.length > 2;
     const up = this.config?.design.news_band?.enabled && this.ctx?.ticker !== false;
     return html`<div class="hticker ${move ? "run" : ""} ${up ? "up" : ""}"><div class="track" style="--d:${lines.length * 9}s">${run}${move ? run : nothing}</div></div>`;
@@ -2395,6 +2395,20 @@ export class AfDisplay extends LitElement {
         width: 1.1em;
         height: 1.1em;
         color: var(--af-accent);
+      }
+      /* Warnungen (DWD, NINA): in Warnfarbe */
+      .hticker span.warn,
+      .hticker span.bad {
+        color: var(--af-alert);
+      }
+      .hticker span.bad {
+        font-weight: 700;
+      }
+      .hticker span.warn svg,
+      .hticker span.bad svg,
+      .hticker span.warn ha-icon,
+      .hticker span.bad ha-icon {
+        color: inherit;
       }
       .hticker i {
         font-style: normal;

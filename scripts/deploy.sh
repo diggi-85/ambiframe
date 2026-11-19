@@ -13,7 +13,9 @@ fi
 
 # Erst prüfen, dann bauen: Typen, Frontend-Tests, Python-Tests (falls die Testumgebung .venv existiert)
 (cd "$ROOT/frontend" && npx tsc --noEmit && npx vitest run --silent >/dev/null && node build.mjs)
-python3 -m py_compile "$ROOT"/custom_components/ambiframe/*.py
+# Die Testumgebung (.venv) hat das passende Python – das System-python3 (macOS: 3.9) kennt die Syntax von HA nicht
+PY="$ROOT/.venv/bin/python"; [ -x "$PY" ] || PY=python3
+"$PY" -m py_compile "$ROOT"/custom_components/ambiframe/*.py
 if [ -x "$ROOT/.venv/bin/python" ]; then
   (cd "$ROOT" && .venv/bin/python -m pytest -q -p no:logging >/dev/null) || { echo "Python-Tests fehlgeschlagen – nicht ausgerollt." >&2; exit 1; }
 fi

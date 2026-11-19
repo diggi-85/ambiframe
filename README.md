@@ -122,7 +122,8 @@ Dutch and French).</sub>
   with reduced motion, in the video stream – or switch it off).
 - **Home ticker:** a band along the bottom over every page that only appears while something applies – a window open
   for 20 minutes, the washing machine done, a battery below 15 %. Set the lines under *All displays → Tickers*: every line can be switched off, limited to single displays, and one
-  line can report *all* low batteries at once. The **news ticker** can run there too, on every page instead of only on a
+  line can report *all* low batteries at once. A **warnings** line shows active DWD and NINA warnings with their text,
+  in red and ahead of everything else – found automatically, or pick the entities. The **news ticker** can run there too, on every page instead of only on a
   news page – and both can be **mixed** into one band.
 - **The Studio:** one editor for everything, always with a live preview – built around the display, with a page
   editor for arranging widgets, undo and hints about what's missing – see [The Studio](#the-studio).

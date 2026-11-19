@@ -129,7 +129,8 @@ Ist die Wäsche fertig, steht es kurz da und bleibt dann als kleine Erinnerung.
 - **Laufband für Zuhause:** ein Band am unteren Rand über allen Seiten, das nur erscheint, solange etwas zutrifft –
   ein Fenster seit 20 Minuten offen, die Waschmaschine fertig, ein Akku unter 15 %. Die Zeilen stehen unter
   *Alle Displays → Laufbänder*: jede Zeile lässt sich abschalten, auf einzelne Displays beschränken, und eine Zeile
-  meldet auf einmal *alle* schwachen Akkus. Dort lässt sich auch das **Nachrichten-Laufband** auf allen Seiten
+  meldet auf einmal *alle* schwachen Akkus. Eine **Warnungen**-Zeile zeigt aktive DWD- und NINA-Warnungen mit ihrem
+  Text, rot und vor allen anderen Zeilen – automatisch gefunden oder mit gewählten Entitäten. Dort lässt sich auch das **Nachrichten-Laufband** auf allen Seiten
   einschalten, statt nur auf einer Nachrichtenseite – und beide Bänder lassen sich zu einem **mischen**.
 - **Kamera nativ** über HAs eigenen Stream (WebRTC/HLS) – alle Displays teilen sich eine Verbindung zur Kamera,
   wichtig bei Kameras, die nur wenige erlauben (z. B. Tapo). Bis das Livebild läuft, steht das letzte Standbild da

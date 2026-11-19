@@ -539,3 +539,37 @@ describe("Laufband für Zuhause: Zeilen wählen und mischen", () => {
     expect(band(tv)).not.toBeNull();
   });
 });
+
+describe("Warnungen im Laufband (DWD, NINA)", () => {
+  const nina = ent("binary_sensor.nina_1", "on", { headline: "Gefahrendurchsage: Gasaustritt in Musterstadt", severity: "Severe", sender: "Stadt", expires: new Date(Date.now() + 3 * 3600e3).toISOString() });
+  const ninaRuhig = ent("binary_sensor.nina_2", "off", { headline: "Alte Meldung", severity: "Minor", sender: "Stadt" });
+  const dwd = ent("sensor.dwd_aktuell", "3", { warning_count: 2, warning_1_headline: "Amtliche WARNUNG vor STARKREGEN", warning_1_level: 2, warning_2_name: "Sturmböen", warning_2_level: 3 });
+  const cfg = (items: unknown[]) => {
+    const c = config();
+    c.design = { ...c.design, home_ticker: items } as AmbiframeConfig["design"];
+    return c;
+  };
+  const text = (el: El) => el.shadowRoot!.querySelector(".hticker")!.textContent!.replace(/\s+/g, " ");
+
+  it("zeigt aktive Warnungen mit ihrem Text – automatisch aus NINA und DWD, ohne ruhige Sensoren", async () => {
+    const el = await mount(cfg([{ kind: "warnings" }]), hassWith(nina, ninaRuhig, dwd));
+    const t = text(el);
+    expect(t).toMatch(/Gasaustritt in Musterstadt/);
+    expect(t).toMatch(/STARKREGEN/);
+    expect(t).toMatch(/Sturmböen/); // DWD: „name“, wenn es keine „headline“ gibt
+    expect(t).not.toMatch(/Alte Meldung/);
+    // schwere Warnungen in Warnfarbe (das laufende Band setzt die Liste doppelt – daher verschiedene Texte zählen)
+    expect(new Set([...el.shadowRoot!.querySelectorAll(".hticker span.bad")].map((x) => x.textContent)).size).toBe(2);
+  });
+
+  it("nimmt nur die gewählten Entitäten und lässt schwere Warnungen vor anderen Zeilen laufen", async () => {
+    const fenster = ent("binary_sensor.fenster", "on", { friendly_name: "Fenster Bad" }, 3000);
+    const el = await mount(cfg([{ entity: "binary_sensor.fenster" }, { kind: "warnings", warn_entities: ["binary_sensor.nina_1"] }]), hassWith(fenster, nina, dwd));
+    expect(text(el)).not.toMatch(/STARKREGEN/);
+    expect(text(el).indexOf("Gasaustritt")).toBeLessThan(text(el).indexOf("Fenster Bad"));
+  });
+
+  it("zeigt nichts, solange keine Warnung aktiv ist", async () => {
+    expect(await mount(cfg([{ kind: "warnings" }]), hassWith(ninaRuhig)).then((e) => e.shadowRoot!.querySelector(".hticker"))).toBeNull();
+  });
+});
