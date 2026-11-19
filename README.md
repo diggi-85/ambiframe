@@ -123,7 +123,9 @@ Dutch and French).</sub>
   with reduced motion, in the video stream – or switch it off).
 - **Home ticker:** a band along the bottom over every page that only appears while something applies – a window open
   for 20 minutes, the washing machine done, a battery below 15 %. Set the lines under *All displays → Tickers*: every line can be switched off, limited to single displays, and one
-  line can report *all* low batteries at once. A **group** line folds several entities into one (“3 windows open”), **keep showing**
+  line can report *all* low batteries at once. A **group** line folds several entities into one (“3 windows open”, or by area: “Motion: hall, cellar”), texts can
+  show values (`{state}`, an attribute, another entity such as `{sensor.charge_level}`, times as clock time), states can be
+  lists or “all except” (`!none`), **keep showing**
   holds an event for a few minutes after it is over (motion detected: 2 min), and a **tap on a line opens the details**
   – which windows, since when, the full text of a warning – all switchable per line or for everyone. A **warnings** line shows active DWD and NINA warnings with their text,
   in red and ahead of everything else – found automatically, or pick the entities. The **news ticker** can run there too, on every page instead of only on a

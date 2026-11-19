@@ -194,12 +194,43 @@ const minutesSince = (s: HassEntity, now: number) => Math.floor((now - new Date(
 const sinceText = (min: number) => (min >= 1 ? (min < 90 ? t("seit {n} min", { n: min }) : t("seit {n} h", { n: Math.round(min / 60) })) : "");
 const nameOfEntity = (s: HassEntity | undefined, id?: string) => (s?.attributes.friendly_name as string | undefined) || id || "";
 
+/** Zustand als lesbarer Text: Zeitpunkte als Uhrzeit (morgen/Wochentag), Zahlen mit Einheit, unbekannt als „–“ */
+const stateText = (hass: Hass | undefined, s: HassEntity | undefined): string => {
+  if (!isAvailable(s)) return "–";
+  const unit = s!.attributes.unit_of_measurement as string | undefined;
+  if (s!.attributes.device_class === "timestamp") {
+    const d = parseDate(s!.state);
+    return d ? `${dayDiff(d) === 0 ? "" : `${relDay(d)} `}${fmtTime(d)}` : "–";
+  }
+  const n = Number(s!.state);
+  if (s!.state !== "" && Number.isFinite(n)) return `${fmt(n, Math.abs(n) >= 100 || Number.isInteger(n) ? 0 : 1)}${unit ? ` ${unit}` : ""}`;
+  // Zustände wie Home Assistant sie anzeigt („Hauptbürste blockiert“ statt „main_brush_jammed“)
+  const format = (hass as { formatEntityState?: (s: HassEntity) => string } | undefined)?.formatEntityState;
+  return format ? format(s!) : s!.state;
+};
+
+/**
+ * Platzhalter im Text einer Zeile: {state} = Zustand der Entität, {message} = eines ihrer Attribute,
+ * {sensor.ladestand} = Zustand einer anderen Entität. Unbekanntes bleibt stehen, damit Tippfehler auffallen.
+ */
+export const fillText = (hass: Hass | undefined, text: string, s?: HassEntity): string =>
+  text.replace(/\{([a-z_]+(?:\.[a-z0-9_]+)?)\}/g, (m, key: string) => {
+    if (key.includes(".")) return hass?.states[key] ? stateText(hass, hass.states[key]) : m;
+    if (key === "state") return stateText(hass, s);
+    const v = s?.attributes[key];
+    return v == null ? m : String(v);
+  });
+
 /** Trifft die Bedingung der Zeile (Zustand oder Schwelle, „erst nach“) für diese Entität zu? */
 const matches = (s: HassEntity | undefined, it: HomeTickerItem, now: number): s is HassEntity => {
   if (!isAvailable(s)) return false;
   const numeric = it.above != null || it.below != null;
   const n = parseFloat(s!.state);
-  const hit = numeric ? Number.isFinite(n) && (it.above == null || n > Number(it.above)) && (it.below == null || n < Number(it.below)) : s!.state === String(it.state ?? "on");
+  // Zustand: mehrere mit Komma („cleaning,returning“), „!“ davor = alle außer diesen („!none“)
+  const want = String(it.state ?? "on").trim();
+  const not = want.startsWith("!");
+  const list = (not ? want.slice(1) : want).split(",").map((x) => x.trim());
+  const hit = numeric ? Number.isFinite(n) && (it.above == null || n > Number(it.above)) && (it.below == null || n < Number(it.below)) : list.includes(s!.state) !== not;
   return hit && !(it.after && minutesSince(s!, now) < Number(it.after));
 };
 
@@ -225,16 +256,17 @@ const hitLines = (hass: Hass | undefined, it: HomeTickerItem, now: number): Tick
   if (it.kind === "group") {
     const hits = (it.entities ?? []).map((id) => ({ id, s: stateOf(hass, id) })).filter((h) => matches(h.s, it, now)) as { id: string; s: HassEntity }[];
     if (hits.length < Math.max(1, Number(it.min) || 1)) return [];
-    const names = hits.map((h) => nameOfEntity(h.s, h.id));
+    const names = it.names === "area" ? [...new Set(hits.map((h) => (hass && areaOf(hass, h.id)) || nameOfEntity(h.s, h.id)))] : hits.map((h) => nameOfEntity(h.s, h.id));
     const text = (it.text || "{names}").replace(/\{n\}/g, String(hits.length)).replace(/\{names\}/g, names.join(", "));
-    return [withDetail({ icon: it.icon, text, base: text }, { title: text, rows: hits.map((h, i) => ({ name: names[i], value: valueText(h.s, it, now) })) })];
+    const rows = hits.map((h) => ({ name: it.names === "area" ? `${(hass && areaOf(hass, h.id)) || nameOfEntity(h.s, h.id)} · ${nameOfEntity(h.s, h.id)}` : nameOfEntity(h.s, h.id), value: valueText(h.s, it, now) }));
+    return [withDetail({ icon: it.icon, text, base: text }, { title: text, rows })];
   }
   const s = stateOf(hass, it.entity);
   if (!matches(s, it, now)) return [];
   const numeric = it.above != null || it.below != null;
   const n = parseFloat(s.state);
   const min = minutesSince(s, now);
-  const name = it.text || nameOfEntity(s, it.entity);
+  const name = it.text ? fillText(hass, it.text, s) : nameOfEntity(s, it.entity);
   const unit = s.attributes.unit_of_measurement as string | undefined;
   // Bei Werten ist last_changed die letzte Änderung des Werts, nicht der Moment der Überschreitung – daher ohne „seit“
   const tail = numeric ? ` ${fmt(n, Math.abs(n) >= 100 ? 0 : 1)}${unit ? ` ${unit}` : ""}` : min >= 1 ? ` · ${sinceText(min)}` : "";

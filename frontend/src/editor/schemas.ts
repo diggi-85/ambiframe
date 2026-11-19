@@ -1790,7 +1790,7 @@ export const NEWS_BAND_FIELDS: Field[] = [
     help: "Ein Band statt zwei: Die Zeilen von Zuhause laufen vor den Meldungen. Wo das Nachrichten-Laufband aus ist (z. B. Fernseher), steht das Laufband für Zuhause weiter allein.",
     when: (v) => !!v.design?.news_band?.enabled,
   },
-  { key: "design.news_band.speed", label: "Tempo (px/s)", type: "number", min: 10, max: 200, placeholder: "45", when: (v) => !!v.design?.news_band?.enabled, advanced: true },
+  { key: "design.news_band.speed", label: "Tempo (px/s)", type: "number", min: 10, max: 200, placeholder: "45", when: (v) => !!v.design?.news_band?.enabled },
 ];
 
 /** Laufband für Zuhause (Alle Displays → Laufbänder) */
@@ -1801,6 +1801,15 @@ export const HOME_TICKER_FIELDS: Field[] = [
     type: "boolean",
     default: true,
     help: "Ein Tipp auf eine Zeile öffnet eine Ansicht mit allen Einzelheiten: welche Fenster offen sind, seit wann, der volle Text einer Warnung. Pro Zeile abschaltbar.",
+  },
+  {
+    key: "design.home_ticker_speed",
+    label: "Tempo (px/s)",
+    type: "number",
+    min: 10,
+    max: 200,
+    placeholder: "45",
+    help: "Wie beim Nachrichten-Laufband. Das Band läuft nur, wenn die Zeilen nicht hineinpassen – sonst steht es still.",
   },
   {
     key: "design.home_ticker",
@@ -1825,11 +1834,28 @@ export const HOME_TICKER_FIELDS: Field[] = [
         label: "Text",
         type: "text",
         placeholder: "Name der Entität",
-        help: "In Gruppen: {n} = Anzahl, {names} = Namen, z. B. „{n} Fenster offen“. Leer = die Namen.",
+        help: "In Gruppen: {n} = Anzahl, {names} = Namen, z. B. „{n} Fenster offen“. Bei einer Entität: {state}, ein Attribut wie {message} oder eine andere Entität wie {sensor.ladestand}.",
         when: (v) => !v.kind || v.kind === "group",
       },
+      {
+        key: "names",
+        label: "Namen in der Zeile",
+        type: "select",
+        options: [
+          [undefined, "Name der Entität"],
+          ["area", "Bereich (Flur, Keller …)"],
+        ],
+        when: (v) => v.kind === "group",
+      },
       { key: "min", label: "Erst ab (Anzahl)", type: "number", min: 1, placeholder: "1", help: "z. B. 2: erst zeigen, wenn mindestens zwei zutreffen", when: (v) => v.kind === "group" },
-      { key: "state", label: "Zeigen bei Zustand", type: "text", placeholder: "on", when: (v) => (!v.kind || v.kind === "group") && v.above == null && v.below == null },
+      {
+        key: "state",
+        label: "Zeigen bei Zustand",
+        type: "text",
+        placeholder: "on",
+        help: "Mehrere mit Komma (cleaning,returning), ein ! davor heißt „alle außer“ (!none).",
+        when: (v) => (!v.kind || v.kind === "group") && v.above == null && v.below == null,
+      },
       { key: "below", label: "… oder Wert unter", type: "number", when: (v) => !v.kind || v.kind === "group" },
       { key: "above", label: "… oder Wert über", type: "number", when: (v) => !v.kind || v.kind === "group" },
       { key: "after", label: "Erst nach (Minuten)", type: "number", min: 0, help: "z. B. 20: Fenster erst melden, wenn es 20 Minuten offen steht", when: (v) => !v.kind || v.kind === "group" },

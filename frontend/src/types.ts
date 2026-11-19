@@ -320,6 +320,8 @@ export interface HomeTickerItem {
   kind?: "batteries" | "warnings" | "group";
   /** Bei kind: group – diese Entitäten werden zu einer Zeile zusammengefasst („3 Fenster offen“) */
   entities?: string[];
+  /** Gruppe: Namen der Treffer als Bereich („Flur, Keller“, doppelte zusammengefasst) statt als Name der Entität */
+  names?: "area";
   /** Gruppe: erst ab so vielen Treffern zeigen (Standard 1) */
   min?: number;
   /** Zeile bleibt so viele Minuten stehen, auch wenn der Zustand schon wieder vorbei ist (Bewegung erkannt: 2) */
@@ -397,6 +399,8 @@ export interface AmbiframeConfig {
     ticker_detail?: boolean;
     /** Laufband am unteren Rand über allen Seiten – nur sichtbar, wenn eine Zeile zutrifft */
     home_ticker?: HomeTickerItem[];
+    /** Tempo des Laufbands für Zuhause in px/s (wie beim Nachrichten-Laufband, Standard 45) */
+    home_ticker_speed?: number;
     /** Gespeicherte eigene Stile (Momentaufnahme des Designs) */
     presets?: { name: string; design: Record<string, unknown> }[];
   };

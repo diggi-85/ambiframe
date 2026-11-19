@@ -653,3 +653,80 @@ describe("Laufband für Zuhause: stehen lassen, gruppieren, Einzelheiten", () =>
     expect(w.detail!.rows!.map((r) => r.name).length).toBe(3);
   });
 });
+
+describe("Laufband für Zuhause: Bereiche und Werte im Text", () => {
+  it("nennt in Gruppen auf Wunsch die Bereiche – doppelte nur einmal", async () => {
+    const { tickerLines } = await import("../src/util");
+    const hass = hassWith(ent("binary_sensor.flur_1", "on", { friendly_name: "Flur Melder Belegung" }), ent("binary_sensor.flur_2", "on", { friendly_name: "Flur Melder 2" }), ent("binary_sensor.keller", "on", { friendly_name: "Keller Melder" }));
+    Object.assign(hass, {
+      entities: { "binary_sensor.flur_1": { entity_id: "binary_sensor.flur_1", area_id: "flur" }, "binary_sensor.flur_2": { entity_id: "binary_sensor.flur_2", area_id: "flur" }, "binary_sensor.keller": { entity_id: "binary_sensor.keller", device_id: "d1" } },
+      devices: { d1: { area_id: "keller" } },
+      areas: { flur: { area_id: "flur", name: "Flur" }, keller: { area_id: "keller", name: "Keller" } },
+    });
+    const [line] = tickerLines(hass, [{ kind: "group", entities: ["binary_sensor.flur_1", "binary_sensor.flur_2", "binary_sensor.keller"], text: "Bewegung: {names}", names: "area" }]);
+    expect(line.text).toBe("Bewegung: Flur, Keller");
+    expect(line.detail!.rows!.map((r) => r.name)).toEqual(["Flur · Flur Melder Belegung", "Flur · Flur Melder 2", "Keller · Keller Melder"]);
+  });
+
+  it("setzt Zustand, Attribute und andere Entitäten in den Text – Zeitpunkte als Uhrzeit, Unbekanntes bleibt stehen", async () => {
+    const { tickerLines } = await import("../src/util");
+    const end = new Date();
+    end.setHours(17, 5, 0, 0);
+    const hass = hassWith(
+      ent("binary_sensor.auto_laedt", "on", { friendly_name: "Auto lädt", message: "Wallbox" }),
+      ent("sensor.akku", "48", { unit_of_measurement: "%" }),
+      ent("sensor.fertig", end.toISOString(), { device_class: "timestamp" }),
+      ent("sensor.weg", "unavailable"),
+    );
+    const text = (t: string) => tickerLines(hass, [{ entity: "binary_sensor.auto_laedt", text: t }])[0].text.replace(/ · seit.*$/, "");
+    expect(text("Lädt an {message} · {sensor.akku} · fertig {sensor.fertig}")).toBe("Lädt an Wallbox · 48 % · fertig 17:05");
+    expect(text("{state} {sensor.weg} {sensor.gibtsnicht} {foo}")).toBe("on – {sensor.gibtsnicht} {foo}");
+  });
+});
+
+describe("Laufband für Zuhause: Zustände wählen", () => {
+  it("versteht mehrere Zustände und „alle außer“ – und zeigt Zustände wie Home Assistant", async () => {
+    const { tickerLines } = await import("../src/util");
+    const hass = hassWith(ent("sensor.sauger_fehler", "main_brush_jammed"), ent("vacuum.sauger", "returning"));
+    Object.assign(hass, { formatEntityState: (s: HassEntity) => (s.state === "main_brush_jammed" ? "Hauptbürste blockiert" : s.state) });
+    expect(tickerLines(hass, [{ entity: "sensor.sauger_fehler", state: "!none", text: "Saugroboter: {state}" }])[0].text).toMatch(/^Saugroboter: Hauptbürste blockiert/);
+    expect(tickerLines(hass, [{ entity: "vacuum.sauger", state: "cleaning, returning", text: "Sauger unterwegs" }])).toHaveLength(1);
+    expect(tickerLines(hassWith(ent("sensor.sauger_fehler", "none")), [{ entity: "sensor.sauger_fehler", state: "!none" }])).toEqual([]);
+  });
+});
+
+describe("Laufband für Zuhause: Tempo und Laufen", () => {
+  const cfg = (extra: Record<string, unknown>) => {
+    const c = config();
+    c.design = { ...c.design, home_ticker: [{ entity: "binary_sensor.fenster", text: "Fenster offen" }], ...extra } as AmbiframeConfig["design"];
+    return c;
+  };
+  const sized = (el: El, band: number, track: number) => {
+    const b = el.shadowRoot!.querySelector(".hticker") as HTMLElement;
+    Object.defineProperty(b, "clientWidth", { configurable: true, get: () => band });
+    Object.defineProperty(b.querySelector(".track")!, "scrollWidth", { configurable: true, get: () => track });
+  };
+
+  it("läuft nur, wenn der Text nicht ins Band passt – und dann mit dem eingestellten Tempo", async () => {
+    const el = await mount(cfg({ home_ticker_speed: 20 }), hassWith(ent("binary_sensor.fenster", "on")));
+    sized(el, 1000, 2400); // passt nicht
+    el.requestUpdate();
+    await el.updateComplete;
+    await el.updateComplete;
+    const band = el.shadowRoot!.querySelector(".hticker") as HTMLElement;
+    expect(band.classList.contains("run")).toBe(true);
+    sized(el, 1000, 4800); // jetzt doppelt gesetzt: halbe Breite zählt
+    el.requestUpdate();
+    await el.updateComplete;
+    expect((band.querySelector(".track") as HTMLElement).style.animationDuration).toBe("120s"); // 2400 px ÷ 20 px/s
+  });
+
+  it("steht still, wenn alles hineinpasst – auch bei vielen Zeilen", async () => {
+    const el = await mount(cfg({}), hassWith(ent("binary_sensor.fenster", "on")));
+    sized(el, 1000, 300);
+    el.requestUpdate();
+    await el.updateComplete;
+    await el.updateComplete;
+    expect(el.shadowRoot!.querySelector(".hticker")!.classList.contains("run")).toBe(false);
+  });
+});

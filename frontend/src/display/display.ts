@@ -523,6 +523,7 @@ export class AfDisplay extends LitElement {
 
   protected updated(): void {
     this.updateScreenOff();
+    this.measureTicker();
     // Akzentfarbe und Schriften aus dem Design direkt am Host – so gelten sie auch für abgeleitete Werte
     const design = this.config?.design;
     const set = (name: string, value?: string) => (value ? this.style.setProperty(name, value) : this.style.removeProperty(name));
@@ -1116,15 +1117,37 @@ export class AfDisplay extends LitElement {
     const lines = this.homeLines();
     if (!lines.length) return nothing;
     const run = lines.map((l) => html`<span class="${l.tone ?? ""} ${l.detail && this.detailOn ? "tap" : ""}" @click=${(e: Event) => this.openTickerDetail(e, l.detail)}>${l.icon ? anyIcon(l.icon) : nothing}${l.text}</span><i>•</i>`);
-    const move = this.ctx?.ticker !== false && lines.length > 2;
+    // läuft, wenn der Text nicht ins Band passt (gemessen in updated); ohne Messung ab drei Zeilen
+    const move = this.ctx?.ticker !== false && (this.tickerRuns ?? lines.length > 2);
     const up = this.config?.design.news_band?.enabled && this.ctx?.ticker !== false;
-    return html`<div class="hticker ${move ? "run" : ""} ${up ? "up" : ""}"><div class="track" style="--d:${lines.length * 9}s">${run}${move ? run : nothing}</div></div>`;
+    return html`<div class="hticker ${move ? "run" : ""} ${up ? "up" : ""}"><div class="track">${run}${move ? run : nothing}</div></div>`;
   }
 
   /** Zeilen des Laufbands für Zuhause für dieses Display (nachts und abgeschaltet: keine) */
   private homeLines() {
     if (this.night || this.display?.home_ticker === false) return [];
     return tickerLines(this.hass, this.config?.design.home_ticker, Date.now(), this.display?.id, this.tickerMemory);
+  }
+
+  /** Passt das Laufband für Zuhause nicht ins Band? (undefined = noch nicht gemessen) */
+  private tickerRuns?: boolean;
+
+  /**
+   * Laufband für Zuhause wie das Nachrichten-Laufband: läuft nur, wenn der Text nicht ins Band passt, und dann mit
+   * gleichmäßigem Tempo (design.home_ticker_speed, px/s) – egal wie lang die Zeilen sind.
+   */
+  private measureTicker(): void {
+    const band = this.shadowRoot?.querySelector<HTMLElement>(".hticker");
+    const track = band?.querySelector<HTMLElement>(".track");
+    if (!band || !track || !band.clientWidth) return;
+    const width = this.tickerRuns ? track.scrollWidth / 2 : track.scrollWidth;
+    const runs = width > band.clientWidth - 24;
+    if (runs !== this.tickerRuns) {
+      this.tickerRuns = runs;
+      this.requestUpdate();
+      return;
+    }
+    if (runs) track.style.animationDuration = `${Math.max(4, Math.round(width / (Number(this.config?.design.home_ticker_speed) || 45)))}s`;
   }
 
   /** Zuletzt gezeigte Zeilen – Ereignisse bleiben nach ihrem Ende noch `hold` Minuten stehen */
@@ -2399,9 +2422,10 @@ export class AfDisplay extends LitElement {
         overflow: hidden;
         white-space: nowrap;
         background: var(--af-chip);
-        color: var(--af-ink);
-        font: 500 calc(17px * var(--af-fs, 1)) / 1 var(--af-sans);
         border-top: 1px solid var(--af-line);
+        /* Schrift genau wie das Nachrichten-Laufband: 21 px × 0,82, normales Gewicht, Zweittext-Farbe */
+        color: var(--af-ink-2);
+        font: 400 calc(21px * 0.82) / 1 var(--af-sans);
       }
       /* Nachrichten-Laufband über allen Seiten; das Laufband für Zuhause rückt dann eine Zeile höher */
       .newsband {
@@ -2421,8 +2445,8 @@ export class AfDisplay extends LitElement {
       .hticker .track {
         display: flex;
         align-items: center;
-        gap: 18px;
-        padding: 0 18px;
+        gap: 22px;
+        padding: 0 22px;
       }
       .hticker span {
         display: inline-flex;
@@ -2456,11 +2480,14 @@ export class AfDisplay extends LitElement {
       .hticker:not(.run) i:last-child {
         display: none;
       }
+      /* läuft es, blendet es an den Rändern weich aus – wie das Nachrichten-Laufband */
       .hticker.run {
         justify-content: flex-start;
+        -webkit-mask-image: linear-gradient(to right, transparent, #000 4%, #000 96%, transparent);
+        mask-image: linear-gradient(to right, transparent, #000 4%, #000 96%, transparent);
       }
       .hticker.run .track {
-        animation: hticker var(--d, 30s) linear infinite;
+        animation: hticker 30s linear infinite;
       }
       @keyframes hticker {
         to {

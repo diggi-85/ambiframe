@@ -131,7 +131,9 @@ Ist die Wäsche fertig, steht es kurz da und bleibt dann als kleine Erinnerung.
 - **Laufband für Zuhause:** ein Band am unteren Rand über allen Seiten, das nur erscheint, solange etwas zutrifft –
   ein Fenster seit 20 Minuten offen, die Waschmaschine fertig, ein Akku unter 15 %. Die Zeilen stehen unter
   *Alle Displays → Laufbänder*: jede Zeile lässt sich abschalten, auf einzelne Displays beschränken, und eine Zeile
-  meldet auf einmal *alle* schwachen Akkus. Eine **Gruppe** fasst mehrere Entitäten zu einer Zeile zusammen („3 Fenster offen“), **Stehen lassen**
+  meldet auf einmal *alle* schwachen Akkus. Eine **Gruppe** fasst mehrere Entitäten zu einer Zeile zusammen („3 Fenster offen“ oder nach Bereich: „Bewegung:
+  Flur, Keller“), Texte zeigen Werte (`{state}`, ein Attribut, eine andere Entität wie `{sensor.ladestand}`, Zeitpunkte
+  als Uhrzeit), Zustände dürfen Listen oder „alle außer“ sein (`!none`), **Stehen lassen**
   hält ein Ereignis nach seinem Ende noch einige Minuten (Bewegung erkannt: 2 min), und ein **Tipp auf eine Zeile öffnet
   die Einzelheiten** – welche Fenster, seit wann, der volle Text einer Warnung – alles pro Zeile oder für alle
   abschaltbar. Eine **Warnungen**-Zeile zeigt aktive DWD- und NINA-Warnungen mit ihrem
