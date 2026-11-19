@@ -145,8 +145,10 @@ export class AfPage extends LitElement {
         flex: 1;
         min-width: 0;
       }
-      /* Darstellung „als Karte“ – Fläche, Rand und Radius des Stils */
+      /* Darstellung „als Karte“ – Fläche, Rand und Radius des Stils; Inhalte dürfen die Karte mittig füllen */
       .cell.boxed {
+        --af-fill-align: center;
+        --af-fill-pad: 0;
         background:
           /* Zierde des Stils auf der Karte (z. B. Schrauben) */
           var(--af-card-art, none),

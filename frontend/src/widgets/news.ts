@@ -5,7 +5,7 @@ import { css, html, nothing, type PropertyValues } from "lit";
 import { keyed } from "lit/directives/keyed.js";
 import { widgetStyles } from "../styles";
 import type { Hass } from "../types";
-import { ago } from "../util";
+import { ago, type TickerDetail } from "../util";
 import { AfWidget, define } from "./base";
 
 export interface NewsItem {
@@ -97,7 +97,7 @@ class AfNews extends AfWidget {
   static properties = { ...AfWidget.properties, items: { state: true }, idx: { state: true }, lead: { attribute: false } };
 
   /** Laufband: Zeilen, die vor den Meldungen laufen (gemischtes Band: Laufband für Zuhause) */
-  lead: { icon?: string; text: string; tone?: "warn" | "bad" }[] = [];
+  lead: { icon?: string; text: string; tone?: "warn" | "bad"; detail?: TickerDetail }[] = [];
 
   static styles = [
     widgetStyles,
@@ -287,6 +287,9 @@ class AfNews extends AfWidget {
       .track .home.bad {
         font-weight: 700;
       }
+      .track .home.tap {
+        cursor: pointer;
+      }
       @keyframes marquee {
         to {
           transform: translateX(-50%);
@@ -304,6 +307,13 @@ class AfNews extends AfWidget {
       }
     `,
   ];
+
+  /** Tipp auf eine Zeile von Zuhause: das Display zeigt die Einzelheiten (statt das Dashboard zu öffnen) */
+  private openDetail(e: Event, detail?: TickerDetail): void {
+    if (!detail) return;
+    e.stopPropagation(); // sonst erreicht derselbe Tipp die Bühne und schließt die Ansicht gleich wieder
+    this.dispatchEvent(new CustomEvent("af-ticker", { detail, bubbles: true, composed: true }));
+  }
 
   private items: NewsItem[] = [];
   private idx = 0;
@@ -397,7 +407,7 @@ class AfNews extends AfWidget {
       if (this.ctx?.ticker === false) return nothing;
       const list = this.items.slice(0, Number(this.options.max ?? 12));
       const run = [
-        ...this.lead.map((l) => html`<span class="home ${l.tone ?? ""}">${l.icon ? anyIcon(l.icon) : nothing}${l.text}</span><span class="sep">•</span>`),
+        ...this.lead.map((l) => html`<span class="home ${l.tone ?? ""} ${l.detail ? "tap" : ""}" @click=${(e: Event) => this.openDetail(e, l.detail)}>${l.icon ? anyIcon(l.icon) : nothing}${l.text}</span><span class="sep">•</span>`),
         ...list.map((i) => html`<span><b>${i.source}</b>${i.title}</span><span class="sep">•</span>`),
       ];
       return html`<div class="tick"><div class="track">${run}${run}</div></div>`;

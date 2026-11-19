@@ -120,7 +120,7 @@ class AfWeather extends AfWidget {
       }
       .tc {
         fill: var(--af-cold);
-        font-size: calc(15px * var(--af-fs, 1));
+        font-size: calc(16px * var(--af-fs, 1));
       }
       .gi {
         color: var(--af-ink-2);

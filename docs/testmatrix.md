@@ -86,20 +86,22 @@ Ausführen: `cd frontend && npm test` (Frontend) · `.venv/bin/python -m pytest`
 | Jahreszeiten: Ostern, Anlässe vor Jahreszeit | `logic.test.ts` › Jahreszeiten |
 | E-Ink: keine Animation, keine Überblendung, kein Seitenwechsel-Effekt, Fotos in Graustufen | `display.test.ts` › E-Ink, `visual.mjs` zählt bewegte Elemente (muss 0 sein) |
 | Zusammengelegte Stile (Gold → Ruhig, Minimal → Klar) laufen weiter – global, pro Display, in eigenen Stilen | `test_merged_styles_keep_working`, `themes.test.ts` › Zusammengelegte Stile |
-| Aussehen aller 35 Stile auf Zuhause, Wetter und Tagesvorschau bleibt gleich (Uhrzeit und Zufall eingefroren) | `frontend/tools/visual.mjs`, Referenzbilder in `frontend/test/visual/` |
+| Lesbarkeit: jeder Stil hält hell und dunkel die Mindestkontraste für Zweittext, leisen Text und Akzent ein | `themes.test.ts` › Lesbarkeit aller Stile |
+| Aussehen aller 35 Stile auf Zuhause, Wetter und Tagesvorschau – hell und dunkel (210 Bilder) – bleibt gleich (Uhrzeit und Zufall eingefroren) | `frontend/tools/visual.mjs`, Referenzbilder in `frontend/test/visual/` |
 | Studio: Wiedergabe per Ziehen sortieren, Tagesband „Was läuft wann?“ (auch über Mitternacht), Hinweis auf verborgene Einstellungen | `studio-advanced.test.ts` › Wiedergabe sortieren, Was läuft wann?, Erweitert |
 | Seiteneditor: Widget-Suche, Vorschau unter der Maus ändert nichts, Seite direkt aufs Display nehmen | `page-editor.test.ts` › Widget-Liste, Seite in die Wiedergabe aufnehmen |
 | Laufband für Zuhause: nur bei zutreffender Zeile, „seit …“, Schwellen, „erst nach“, läuft ab drei Zeilen, steht im Videostream, pro Display abschaltbar | `display.test.ts` › Laufband für Zuhause |
 | Nachrichten-Laufband über allen Seiten: unabhängig von der Seite, lädt nicht bei jedem Neuzeichnen, aus bei abgeschaltetem Laufband/Fernseher/Videostream | `display.test.ts` › Nachrichten-Laufband über allen Seiten |
 | Laufband für Zuhause: Zeilen abschalten, auf Displays beschränken, Sammelzeile „alle schwachen Akkus“ (mit Ausnahmen), beide Bänder mischen (Zuhause-Zeilen laufen vorweg, am Fernseher bleibt es getrennt) | `display.test.ts` › Laufband für Zuhause: Zeilen wählen und mischen |
 | Warnungen im Laufband: NINA- und DWD-Sensoren automatisch mit Text, Stufe und Ablaufzeit, ruhige Sensoren nicht, gewählte Entitäten, schwere Warnungen vor allen anderen Zeilen, Warnfarbe | `display.test.ts` › Warnungen im Laufband (DWD, NINA) |
+| Laufband: Ereignis bleibt `hold` Minuten stehen (auch nach Neuladen bei Ein/Aus-Sensoren), Gruppen („{n} Fenster offen“, Mindestanzahl, Namen), Tipp öffnet/schließt die Einzelheiten (auch aus dem gemischten Band), abschaltbar global und pro Zeile, Warnungen mit vollem Text | `display.test.ts` › Laufband für Zuhause: stehen lassen, gruppieren, Einzelheiten |
 | Neuladungen (Fully, Watchdog, Bildschirm an) lösen nie den Notfallmodus aus; nur Fehler im Ambiframe-Code und „keine Seite sichtbar“ | `panel.test.ts` › Neustart-Erkennung |
 | Textgröße „aus der Ferne“ (+60 %, Kleingedrucktes entfällt), auch im Backend erlaubt | `display.test.ts` › Textgröße „aus der Ferne“, `test_readability_settings` |
 | Zahlen, die sich bewegen: erkennt genau eine schlichte Zahl, lässt Uhrzeiten, Spannen und Tausenderpunkte in Ruhe; abschaltbar | `logic.test.ts` › Zahlen, die sich bewegen, `display.test.ts` › Textgröße „aus der Ferne“ |
 
 ## Noch ohne automatischen Test (vor Releases von Hand)
 
-- Bildvergleiche für Seiten mit Fotos, Kamera und Regenradar (ändern sich von außen) und für helle Fassungen.
+- Bildvergleiche für Seiten mit Fotos, Kamera und Regenradar (ändern sich von außen).
 - Echtes geteiltes Google-Album: von Hand geprüft am 31.10.2026 (11 von 11 Fotos, volle Größe). Vor Releases erneut prüfen – Google kann den Seitenaufbau ändern.
 - Erreichbarkeit der echten Anbieter (Wikimedia, NASA, Picsum).
 - Geräte: iPad (HA-App-Karte), Android mit Fully, Fernseher per Videostream – von Hand geprüft am 10.11.2026. Vor Releases mit größeren Änderungen am Display erneut prüfen.

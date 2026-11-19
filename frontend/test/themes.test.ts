@@ -88,3 +88,28 @@ describe("Ränder pro Stil", () => {
     expect(withAir(g, 1.5)).toEqual({ padX: 60, padY: 30, w: 1280 });
   });
 });
+
+describe("Lesbarkeit aller Stile", () => {
+  it("hält in hell und dunkel die Mindestkontraste für Zweittext, leisen Text und Akzent ein", async () => {
+    const { THEME_DEFS, MIN_CONTRAST, contrastOn } = await import("../src/styles");
+    const fails: string[] = [];
+    for (const t of THEME_DEFS)
+      for (const mode of ["dark", "light"] as const) {
+        const v = t[mode];
+        const ink = contrastOn(v.ink, v.bg);
+        if (ink == null) continue; // Hintergrund als Verlauf – nicht messbar
+        for (const [key, min] of Object.entries(MIN_CONTRAST)) {
+          const c = contrastOn(v[key], v.bg);
+          if (c != null && c < Math.min(min, ink * 0.92) - 0.01) fails.push(`${t.id} ${mode} ${key} ${c.toFixed(2)}`);
+        }
+      }
+    expect(fails).toEqual([]);
+  });
+
+  it("misst Kontraste wie WCAG – auch für halbdurchsichtige Farben", async () => {
+    const { contrastOn } = await import("../src/styles");
+    expect(contrastOn("#000000", "#ffffff")).toBeCloseTo(21, 0);
+    expect(contrastOn("rgba(0, 0, 0, 0)", "#ffffff")).toBeCloseTo(1, 5);
+    expect(contrastOn("linear-gradient(red, blue)", "#fff")).toBeNull();
+  });
+});

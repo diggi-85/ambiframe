@@ -85,19 +85,20 @@ Dutch and French).</sub>
 - **Night mode** (dimmed clock that drifts to prevent burn-in) and **evening mood**.
 - **Screen off when everyone is away:** pick the people per display; with Fully the screen turns off, the doorbell and
   other moments still wake it.
-- **35 styles, each light and dark:** Calm, Clear, Glass, Aurora, Editorial, Pixel (LED dot matrix),
+- **35 styles, each light and dark:** Calm (soft lamplight), **Clear** (StandBy-like: pure black or white, filled panels), Glass, Aurora, Editorial, Pixel (LED dot matrix),
   Arcade (neon), Cockpit, Tonal, Tiles, Clear text (large and high contrast), Split-flap, Millennium, Gloss, Handheld,
-  Bauhaus, Soft UI, Boho, Country house, Nature, **Gallery** (photos in a mount like in a museum), **Paper** (pure black
-  and white), **E-Ink** (no motion or fades at all, bold type, greyscale photos – for e-paper displays),
+  Bauhaus, Soft UI, Boho, Country house, Nature, **Gallery** (an exhibition room: ceiling spotlights, photos in a mount), **Paper** (black
+  on a paper tone with fine grain), **E-Ink** (no motion or fades at all, bold type, greyscale photos – for e-paper displays),
   **Newspaper**, **Art Deco**, **Terminal**, **Playful**, **Wayfinding** (yellow on anthracite like airport signs),
   **Swiss Grid** (strict grid, huge numbers, signal red), **Rams** (warm grey, orange accent, speaker grille), **Lobby**
-  (hotel reception: fine serifs, brass lines), **Picture book** (for children: hills, sun or moon, cut-out cards), **Christmas** (fir green and candle gold,
+  (hotel reception: bottle green, double brass frame, fine serifs), **Picture book** (for children: hills, sun or moon, cut-out cards), **Christmas** (fir green and candle gold,
   fairy lights along the top, gentle snow), **RGB** (like a gaming PC: glowing edges that cycle through all
   colours) – and
   **Seasons**, which changes by
   itself: spring, summer, autumn, winter, plus Christmas, New Year's Eve, Valentine's Day, Easter and Halloween. Tile
   styles put widgets into cards automatically. Light/dark automatically by the sun (with a soft fade) or fixed,
-  adjustable per display.
+  adjustable per display. Every style keeps a minimum contrast in light and dark (secondary text, small print and accent
+  colour are checked automatically), and decorations stay behind cards instead of running through text.
 - **Tiles your way:** one card style for all widgets (filled, glass, outline only or no surface), spacing and corners;
   per tile its own card colour and opacity, corner radius, border, glass, shadow and heading on/off.
 - **Colour palettes** on top of any style (Nordic, Vampire, Mocha, Retro, Night city) or **Course of the day** – the
@@ -122,7 +123,9 @@ Dutch and French).</sub>
   with reduced motion, in the video stream – or switch it off).
 - **Home ticker:** a band along the bottom over every page that only appears while something applies – a window open
   for 20 minutes, the washing machine done, a battery below 15 %. Set the lines under *All displays → Tickers*: every line can be switched off, limited to single displays, and one
-  line can report *all* low batteries at once. A **warnings** line shows active DWD and NINA warnings with their text,
+  line can report *all* low batteries at once. A **group** line folds several entities into one (“3 windows open”), **keep showing**
+  holds an event for a few minutes after it is over (motion detected: 2 min), and a **tap on a line opens the details**
+  – which windows, since when, the full text of a warning – all switchable per line or for everyone. A **warnings** line shows active DWD and NINA warnings with their text,
   in red and ahead of everything else – found automatically, or pick the entities. The **news ticker** can run there too, on every page instead of only on a
   news page – and both can be **mixed** into one band.
 - **The Studio:** one editor for everything, always with a live preview – built around the display, with a page

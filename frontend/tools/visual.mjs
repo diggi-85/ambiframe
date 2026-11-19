@@ -23,7 +23,13 @@ if (!CHROME) throw new Error("Chrome nicht gefunden – Pfad per CHROME=… ange
 
 // Wählbare Stile aus dem Quelltext (die „saison-…“-Fassungen entstehen anders)
 const themes = [...readFileSync(join(ROOT, "frontend/src/styles.ts"), "utf8").matchAll(/^    id: "([a-z]+)",$/gm)].map((m) => m[1]);
-const shots = PAGES.flatMap((page) => themes.map((theme) => ({ name: `${page}-${theme}`, page, theme }))).filter((s) => !ONLY || s.name.includes(ONLY));
+// Dunkel unter dem alten Namen, hell mit „-hell“ – die hellen Fassungen hatten früher keinen Vergleich
+const shots = PAGES.flatMap((page) =>
+  themes.flatMap((theme) => [
+    { name: `${page}-${theme}`, page, theme, mode: "dark" },
+    { name: `${page}-${theme}-hell`, page, theme, mode: "light" },
+  ]),
+).filter((s) => !ONLY || s.name.includes(ONLY));
 
 // Eingefrorene Zeit und Zufall – vor jedem Skript der Seite
 const FREEZE = `(() => {
@@ -82,7 +88,7 @@ mkdirSync(OUT, { recursive: true });
 rmSync(DIFF, { recursive: true, force: true });
 const failed = [];
 for (const s of shots) {
-  await send("Page.navigate", { url: `${base}/frontend/dev/index.html?demo&clean&page=${s.page}&theme=${s.theme}&mode=dark` });
+  await send("Page.navigate", { url: `${base}/frontend/dev/index.html?demo&clean&page=${s.page}&theme=${s.theme}&mode=${s.mode}` });
   await sleep(1500);
   await evaluate("document.fonts.ready.then(() => true)");
   await sleep(400);

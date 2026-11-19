@@ -106,7 +106,7 @@ class AfMap extends AfTickingWidget {
         padding: 3px 10px;
         border-radius: 999px;
         background: var(--af-chip);
-        font-size: calc(14px * var(--af-fs, 1));
+        font-size: calc(15px * var(--af-fs, 1));
         white-space: nowrap;
         line-height: 1.3;
         text-align: center;
@@ -123,7 +123,7 @@ class AfMap extends AfTickingWidget {
         padding: 4px 10px;
         border-radius: 999px;
         background: var(--af-chip);
-        font-size: calc(15px * var(--af-fs, 1));
+        font-size: calc(16px * var(--af-fs, 1));
       }
       .credit {
         position: absolute;
@@ -608,7 +608,7 @@ class AfDoorlog extends AfTickingWidget {
         font-size: calc(19px * var(--af-fs, 1));
       }
       .s {
-        font-size: calc(15px * var(--af-fs, 1));
+        font-size: calc(16px * var(--af-fs, 1));
         color: var(--af-ink-2);
       }
     `,

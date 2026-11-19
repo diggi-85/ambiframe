@@ -152,7 +152,7 @@ class AfChart extends AfWidget {
       .ylab {
         position: absolute;
         right: 0;
-        font-size: calc(15px * var(--af-fs, 1));
+        font-size: calc(16px * var(--af-fs, 1));
         color: var(--af-ink-3);
       }
       .bars {
@@ -184,7 +184,7 @@ class AfChart extends AfWidget {
         position: relative;
         height: 18px;
         margin-top: 8px;
-        font-size: calc(15px * var(--af-fs, 1));
+        font-size: calc(16px * var(--af-fs, 1));
         color: var(--af-ink-3);
       }
       .x span {
@@ -549,7 +549,7 @@ class AfGauge extends AfWidget {
         width: 100%;
         display: flex;
         justify-content: space-between;
-        font-size: calc(15px * var(--af-fs, 1));
+        font-size: calc(16px * var(--af-fs, 1));
         color: var(--af-ink-3);
         padding: 4px 4% 0;
         box-sizing: border-box;

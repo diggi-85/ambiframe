@@ -31,7 +31,7 @@ vi.mock("../src/sound", () => ({
 
 import "../src/display/display";
 import { leaveToDashboard } from "../src/display/leave";
-import type { AmbiframeConfig, DisplayConfig, EventConfig, Hass, HassEntity } from "../src/types";
+import type { AmbiframeConfig, DisplayConfig, EventConfig, Hass, HassEntity, HomeTickerItem } from "../src/types";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type El = HTMLElement & Record<string, any>;
@@ -571,5 +571,85 @@ describe("Warnungen im Laufband (DWD, NINA)", () => {
 
   it("zeigt nichts, solange keine Warnung aktiv ist", async () => {
     expect(await mount(cfg([{ kind: "warnings" }]), hassWith(ninaRuhig)).then((e) => e.shadowRoot!.querySelector(".hticker"))).toBeNull();
+  });
+});
+
+describe("Laufband für Zuhause: stehen lassen, gruppieren, Einzelheiten", () => {
+  const cfg = (items: unknown[], extra: Record<string, unknown> = {}, news?: Record<string, unknown>) => {
+    const c = config();
+    c.design = { ...c.design, home_ticker: items, ...extra, ...(news ? { news_band: news } : {}) } as AmbiframeConfig["design"];
+    return c;
+  };
+  const band = (el: El) => el.shadowRoot!.querySelector(".hticker") as HTMLElement | null;
+  const fenster = (id: string, name: string, state = "on", secondsAgo = 1800) => ent(`binary_sensor.${id}`, state, { friendly_name: name }, secondsAgo);
+
+  it("lässt ein Ereignis nach seinem Ende genau `hold` Minuten stehen – danach ist es weg", async () => {
+    const { tickerLines } = await import("../src/util");
+    const items = [{ entity: "binary_sensor.flur_bewegung", text: "Bewegung Flur", hold: 2 }];
+    const memory = new Map();
+    const t0 = Date.now();
+    // der Sensor hat sich vor einer Stunde zuletzt geändert – gemerkt wird nur, was wir selbst gesehen haben
+    const at = (min: number, state: string) => tickerLines(hassWith(ent("binary_sensor.flur_bewegung", state, {}, 3600)), items, t0 + min * 60e3, undefined, memory).map((l) => l.text);
+    expect(at(0, "on")).toEqual([expect.stringMatching(/^Bewegung Flur · seit/)]);
+    expect(at(1, "off")).toEqual([expect.stringMatching(/^Bewegung Flur · /)]); // vorbei, steht noch
+    expect(at(2.5, "off")).toEqual([]); // 2 Minuten nach dem letzten Treffer: weg
+    expect(tickerLines(hassWith(ent("binary_sensor.flur_bewegung", "off")), [{ ...items[0], hold: 0 }], 1_000_000, undefined, new Map())).toEqual([]); // ohne hold: nur solange es zutrifft
+  });
+
+  it("erkennt nach einem Neuladen ein gerade beendetes Ein/Aus-Ereignis über seine letzte Änderung wieder", async () => {
+    const { tickerLines } = await import("../src/util");
+    const items = [{ entity: "binary_sensor.klingel", text: "Es hat geklingelt", hold: 2 }];
+    expect(tickerLines(hassWith(ent("binary_sensor.klingel", "off", {}, 60)), items, Date.now(), undefined, new Map()).map((l) => l.text)).toEqual([expect.stringMatching(/^Es hat geklingelt/)]);
+    expect(tickerLines(hassWith(ent("binary_sensor.klingel", "off", {}, 600)), items, Date.now(), undefined, new Map())).toEqual([]);
+  });
+
+  it("fasst eine Gruppe zu einer Zeile zusammen: Platzhalter, Mindestanzahl, Einzelheiten je Entität", async () => {
+    const hass = hassWith(fenster("bad", "Bad"), fenster("kueche", "Küche"), fenster("flur", "Flur", "off"));
+    const items: HomeTickerItem[] = [{ kind: "group", entities: ["binary_sensor.bad", "binary_sensor.kueche", "binary_sensor.flur"], text: "{n} Fenster offen" }];
+    const el = await mount(cfg(items), hass);
+    expect(band(el)!.textContent).toContain("2 Fenster offen");
+    expect(band(el)!.textContent).not.toMatch(/Bad|Küche/); // statt vieler Zeilen eine
+    const { tickerLines } = await import("../src/util");
+    const [line] = tickerLines(hass, items);
+    expect(line.detail!.rows!.map((r) => r.name)).toEqual(["Bad", "Küche"]);
+    expect(tickerLines(hass, [{ ...items[0], min: 3 }])).toEqual([]); // erst ab 3
+    expect(tickerLines(hass, [{ ...items[0], text: undefined }])[0].text).toBe("Bad, Küche"); // leer = die Namen
+  });
+
+  it("öffnet beim Antippen die Einzelheiten, schließt beim Antippen und lässt das Dashboard in Ruhe", async () => {
+    const el = await mount(cfg([{ kind: "group", entities: ["binary_sensor.bad", "binary_sensor.kueche"], text: "{n} Fenster offen" }]), hassWith(fenster("bad", "Bad"), fenster("kueche", "Küche")));
+    (band(el)!.querySelector("span.tap") as HTMLElement).click();
+    await el.updateComplete;
+    const box = el.shadowRoot!.querySelector(".tdetail");
+    expect(box!.textContent).toContain("2 Fenster offen");
+    expect(box!.textContent).toMatch(/Bad[\s\S]*Küche/);
+    expect(el.controlOpen).toBeFalsy(); // der Tipp hat nicht das Dashboard geöffnet
+    el.onTap({ composedPath: () => [], stopPropagation: () => undefined } as unknown as Event);
+    await el.updateComplete;
+    expect(el.shadowRoot!.querySelector(".tdetail")).toBeNull();
+  });
+
+  it("lässt sich abschalten: global und pro Zeile", async () => {
+    const hass = hassWith(fenster("bad", "Bad"));
+    const line = { entity: "binary_sensor.bad", text: "Bad offen" };
+    expect(band(await mount(cfg([line], { ticker_detail: false }), hass))!.querySelector("span.tap")).toBeNull();
+    expect(band(await mount(cfg([{ ...line, detail: false }]), hass))!.querySelector("span.tap")).toBeNull();
+    expect(band(await mount(cfg([line]), hass))!.querySelector("span.tap")).not.toBeNull();
+  });
+
+  it("öffnet die Einzelheiten auch aus dem gemischten Nachrichten-Band", async () => {
+    const el = await mount(cfg([{ entity: "binary_sensor.bad", text: "Bad offen" }], {}, { enabled: true, mix: true }), hassWith(fenster("bad", "Bad")));
+    const news = el.shadowRoot!.querySelector("af-news.newsband") as El;
+    await news.updateComplete;
+    (news.shadowRoot!.querySelector(".track .home.tap") as HTMLElement).click();
+    await el.updateComplete;
+    expect(el.shadowRoot!.querySelector(".tdetail")!.textContent).toContain("Bad offen");
+  });
+
+  it("zeigt bei Warnungen den vollen Text, Stufe, Sender und Ablaufzeit", async () => {
+    const { warningLines } = await import("../src/util");
+    const [w] = warningLines(hassWith(ent("binary_sensor.nina_x", "on", { headline: "Sturm", severity: "Severe", sender: "Leitstelle", description: "Starke Böen.", recommended_actions: "Fenster schließen.", expires: new Date(Date.now() + 3600e3).toISOString() })));
+    expect(w.detail!.body).toBe("Starke Böen.\n\nFenster schließen.");
+    expect(w.detail!.rows!.map((r) => r.name).length).toBe(3);
   });
 });

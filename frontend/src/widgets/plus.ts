@@ -241,7 +241,7 @@ class AfBoard extends AfWidget {
       }
       .meta {
         margin-top: 8px;
-        font-size: calc(15px * var(--af-fs, 1));
+        font-size: calc(16px * var(--af-fs, 1));
         color: var(--af-ink-3);
       }
       .calm {
@@ -667,7 +667,7 @@ class AfRadar extends AfWidget {
         padding: 4px 10px;
         border-radius: 999px;
         background: var(--af-chip);
-        font-size: calc(15px * var(--af-fs, 1));
+        font-size: calc(16px * var(--af-fs, 1));
       }
       .credit {
         position: absolute;

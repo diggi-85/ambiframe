@@ -85,19 +85,21 @@ Ist die Wäsche fertig, steht es kurz da und bleibt dann als kleine Erinnerung.
 - **Nachtmodus** (gedimmte Uhr, wandert gegen Einbrennen) und **Abendstimmung**.
 - **Bildschirm aus, wenn alle weg sind:** Personen pro Display wählen; mit Fully geht der Bildschirm aus, Klingel und
   andere Momente wecken ihn trotzdem.
-- **35 Stile, jeder hell und dunkel:** Ruhig, Klar, Glas, Aurora, Editorial, Pixel (LED-Punktmatrix),
+- **35 Stile, jeder hell und dunkel:** Ruhig (leiser Lampenschein), **Klar** (wie StandBy: reines Schwarz oder Weiß, gefüllte Flächen), Glas, Aurora, Editorial, Pixel (LED-Punktmatrix),
   Arcade (Neon), Cockpit, Tonal, Kacheln, Klartext (groß und kontrastreich), Fallblatt, Millennium, Glanz, Handheld,
-  Bauhaus, Soft-UI, Boho, Landhaus, Natur, **Galerie** (Fotos im Passepartout wie im Museum), **Papier** (reines
-  Schwarz-Weiß), **E-Ink** (ganz ohne Bewegung und Überblendungen, kräftige Schrift, Fotos in Graustufen – für
+  Bauhaus, Soft-UI, Boho, Landhaus, Natur, **Galerie** (ein Ausstellungsraum: Spots von der Decke, Fotos im Passepartout), **Papier** (Schwarz
+  auf Papierton mit feiner Struktur), **E-Ink** (ganz ohne Bewegung und Überblendungen, kräftige Schrift, Fotos in Graustufen – für
   E-Paper-Displays), **Zeitung**, **Art déco**, **Terminal**, **Verspielt**, **Leitsystem** (Gelb auf
   Anthrazit wie Wegweiser am Flughafen), **Swiss Grid** (strenges Raster, riesige Zahlen, Signalrot), **Rams** (warmes
-  Grau, orangener Akzent, Lautsprecher-Raster), **Lobby** (Hotel-Rezeption: feine Serifen, Messinglinien),
+  Grau, orangener Akzent, Lautsprecher-Raster), **Lobby** (Hotel-Rezeption: Flaschengrün, doppelter Messingrahmen, feine Serifen),
   **Bilderbuch** (für Kinder: Hügel, Sonne oder Mond, ausgeschnittene Karten), **Weihnachten** (Tannengrün und
   Kerzengold, Lichterkette am oberen Rand, leiser Schnee), **RGB** (wie ein Gaming-PC: leuchtende Kanten, die durch
   alle Farben wandern) – und **Jahreszeiten**, das
   von selbst wechselt: Frühling, Sommer, Herbst, Winter, dazu Weihnachten, Silvester, Valentinstag, Ostern und
   Halloween. Kachel-Stile setzen Widgets automatisch in Karten. Hell/Dunkel automatisch nach Sonnenstand (weich
-  überblendet) oder fest, pro Display änderbar.
+  überblendet) oder fest, pro Display änderbar. Jeder Stil hält in Hell und Dunkel einen Mindestkontrast ein
+  (Zweittext, Kleingedrucktes und Akzentfarbe werden automatisch geprüft), und Verzierungen liegen hinter den Karten
+  statt durch die Schrift zu laufen.
 - **Kacheln nach Wunsch:** für alle Widgets ein Kartenstil (gefüllt, Glas, nur Umriss oder ohne Fläche), Abstand und
   Ecken; pro Kachel eigene Kartenfarbe und Deckkraft, Eckenradius, Rahmen, Glas, Schatten und Überschrift an/aus.
 - **Farbpaletten** über jedem Stil (Nordisch, Vampir, Mocha, Retro, Nachtstadt) oder **Tagesverlauf** – die Farben
@@ -129,7 +131,10 @@ Ist die Wäsche fertig, steht es kurz da und bleibt dann als kleine Erinnerung.
 - **Laufband für Zuhause:** ein Band am unteren Rand über allen Seiten, das nur erscheint, solange etwas zutrifft –
   ein Fenster seit 20 Minuten offen, die Waschmaschine fertig, ein Akku unter 15 %. Die Zeilen stehen unter
   *Alle Displays → Laufbänder*: jede Zeile lässt sich abschalten, auf einzelne Displays beschränken, und eine Zeile
-  meldet auf einmal *alle* schwachen Akkus. Eine **Warnungen**-Zeile zeigt aktive DWD- und NINA-Warnungen mit ihrem
+  meldet auf einmal *alle* schwachen Akkus. Eine **Gruppe** fasst mehrere Entitäten zu einer Zeile zusammen („3 Fenster offen“), **Stehen lassen**
+  hält ein Ereignis nach seinem Ende noch einige Minuten (Bewegung erkannt: 2 min), und ein **Tipp auf eine Zeile öffnet
+  die Einzelheiten** – welche Fenster, seit wann, der volle Text einer Warnung – alles pro Zeile oder für alle
+  abschaltbar. Eine **Warnungen**-Zeile zeigt aktive DWD- und NINA-Warnungen mit ihrem
   Text, rot und vor allen anderen Zeilen – automatisch gefunden oder mit gewählten Entitäten. Dort lässt sich auch das **Nachrichten-Laufband** auf allen Seiten
   einschalten, statt nur auf einer Nachrichtenseite – und beide Bänder lassen sich zu einem **mischen**.
 - **Kamera nativ** über HAs eigenen Stream (WebRTC/HLS) – alle Displays teilen sich eine Verbindung zur Kamera,

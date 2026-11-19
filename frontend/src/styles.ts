@@ -218,22 +218,38 @@ export const THEME_DEFS: ThemeDef[] = [
   {
     id: "ruhig",
     name: "Ruhig",
-    hint: "Serifen-Uhr, warmes Weiß, Bambus",
+    hint: "Serifen-Uhr, warmes Weiß, Bambus – ein leiser Lichtschein wie von einer Leselampe",
     ambient: "none",
     shared: SHARED,
-    dark: DARK,
-    light: LIGHT,
+    dark: { ...DARK, "bg-art": "radial-gradient(75% 85% at 0% 0%, rgba(214, 168, 101, 0.09), transparent 70%)" },
+    light: { ...LIGHT, "bg-art": "radial-gradient(75% 85% at 0% 0%, rgba(255, 246, 228, 0.9), transparent 70%)" },
   },
   {
     id: "klar",
     name: "Klar",
-    hint: "StandBy-Stil, schlicht, Salbei",
+    hint: "StandBy-Stil: reines Schwarz, dünne Ziffern, gefüllte Flächen ohne Rahmen, Salbei",
     ambient: "none",
     shared: { ...SHARED, display: SANS, "clock-weight": "200", "clock-track": "-0.05em" },
-    dark: { ...DARK, accent: "#a8cab5", "accent-soft": "rgba(168, 202, 181, 0.14)" },
+    dark: {
+      ...DARK,
+      bg: "#000000",
+      ink: "#f4f6f4",
+      "ink-2": "rgba(244, 246, 244, 0.68)",
+      "ink-3": "rgba(244, 246, 244, 0.44)",
+      line: "rgba(244, 246, 244, 0.1)",
+      surface: "rgba(244, 246, 244, 0.06)",
+      accent: "#a8cab5",
+      "accent-soft": "rgba(168, 202, 181, 0.14)",
+      card: "#131514",
+      "card-border": "0 solid transparent",
+      panel: "rgba(19, 21, 20, 0.95)",
+      chip: "rgba(0, 0, 0, 0.62)",
+    },
     light: {
       ...LIGHT,
-      bg: "#f3f4f1",
+      card: "#f1f2ef",
+      "card-border": "0 solid transparent",
+      bg: "#ffffff",
       ink: "#141714",
       "ink-2": "rgba(20, 23, 20, 0.64)",
       "ink-3": "rgba(20, 23, 20, 0.42)",
@@ -864,7 +880,7 @@ export const THEME_DEFS: ThemeDef[] = [
       ...DARK,
       bg: "#0d1b33",
       "bg-art":
-        "radial-gradient(140% 55% at 25% 108%, #1f3d1a 0 52%, transparent 52.5%), radial-gradient(120% 45% at 85% 110%, #2a4d22 0 50%, transparent 50.5%), " +
+        "radial-gradient(150% 30% at 22% 112%, #1f3d1a 0 52%, transparent 52.5%), radial-gradient(110% 50% at 88% 110%, #2a4d22 0 50%, transparent 50.5%), " +
         "linear-gradient(180deg, #050c1c 0%, #10264a 60%, #1d3b66 100%)",
       ink: "#f2f2f2",
       "ink-2": "rgba(242, 242, 242, 0.72)",
@@ -882,7 +898,7 @@ export const THEME_DEFS: ThemeDef[] = [
       ...LIGHT,
       bg: "#5f9de8",
       "bg-art":
-        "radial-gradient(140% 55% at 25% 108%, #4f9a35 0 52%, transparent 52.5%), radial-gradient(120% 45% at 85% 110%, #6db446 0 50%, transparent 50.5%), " +
+        "radial-gradient(150% 30% at 22% 112%, #4f9a35 0 52%, transparent 52.5%), radial-gradient(110% 50% at 88% 110%, #6db446 0 50%, transparent 50.5%), " +
         "radial-gradient(30% 14% at 70% 22%, rgba(255, 255, 255, 0.85), transparent 70%), linear-gradient(180deg, #1f63cf 0%, #5f9de8 45%, #b3d4f5 75%)",
       ink: "#111111",
       "ink-2": "rgba(17, 17, 17, 0.72)",
@@ -1022,8 +1038,8 @@ export const THEME_DEFS: ThemeDef[] = [
       ...DARK,
       bg: "#161616",
       "bg-art":
-        "radial-gradient(circle at 90% 12%, #c9a227 0 9%, transparent 9.2%), radial-gradient(circle at 6% 94%, #b53a28 0 13%, transparent 13.2%), " +
-        "linear-gradient(90deg, transparent 74%, rgba(40, 80, 160, 0.55) 74% 77%, transparent 77%)",
+        "radial-gradient(circle at 90% 96%, #c9a227 0 11%, transparent 11.2%), radial-gradient(circle at 57% -2%, #b53a28 0 8%, transparent 8.2%), " +
+        "linear-gradient(90deg, transparent 74%, rgba(40, 80, 160, 0.55) 74% 76.5%, transparent 76.5%)",
       ink: "#f2ead8",
       "ink-2": "rgba(242, 234, 216, 0.74)",
       "ink-3": "rgba(242, 234, 216, 0.5)",
@@ -1043,8 +1059,8 @@ export const THEME_DEFS: ThemeDef[] = [
       ...LIGHT,
       bg: "#efe7d6",
       "bg-art":
-        "radial-gradient(circle at 90% 12%, #f0b323 0 9%, transparent 9.2%), radial-gradient(circle at 6% 94%, #d33f2b 0 13%, transparent 13.2%), " +
-        "linear-gradient(90deg, transparent 74%, #1d4e9e 74% 77%, transparent 77%)",
+        "radial-gradient(circle at 90% 96%, #f0b323 0 11%, transparent 11.2%), radial-gradient(circle at 57% -2%, #d33f2b 0 8%, transparent 8.2%), " +
+        "linear-gradient(90deg, transparent 74%, #1d4e9e 74% 76.5%, transparent 76.5%)",
       ink: "#111111",
       "ink-2": "rgba(17, 17, 17, 0.72)",
       "ink-3": "rgba(17, 17, 17, 0.5)",
@@ -1245,12 +1261,13 @@ export const THEME_DEFS: ThemeDef[] = [
     id: "galerie",
     air: 1.35,
     name: "Galerie",
-    hint: "Fotos im Passepartout wie im Museum, still und ohne Zoom – kleine Schilder statt Kacheln",
+    hint: "Wie ein Ausstellungsraum: Spots von der Decke, Fotos im Passepartout, still und ohne Zoom – kleine Schilder statt Kacheln",
     ambient: "none",
     shared: {
       ...SHARED,
       display: fontStack("instrument"),
       sans: fontStack("geist"),
+      "text-digits": "own",
       "clock-weight": "400",
       "clock-track": "-0.01em",
       "label-track": "0.24em",
@@ -1263,6 +1280,9 @@ export const THEME_DEFS: ThemeDef[] = [
     dark: {
       ...DARK,
       bg: "#1b1b1a",
+      "bg-art":
+        "radial-gradient(26% 62% at 24% -12%, rgba(255, 236, 205, 0.17), transparent 72%), radial-gradient(26% 62% at 76% -12%, rgba(255, 236, 205, 0.17), transparent 72%), " +
+        "linear-gradient(180deg, transparent 96%, rgba(0, 0, 0, 0.42) 96%)",
       ink: "#f1eee8",
       "ink-2": "rgba(241, 238, 232, 0.7)",
       "ink-3": "rgba(241, 238, 232, 0.46)",
@@ -1274,7 +1294,10 @@ export const THEME_DEFS: ThemeDef[] = [
     },
     light: {
       ...LIGHT,
-      bg: "#f3f2ef",
+      bg: "#eceae5",
+      "bg-art":
+        "radial-gradient(26% 62% at 24% -12%, rgba(255, 255, 255, 0.95), transparent 72%), radial-gradient(26% 62% at 76% -12%, rgba(255, 255, 255, 0.95), transparent 72%), " +
+        "linear-gradient(180deg, transparent 96%, rgba(40, 35, 25, 0.08) 96%)",
       ink: "#1c1c1b",
       "ink-2": "rgba(28, 28, 27, 0.66)",
       "ink-3": "rgba(28, 28, 27, 0.44)",
@@ -1288,7 +1311,7 @@ export const THEME_DEFS: ThemeDef[] = [
   {
     id: "papier",
     name: "Papier",
-    hint: "Reines Schwarz-Weiß ohne Verläufe – klar wie gedruckt, mit feiner Serifenschrift",
+    hint: "Schwarz auf Papier: Papierton mit feiner Struktur, schwarze Linien, Serifenschrift – wie gedruckt",
     ambient: "none",
     tiles: true,
     shared: {
@@ -1303,7 +1326,8 @@ export const THEME_DEFS: ThemeDef[] = [
       "photo-motion": "none", "bar-h": "3px", "bar-radius": "0", "bar-fill": "var(--af-ink)", "curve-w": "1.5", "curve-area": "0", },
     dark: {
       ...DARK,
-      bg: "#000000",
+      bg: "#0d0c0b",
+      "bg-art": "url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22220%22 height=%22220%22%3E%3Cfilter id=%22p%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.8%22 numOctaves=%223%22 stitchTiles=%22stitch%22/%3E%3CfeColorMatrix values=%220 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0.07 0 0 0 0%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23p)%22/%3E%3C/svg%3E')",
       ink: "#ffffff",
       "ink-2": "rgba(255, 255, 255, 0.82)",
       "ink-3": "rgba(255, 255, 255, 0.62)",
@@ -1323,7 +1347,8 @@ export const THEME_DEFS: ThemeDef[] = [
     },
     light: {
       ...LIGHT,
-      bg: "#ffffff",
+      bg: "#f7f3ea",
+      "bg-art": "url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22220%22 height=%22220%22%3E%3Cfilter id=%22p%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.8%22 numOctaves=%223%22 stitchTiles=%22stitch%22/%3E%3CfeColorMatrix values=%220 0 0 0 0.35 0 0 0 0 0.29 0 0 0 0 0.2 0.16 0 0 0 0%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23p)%22/%3E%3C/svg%3E')",
       ink: "#000000",
       "ink-2": "rgba(0, 0, 0, 0.78)",
       "ink-3": "rgba(0, 0, 0, 0.58)",
@@ -1434,7 +1459,7 @@ export const THEME_DEFS: ThemeDef[] = [
     dark: {
       ...DARK,
       bg: "#171614",
-      "bg-art": "linear-gradient(180deg, transparent 12.2%, color-mix(in srgb, var(--af-ink) 80%, transparent) 12.2% 12.75%, transparent 12.75% 13.3%, color-mix(in srgb, var(--af-ink) 80%, transparent) 13.3% 13.5%, transparent 13.5% 96.3%, color-mix(in srgb, var(--af-ink) 60%, transparent) 96.3% 96.5%, transparent 96.5%)",
+      "bg-art": "linear-gradient(180deg, transparent 2.6%, color-mix(in srgb, var(--af-ink) 80%, transparent) 2.6% 3.15%, transparent 3.15% 3.7%, color-mix(in srgb, var(--af-ink) 80%, transparent) 3.7% 3.9%, transparent 3.9% 96.3%, color-mix(in srgb, var(--af-ink) 60%, transparent) 96.3% 96.5%, transparent 96.5%)",
       ink: "#ece6d8",
       "ink-2": "rgba(236, 230, 216, 0.74)",
       "ink-3": "rgba(236, 230, 216, 0.5)",
@@ -1446,7 +1471,7 @@ export const THEME_DEFS: ThemeDef[] = [
     light: {
       ...LIGHT,
       bg: "#f3efe6",
-      "bg-art": "linear-gradient(180deg, transparent 12.2%, color-mix(in srgb, var(--af-ink) 80%, transparent) 12.2% 12.75%, transparent 12.75% 13.3%, color-mix(in srgb, var(--af-ink) 80%, transparent) 13.3% 13.5%, transparent 13.5% 96.3%, color-mix(in srgb, var(--af-ink) 60%, transparent) 96.3% 96.5%, transparent 96.5%)",
+      "bg-art": "linear-gradient(180deg, transparent 2.6%, color-mix(in srgb, var(--af-ink) 80%, transparent) 2.6% 3.15%, transparent 3.15% 3.7%, color-mix(in srgb, var(--af-ink) 80%, transparent) 3.7% 3.9%, transparent 3.9% 96.3%, color-mix(in srgb, var(--af-ink) 60%, transparent) 96.3% 96.5%, transparent 96.5%)",
       ink: "#141414",
       "ink-2": "rgba(20, 20, 20, 0.74)",
       "ink-3": "rgba(20, 20, 20, 0.52)",
@@ -1799,7 +1824,7 @@ export const THEME_DEFS: ThemeDef[] = [
     id: "lobby",
     air: 1.5,
     name: "Lobby",
-    hint: "Wie die Rezeption eines guten Hotels: viel Luft, feine Serifen, Messinglinien – nur das Nötigste",
+    hint: "Wie die Rezeption eines guten Hotels: Flaschengrün, doppelter Messingrahmen, viel Luft, feine Serifen – nur das Nötigste",
     ambient: "none",
     shared: {
       ...SHARED,
@@ -1807,6 +1832,7 @@ export const THEME_DEFS: ThemeDef[] = [
       // Instrument Serif hat gleich hohe Ziffern (Cormorant setzt Mediävalziffern – unruhig in Tabellen)
       display: fontStack("instrument"),
       sans: fontStack("jakarta"),
+      "text-digits": "own",
       "clock-weight": "400",
       "clock-track": "0",
       "label-weight": "500",
@@ -1815,8 +1841,8 @@ export const THEME_DEFS: ThemeDef[] = [
     },
     dark: {
       ...DARK,
-      bg: "#12100e",
-      "bg-art": "linear-gradient(180deg, transparent 2%, color-mix(in srgb, var(--af-accent) 55%, transparent) 2% 2.2%, transparent 2.2% 97.8%, color-mix(in srgb, var(--af-accent) 55%, transparent) 97.8% 98%, transparent 98%), linear-gradient(90deg, transparent 16px, color-mix(in srgb, var(--af-accent) 55%, transparent) 16px 17px, transparent 17px calc(100% - 17px), color-mix(in srgb, var(--af-accent) 55%, transparent) calc(100% - 17px) calc(100% - 16px), transparent calc(100% - 16px)), " + "radial-gradient(120% 90% at 50% 0%, rgba(195, 164, 107, 0.08), transparent 70%)",
+      bg: "#0c1611",
+      "bg-art": "linear-gradient(180deg, transparent 2%, color-mix(in srgb, var(--af-accent) 70%, transparent) 2% 2.2%, transparent 2.2% 2.9%, color-mix(in srgb, var(--af-accent) 40%, transparent) 2.9% 3.05%, transparent 3.05% 96.95%, color-mix(in srgb, var(--af-accent) 40%, transparent) 96.95% 97.1%, transparent 97.1% 97.8%, color-mix(in srgb, var(--af-accent) 70%, transparent) 97.8% 98%, transparent 98%), linear-gradient(90deg, transparent 16px, color-mix(in srgb, var(--af-accent) 70%, transparent) 16px 17px, transparent 17px 23px, color-mix(in srgb, var(--af-accent) 40%, transparent) 23px 24px, transparent 24px calc(100% - 24px), color-mix(in srgb, var(--af-accent) 40%, transparent) calc(100% - 24px) calc(100% - 23px), transparent calc(100% - 23px) calc(100% - 17px), color-mix(in srgb, var(--af-accent) 70%, transparent) calc(100% - 17px) calc(100% - 16px), transparent calc(100% - 16px)), " + "radial-gradient(120% 90% at 50% 0%, rgba(195, 164, 107, 0.1), transparent 70%), linear-gradient(180deg, #0f1c15, #0a120e)",
       ink: "#efe6d6",
       "ink-2": "rgba(239, 230, 214, 0.68)",
       "ink-3": "rgba(239, 230, 214, 0.44)",
@@ -1834,7 +1860,7 @@ export const THEME_DEFS: ThemeDef[] = [
     light: {
       ...LIGHT,
       bg: "#f5f0e8",
-      "bg-art": "linear-gradient(180deg, transparent 2%, color-mix(in srgb, var(--af-accent) 55%, transparent) 2% 2.2%, transparent 2.2% 97.8%, color-mix(in srgb, var(--af-accent) 55%, transparent) 97.8% 98%, transparent 98%), linear-gradient(90deg, transparent 16px, color-mix(in srgb, var(--af-accent) 55%, transparent) 16px 17px, transparent 17px calc(100% - 17px), color-mix(in srgb, var(--af-accent) 55%, transparent) calc(100% - 17px) calc(100% - 16px), transparent calc(100% - 16px)), " + "radial-gradient(120% 90% at 50% 0%, rgba(140, 109, 58, 0.07), transparent 70%)",
+      "bg-art": "linear-gradient(180deg, transparent 2%, color-mix(in srgb, var(--af-accent) 70%, transparent) 2% 2.2%, transparent 2.2% 2.9%, color-mix(in srgb, var(--af-accent) 40%, transparent) 2.9% 3.05%, transparent 3.05% 96.95%, color-mix(in srgb, var(--af-accent) 40%, transparent) 96.95% 97.1%, transparent 97.1% 97.8%, color-mix(in srgb, var(--af-accent) 70%, transparent) 97.8% 98%, transparent 98%), linear-gradient(90deg, transparent 16px, color-mix(in srgb, var(--af-accent) 70%, transparent) 16px 17px, transparent 17px 23px, color-mix(in srgb, var(--af-accent) 40%, transparent) 23px 24px, transparent 24px calc(100% - 24px), color-mix(in srgb, var(--af-accent) 40%, transparent) calc(100% - 24px) calc(100% - 23px), transparent calc(100% - 23px) calc(100% - 17px), color-mix(in srgb, var(--af-accent) 70%, transparent) calc(100% - 17px) calc(100% - 16px), transparent calc(100% - 16px)), " + "radial-gradient(120% 90% at 50% 0%, rgba(140, 109, 58, 0.07), transparent 70%)",
       ink: "#2a2420",
       "ink-2": "rgba(42, 36, 32, 0.68)",
       "ink-3": "rgba(42, 36, 32, 0.46)",
@@ -1875,7 +1901,7 @@ export const THEME_DEFS: ThemeDef[] = [
         "radial-gradient(circle at 62% 8%, #fff3c4 0 3.2%, transparent 3.5%), " +
         "radial-gradient(circle at 20% 14%, #fff3c4 0 0.35%, transparent 0.5%), radial-gradient(circle at 48% 8%, #fff3c4 0 0.3%, transparent 0.45%), " +
         "radial-gradient(circle at 66% 22%, #fff3c4 0 0.3%, transparent 0.45%), radial-gradient(circle at 8% 30%, #fff3c4 0 0.25%, transparent 0.4%), " +
-        "radial-gradient(ellipse 62% 30% at 18% 108%, #24603f 0 99%, transparent 100%), radial-gradient(ellipse 72% 36% at 86% 112%, #1d4f34 0 99%, transparent 100%)",
+        "radial-gradient(ellipse 62% 15% at 18% 109%, #24603f 0 99%, transparent 100%), radial-gradient(ellipse 60% 38% at 92% 112%, #1d4f34 0 99%, transparent 100%)",
       ink: "#fff6e0",
       "ink-2": "rgba(255, 246, 224, 0.8)",
       "ink-3": "rgba(255, 246, 224, 0.56)",
@@ -1899,7 +1925,7 @@ export const THEME_DEFS: ThemeDef[] = [
       "bg-art":
         "radial-gradient(circle at 62% 8%, #ffd24a 0 3.6%, transparent 3.9%), " +
         "radial-gradient(ellipse 9% 4.5% at 16% 15%, #ffffff 0 99%, transparent 100%), radial-gradient(ellipse 6% 4% at 21% 12%, #ffffff 0 99%, transparent 100%), " +
-        "radial-gradient(ellipse 62% 30% at 18% 108%, #9fd38a 0 99%, transparent 100%), radial-gradient(ellipse 72% 36% at 86% 112%, #7cc46e 0 99%, transparent 100%)",
+        "radial-gradient(ellipse 62% 15% at 18% 109%, #9fd38a 0 99%, transparent 100%), radial-gradient(ellipse 60% 38% at 92% 112%, #7cc46e 0 99%, transparent 100%)",
       ink: "#2b2340",
       "ink-2": "rgba(43, 35, 64, 0.76)",
       "ink-3": "rgba(43, 35, 64, 0.54)",
@@ -2124,6 +2150,74 @@ export const dayHue = (d: Date): number => {
   return (a + diff * ((h - h0) / (h1 - h0)) + 360) % 360;
 };
 
+/* ───────── Lesbarkeit: Mindestkontraste für jeden Stil, hell und dunkel ───────── */
+
+/** Mindestkontrast gegen den Hintergrund (WCAG): Zweittext wie Fließtext, leiser Text und Akzent für kleine Schrift */
+export const MIN_CONTRAST = { "ink-2": 6.5, "ink-3": 4.2, accent: 3.6 } as const;
+
+type Rgba = [number, number, number, number];
+export const parseColor = (c?: string): Rgba | null => {
+  if (!c) return null;
+  const v = c.trim();
+  let m = /^#([0-9a-f]{3,8})$/i.exec(v);
+  if (m) {
+    let h = m[1];
+    if (h.length <= 4) h = [...h].map((x) => x + x).join("");
+    const n = (i: number) => parseInt(h.slice(i, i + 2), 16);
+    return [n(0), n(2), n(4), h.length === 8 ? n(6) / 255 : 1];
+  }
+  m = /^rgba?\(([^)]+)\)$/.exec(v);
+  if (!m) return null;
+  const p = m[1].split(/[\s,/]+/).filter(Boolean).map(parseFloat);
+  return p.length >= 3 && p.every(Number.isFinite) ? [p[0], p[1], p[2], p[3] ?? 1] : null;
+};
+const luminance = ([r, g, b]: number[]) => {
+  const f = (x: number) => ((x /= 255) <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4);
+  return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b);
+};
+const over = (fg: Rgba, bg: Rgba): Rgba => [0, 1, 2].map((i) => fg[i] * fg[3] + bg[i] * (1 - fg[3])).concat(1) as Rgba;
+/** Kontrastverhältnis einer (auch halbdurchsichtigen) Farbe auf dem Hintergrund */
+export const contrastOn = (fg: string, bg: string): number | null => {
+  const f = parseColor(fg);
+  const b = parseColor(bg);
+  if (!f || !b) return null;
+  const [x, y] = [luminance(over(f, b)), luminance(b)].sort((p, q) => q - p);
+  return (x + 0.05) / (y + 0.05);
+};
+
+/**
+ * Hebt zu blasse Farben an, bis sie den Mindestkontrast erreichen: halbdurchsichtige werden deckender,
+ * volle Farben werden Richtung Schrift gemischt (auf hellem Grund dunkler, auf dunklem heller). Der Charakter bleibt.
+ */
+const readable = (t: Tokens): Tokens => {
+  const bg = t.bg;
+  if (!parseColor(bg)) return t; // Hintergrund als Verlauf: nicht messbar, bleibt wie gestaltet
+  const out = { ...t };
+  const target = parseColor(t.ink) ?? [0, 0, 0, 1];
+  // nie mehr verlangen, als die Hauptschrift selbst schafft (Handheld: Grün auf Grün)
+  const ceiling = (contrastOn(t.ink, bg) ?? 21) * 0.92;
+  for (const [key, wanted] of Object.entries(MIN_CONTRAST)) {
+    const min = Math.min(wanted, ceiling);
+    const c = parseColor(t[key]);
+    if (!c || (contrastOn(t[key], bg) ?? 99) >= min) continue;
+    let [r, g, b, a] = c;
+    for (let i = 0; i < 60 && (contrastOn(`rgba(${r}, ${g}, ${b}, ${a})`, bg) ?? 99) < min; i++) {
+      if (a < 1) a = Math.min(1, +(a + 0.02).toFixed(2));
+      // mit Kommawerten rechnen – gerundet bliebe die Annäherung kurz vor dem Ziel stehen
+      else [r, g, b] = [r, g, b].map((v, j) => v + (target[j] - v) * 0.06);
+    }
+    // aufrunden Richtung Schrift, damit das Runden den Kontrast nicht wieder unter die Grenze drückt
+    const toward = (v: number, j: number) => (target[j] > v ? Math.ceil(v) : Math.floor(v));
+    [r, g, b] = [r, g, b].map(toward);
+    out[key] = a < 1 ? `rgba(${r}, ${g}, ${b}, ${a})` : `#${[r, g, b].map((v) => v.toString(16).padStart(2, "0")).join("")}`;
+  }
+  return out;
+};
+for (const t of THEME_DEFS) {
+  t.dark = readable(t.dark);
+  t.light = readable(t.light);
+}
+
 /** Für Editor-Auswahl und Vorschauen */
 export const THEMES = THEME_DEFS.filter((t) => !t.hidden).map(({ id, name, hint, ambient, tiles, flap }) => ({ id, name, hint, ambient, tiles, flap }));
 
@@ -2162,7 +2256,8 @@ export const digitFace = (displayStack?: string): string => {
  * Wörter bleiben in der Textschrift. Stile mit eigener Zahlenschrift (LED) bleiben, wie sie sind.
  */
 const withNum = (t: Tokens): Tokens => {
-  if (t["num-font"]) return t;
+  // „text-digits: own“: Titelschrift mit kleinen Ziffern (Instrument Serif) – kleine Texte behalten ihre eigenen
+  if (t["num-font"] || t["text-digits"] === "own") return t;
   const face = digitFace(t.display);
   return face ? { ...t, sans: `${face}, ${t.sans}`, "sans-plain": t.sans } : t;
 };
@@ -2185,21 +2280,21 @@ export const themeTokens = [
       --af-ease-soft: cubic-bezier(0.45, 0, 0.25, 1);
     }
   `,
-  unsafeCSS(`:host { ${decl(withNum({ ...SHARED, ...DARK }))} }`),
+  unsafeCSS(`:host { ${decl(withNum({ ...SHARED, ...readable(DARK) }))} }`),
   unsafeCSS(themeCss),
   css`
     /* Abendstimmung: dunkle Stile werden nach Sonnenuntergang etwas wärmer */
     :host([evening]:not([mode="light"])) {
       --af-ink: #f2e0c8;
       --af-ink-2: rgba(242, 224, 200, 0.64);
-      --af-ink-3: rgba(242, 224, 200, 0.38);
+      --af-ink-3: rgba(242, 224, 200, 0.5);
     }
     :host([evening][theme="gold"]:not([mode="light"])),
     :host([evening][theme="glass"]:not([mode="light"])),
     :host([evening][theme="minimal"]:not([mode="light"])) {
       --af-ink: #fbf3e4;
       --af-ink-2: rgba(251, 243, 228, 0.68);
-      --af-ink-3: rgba(251, 243, 228, 0.42);
+      --af-ink-3: rgba(251, 243, 228, 0.5);
     }
   `,
 ];

@@ -167,11 +167,15 @@ class AfRooms extends AfWidget {
   static styles = [
     widgetStyles,
     css`
+      /* In einer Karte stehen die Werte mittig (sonst oben angeklebt, unten leer); frei stehend bündig mit den Nachbarn */
       .grid {
         display: grid;
         column-gap: 24px;
         row-gap: 64px;
-        padding-top: 40px;
+        box-sizing: border-box;
+        min-height: 100%;
+        align-content: var(--af-fill-align, start);
+        padding-top: var(--af-fill-pad, 40px);
       }
       .n {
         font-size: calc(19px * var(--af-fs, 1));

@@ -142,8 +142,13 @@ export const dueWithin = (hass: Hass | undefined, id: string | undefined, days: 
   return diff >= 0 && diff <= days ? d : null;
 };
 
-/** Zeilen des Laufbands für Zuhause, die gerade zutreffen – mit „seit 40 min“ bei Zuständen */
-export type TickerLine = { icon?: string; text: string; tone?: "warn" | "bad" };
+/** Einzelheiten hinter einer Laufband-Zeile (Antippen): Titel, Text und Wertepaare */
+export interface TickerDetail {
+  title: string;
+  body?: string;
+  rows?: { name: string; value: string }[];
+}
+export type TickerLine = { icon?: string; text: string; tone?: "warn" | "bad"; detail?: TickerDetail; /** Text ohne „seit …“ – für Zeilen, die nach dem Ende stehen bleiben */ base?: string };
 
 /** Stufen von NINA/Wetterwarnungen (severity) und der DWD (warning_N_level 1–4) → Wort und Farbe der Zeile */
 const WARN_LEVEL: Record<string, ["Hinweis" | "Warnung" | "Unwetter" | "Extrem", "warn" | "bad"]> = {
@@ -162,49 +167,123 @@ export const warningLines = (hass: Hass | undefined, ids?: string[]): TickerLine
   const states = hass?.states ?? {};
   const list = ids?.length ? ids : Object.keys(states);
   const lines: TickerLine[] = [];
-  const line = (headline: unknown, level: string, until: unknown) => {
+  const line = (headline: unknown, level: string, until: unknown, more: { description?: unknown; instruction?: unknown; sender?: unknown } = {}) => {
     const [word, tone] = WARN_LEVEL[level.toLowerCase()] ?? WARN_LEVEL.moderate;
     const end = parseDate(until);
     const text = String(headline).replace(/\s+/g, " ").trim().slice(0, 160);
-    lines.push({ icon: "mdi:alert", tone, text: `${t(word)}: ${text}${end ? ` · ${t("bis {when}", { when: `${relDay(end)} ${fmtTime(end)}` })}` : ""}` });
+    const body = [more.description, more.instruction].filter(Boolean).map((x) => String(x).trim()).join("\n\n").slice(0, 1200);
+    const rows = [{ name: t("Stufe"), value: t(word) }, ...(more.sender ? [{ name: t("Sender"), value: String(more.sender) }] : []), ...(end ? [{ name: t("Gültig bis"), value: `${relDay(end)} ${fmtTime(end)}` }] : [])];
+    lines.push({ icon: "mdi:alert", tone, text: `${t(word)}: ${text}${end ? ` · ${t("bis {when}", { when: `${relDay(end)} ${fmtTime(end)}` })}` : ""}`, detail: { title: text, body: body || undefined, rows } });
   };
   for (const id of list) {
     const s = states[id];
     if (!s || !isAvailable(s)) continue;
     const a = s.attributes;
-    if (id.startsWith("binary_sensor.") && s.state === "on" && a.headline && (ids?.length || a.sender !== undefined || a.severity !== undefined)) line(a.headline, String(a.severity ?? "moderate"), a.expires);
+    if (id.startsWith("binary_sensor.") && s.state === "on" && a.headline && (ids?.length || a.sender !== undefined || a.severity !== undefined)) line(a.headline, String(a.severity ?? "moderate"), a.expires, { description: a.description, instruction: a.recommended_actions ?? a.instruction, sender: a.sender });
     else if (id.startsWith("sensor.") && Number(a.warning_count) > 0) {
       for (let n = 1; n <= Number(a.warning_count); n++) {
         const headline = a[`warning_${n}_headline`] ?? a[`warning_${n}_name`];
-        if (headline) line(headline, DWD_LEVEL[Number(a[`warning_${n}_level`])] ?? "moderate", a[`warning_${n}_end`]);
+        if (headline) line(headline, DWD_LEVEL[Number(a[`warning_${n}_level`])] ?? "moderate", a[`warning_${n}_end`], { description: a[`warning_${n}_description`], instruction: a[`warning_${n}_instruction`] });
       }
     }
   }
   return lines;
 };
 
-export const tickerLines = (hass: Hass | undefined, items?: HomeTickerItem[], now = Date.now(), displayId?: string): TickerLine[] =>
-  (items ?? []).flatMap((it): TickerLine[] => {
-    if (it.enabled === false || (it.displays?.length && displayId && !it.displays.includes(displayId))) return [];
-    if (it.kind === "warnings") return warningLines(hass, it.warn_entities).map((l) => ({ ...l, icon: it.icon ?? l.icon }));
-    if (it.kind === "batteries")
-      return batteryOverview(hass, { threshold: Number(it.below ?? 15), exclude: it.exclude }).low.map((b) => ({
-        icon: it.icon ?? "mdi:battery-alert",
-        text: `${it.text || t("Akku")} ${b.name}${b.level == null ? "" : ` ${fmt(b.level, 0)} %`}`,
-      }));
-    const s = stateOf(hass, it.entity);
-    if (!isAvailable(s)) return [];
-    const numeric = it.above != null || it.below != null;
-    const n = parseFloat(s!.state);
-    const hit = numeric ? Number.isFinite(n) && (it.above == null || n > Number(it.above)) && (it.below == null || n < Number(it.below)) : s!.state === String(it.state ?? "on");
-    const min = Math.floor((now - new Date(s!.last_changed).getTime()) / 60e3);
-    if (!hit || (it.after && min < Number(it.after))) return [];
-    const name = it.text || (s!.attributes.friendly_name as string | undefined) || it.entity || "";
-    const unit = s!.attributes.unit_of_measurement as string | undefined;
-    // Bei Werten ist last_changed die letzte Änderung des Werts, nicht der Moment der Überschreitung – daher ohne „seit“
-    const tail = numeric ? ` ${fmt(n, Math.abs(n) >= 100 ? 0 : 1)}${unit ? ` ${unit}` : ""}` : min >= 1 ? ` · ${min < 90 ? t("seit {n} min", { n: min }) : t("seit {n} h", { n: Math.round(min / 60) })}` : "";
-    return [{ icon: it.icon, text: `${name}${tail}` }];
-  }).sort((a, b) => (b.tone === "bad" ? 2 : b.tone ? 1 : 0) - (a.tone === "bad" ? 2 : a.tone ? 1 : 0)); // Warnungen laufen vorweg
+const minutesSince = (s: HassEntity, now: number) => Math.floor((now - new Date(s.last_changed).getTime()) / 60e3);
+const sinceText = (min: number) => (min >= 1 ? (min < 90 ? t("seit {n} min", { n: min }) : t("seit {n} h", { n: Math.round(min / 60) })) : "");
+const nameOfEntity = (s: HassEntity | undefined, id?: string) => (s?.attributes.friendly_name as string | undefined) || id || "";
+
+/** Trifft die Bedingung der Zeile (Zustand oder Schwelle, „erst nach“) für diese Entität zu? */
+const matches = (s: HassEntity | undefined, it: HomeTickerItem, now: number): s is HassEntity => {
+  if (!isAvailable(s)) return false;
+  const numeric = it.above != null || it.below != null;
+  const n = parseFloat(s!.state);
+  const hit = numeric ? Number.isFinite(n) && (it.above == null || n > Number(it.above)) && (it.below == null || n < Number(it.below)) : s!.state === String(it.state ?? "on");
+  return hit && !(it.after && minutesSince(s!, now) < Number(it.after));
+};
+
+/** Wert einer Entität als Text (mit Einheit) oder „seit …“ bei Zuständen */
+const valueText = (s: HassEntity, it: HomeTickerItem, now: number) => {
+  if (it.above != null || it.below != null) {
+    const n = parseFloat(s.state);
+    const unit = s.attributes.unit_of_measurement as string | undefined;
+    return `${fmt(n, Math.abs(n) >= 100 ? 0 : 1)}${unit ? ` ${unit}` : ""}`;
+  }
+  return sinceText(minutesSince(s, now)) || t("gerade");
+};
+
+/** Zeilen einer einzelnen Konfigurationszeile, die jetzt zutreffen */
+const hitLines = (hass: Hass | undefined, it: HomeTickerItem, now: number): TickerLine[] => {
+  const withDetail = (l: TickerLine, detail: TickerDetail): TickerLine => (it.detail === false ? l : { ...l, detail });
+  if (it.kind === "warnings") return warningLines(hass, it.warn_entities).map((l) => ({ ...l, icon: it.icon ?? l.icon, detail: it.detail === false ? undefined : l.detail }));
+  if (it.kind === "batteries") {
+    const low = batteryOverview(hass, { threshold: Number(it.below ?? 15), exclude: it.exclude }).low;
+    const rows = low.map((b) => ({ name: b.name, value: b.level == null ? t("schwach") : `${fmt(b.level, 0)} %` }));
+    return low.map((b) => withDetail({ icon: it.icon ?? "mdi:battery-alert", text: `${it.text || t("Akku")} ${b.name}${b.level == null ? "" : ` ${fmt(b.level, 0)} %`}` }, { title: t("Schwache Akkus"), rows }));
+  }
+  if (it.kind === "group") {
+    const hits = (it.entities ?? []).map((id) => ({ id, s: stateOf(hass, id) })).filter((h) => matches(h.s, it, now)) as { id: string; s: HassEntity }[];
+    if (hits.length < Math.max(1, Number(it.min) || 1)) return [];
+    const names = hits.map((h) => nameOfEntity(h.s, h.id));
+    const text = (it.text || "{names}").replace(/\{n\}/g, String(hits.length)).replace(/\{names\}/g, names.join(", "));
+    return [withDetail({ icon: it.icon, text, base: text }, { title: text, rows: hits.map((h, i) => ({ name: names[i], value: valueText(h.s, it, now) })) })];
+  }
+  const s = stateOf(hass, it.entity);
+  if (!matches(s, it, now)) return [];
+  const numeric = it.above != null || it.below != null;
+  const n = parseFloat(s.state);
+  const min = minutesSince(s, now);
+  const name = it.text || nameOfEntity(s, it.entity);
+  const unit = s.attributes.unit_of_measurement as string | undefined;
+  // Bei Werten ist last_changed die letzte Änderung des Werts, nicht der Moment der Überschreitung – daher ohne „seit“
+  const tail = numeric ? ` ${fmt(n, Math.abs(n) >= 100 ? 0 : 1)}${unit ? ` ${unit}` : ""}` : min >= 1 ? ` · ${sinceText(min)}` : "";
+  const when = new Date(s.last_changed);
+  return [
+    withDetail({ icon: it.icon, text: `${name}${tail}`, base: name }, {
+      title: name,
+      rows: [{ name: t("Zustand"), value: numeric ? `${fmt(n, 1)}${unit ? ` ${unit}` : ""}` : s.state }, { name: t("Seit"), value: `${fmtTime(when)} · ${ago(when)}` }],
+    }),
+  ];
+};
+
+/** Zuletzt gezeigte Zeilen je Eintrag – damit Ereignisse nach ihrem Ende noch `hold` Minuten stehen bleiben */
+export type TickerMemory = Map<string, { at: number; line: TickerLine }>;
+
+/**
+ * Zeilen des Laufbands für Zuhause, die gerade zutreffen – oder noch stehen bleiben (hold). Warnungen laufen vorweg.
+ * shortcut: das Erinnern liegt im Speicher der Seite; nach einem Neuladen erkennen nur Ein/Aus-Sensoren (Bewegung,
+ * Klingel) ein gerade beendetes Ereignis wieder (über ihre letzte Änderung).
+ */
+export const tickerLines = (hass: Hass | undefined, items?: HomeTickerItem[], now = Date.now(), displayId?: string, memory?: TickerMemory): TickerLine[] => {
+  const out: TickerLine[] = [];
+  (items ?? []).forEach((it, idx) => {
+    if (it.enabled === false || (it.displays?.length && displayId && !it.displays.includes(displayId))) return;
+    const lines = hitLines(hass, it, now);
+    const hold = Number(it.hold) || 0;
+    if (hold > 0) {
+      const seen = new Set<string>();
+      for (const l of lines) {
+        const key = `${idx}|${l.base ?? l.text}`;
+        seen.add(key);
+        memory?.set(key, { at: now, line: l });
+      }
+      for (const [key, m] of memory ?? []) {
+        if (!key.startsWith(`${idx}|`) || seen.has(key) || now - m.at >= hold * 60e3) continue;
+        lines.push({ ...m.line, text: `${m.line.base ?? m.line.text} · ${ago(new Date(m.at))}` });
+        seen.add(key);
+      }
+      // Nach einem Neuladen: ein Ein/Aus-Sensor, der gerade wieder auf „aus“ ging, war eben noch an
+      const s = !it.kind ? stateOf(hass, it.entity) : undefined;
+      if (!lines.length && s && isAvailable(s) && (it.state ?? "on") === "on" && s.state === "off" && /^(binary_sensor|input_boolean|switch)\./.test(it.entity ?? "") && now - new Date(s.last_changed).getTime() < hold * 60e3)
+        lines.push({ icon: it.icon, text: `${it.text || nameOfEntity(s, it.entity)} · ${ago(new Date(s.last_changed))}`, base: it.text || nameOfEntity(s, it.entity) });
+    }
+    out.push(...lines);
+  });
+  if (memory) for (const [k, m] of memory) if (now - m.at > 3600e3) memory.delete(k);
+  // Warnungen laufen vorweg
+  return out.sort((a, b) => (b.tone === "bad" ? 2 : b.tone ? 1 : 0) - (a.tone === "bad" ? 2 : a.tone ? 1 : 0));
+};
 
 /** „gerade“, „vor 12 min“, „vor 3 h“, „gestern 18:04“ */
 export const ago = (iso?: string | Date): string => {

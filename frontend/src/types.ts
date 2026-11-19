@@ -317,7 +317,15 @@ export interface HomeTickerItem {
   /** Nur auf diesen Displays (leer = auf allen) */
   displays?: string[];
   /** batteries: eine Zeile je Akku unter `below` % (Standard 15) – statt jede Entität einzeln einzutragen */
-  kind?: "batteries" | "warnings";
+  kind?: "batteries" | "warnings" | "group";
+  /** Bei kind: group – diese Entitäten werden zu einer Zeile zusammengefasst („3 Fenster offen“) */
+  entities?: string[];
+  /** Gruppe: erst ab so vielen Treffern zeigen (Standard 1) */
+  min?: number;
+  /** Zeile bleibt so viele Minuten stehen, auch wenn der Zustand schon wieder vorbei ist (Bewegung erkannt: 2) */
+  hold?: number;
+  /** false = Antippen öffnet keine Einzelheiten */
+  detail?: boolean;
   /** Bei kind: warnings – diese Warn-Entitäten (NINA, DWD); leer = automatisch alle gefundenen */
   warn_entities?: string[];
   /** Bei kind: batteries nicht melden (Auto, Saugroboter …) */
@@ -385,6 +393,8 @@ export interface AmbiframeConfig {
     count_up?: boolean;
     /** Nachrichten-Laufband am unteren Rand über allen Seiten (Optionen wie beim Nachrichten-Widget) */
     news_band?: { enabled?: boolean; feeds?: unknown[]; max?: number; speed?: number; /** Zeilen des Laufbands für Zuhause laufen im selben Band vorweg */ mix?: boolean };
+    /** Antippen einer Laufband-Zeile öffnet die Einzelheiten (fehlt = an) */
+    ticker_detail?: boolean;
     /** Laufband am unteren Rand über allen Seiten – nur sichtbar, wenn eine Zeile zutrifft */
     home_ticker?: HomeTickerItem[];
     /** Gespeicherte eigene Stile (Momentaufnahme des Designs) */

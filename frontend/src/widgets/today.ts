@@ -39,20 +39,31 @@ class AfToday extends AfTickingWidget {
         color: var(--af-ink-3);
         margin-top: 8px;
       }
+      /* Spalten so hoch wie der längste Inhalt und gemeinsam mittig im freien Platz – statt leerer Kästen bis unten */
       .cols {
         flex: 1;
         min-height: 0;
         display: grid;
         grid-template-columns: 1.5fr 1fr 1fr;
+        align-content: center;
         gap: 28px;
         margin-top: 34px;
       }
+      /* Spalten in der Kartenform des Stils – deckend, damit Hintergrundmotive nicht durch die Schrift laufen */
       .col {
         min-width: 0;
         padding: 26px 28px;
         border-radius: var(--af-card-radius, 24px);
-        background: var(--af-surface);
-        border: 1px solid var(--af-line);
+        background:
+          var(--af-card-art, none),
+          linear-gradient(var(--af-card-tint, var(--af-cover-tint, transparent)), var(--af-card-tint, var(--af-cover-tint, transparent))),
+          var(--af-card, var(--af-surface));
+        border: var(--af-card-border, 1px solid var(--af-line));
+        border-top: var(--af-card-rule, var(--af-card-border, 1px solid var(--af-line)));
+        box-shadow: var(--af-card-shadow, none);
+        clip-path: var(--af-card-clip, none);
+        backdrop-filter: var(--af-card-filter, none);
+        -webkit-backdrop-filter: var(--af-card-filter, none);
         animation: col-in 0.9s var(--af-ease) backwards;
       }
       .col:nth-child(2) {
@@ -71,7 +82,7 @@ class AfToday extends AfTickingWidget {
         display: flex;
         align-items: center;
         gap: 10px;
-        font-size: calc(15px * var(--af-fs, 1));
+        font-size: calc(16px * var(--af-fs, 1));
         letter-spacing: 0.14em;
         text-transform: uppercase;
         color: var(--af-accent);

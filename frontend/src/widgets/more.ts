@@ -107,7 +107,7 @@ class AfAgenda extends AfTickingWidget {
         white-space: nowrap;
       }
       .time.allday {
-        font-size: calc(15px * var(--af-fs, 1));
+        font-size: calc(16px * var(--af-fs, 1));
         letter-spacing: 0.02em;
       }
     `,
@@ -336,7 +336,7 @@ class AfMedia extends AfTickingWidget {
         display: flex;
         justify-content: space-between;
         margin-top: 8px;
-        font-size: calc(15px * var(--af-fs, 1));
+        font-size: calc(16px * var(--af-fs, 1));
         color: var(--af-ink-3);
       }
     `,
@@ -636,7 +636,7 @@ class AfBatteries extends AfTickingWidget {
       }
       .sub {
         margin: 18px 0 4px;
-        font-size: calc(14px * var(--af-fs, 1));
+        font-size: calc(15px * var(--af-fs, 1));
         letter-spacing: 0.12em;
         text-transform: uppercase;
         color: var(--af-ink-3);
@@ -649,7 +649,7 @@ class AfBatteries extends AfTickingWidget {
         margin-top: 14px;
       }
       .more {
-        font-size: calc(15px * var(--af-fs, 1));
+        font-size: calc(16px * var(--af-fs, 1));
         color: var(--af-ink-3);
         padding-top: 8px;
       }

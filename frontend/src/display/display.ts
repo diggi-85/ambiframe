@@ -10,7 +10,7 @@ import { THEME_DEFS, digitFace, normalizeTheme, seasonTheme, stillStyles, themeT
 import type { CardStyle, DisplayConfig, EventConfig, Hass, HassEntity, PageConfig, Photo, TapAction, TransitionConfig, AmbiframeConfig } from "../types";
 import { triggered } from "../events";
 import { playSound, stopSound } from "../sound";
-import { checkCondition, checkConditions, customStyle, duration, effectiveConfig, fmt, fmtTime, tickerLines } from "../util";
+import { checkCondition, checkConditions, customStyle, duration, effectiveConfig, fmt, fmtTime, tickerLines, type TickerDetail, type TickerMemory } from "../util";
 import { define } from "../widgets/base";
 import "../widgets/media";
 import { BASE, gridFor, type Grid, type Orientation } from "./grid";
@@ -228,6 +228,7 @@ export class AfDisplay extends LitElement {
     controlOpen: { state: true },
     controlLeft: { state: true },
     popup: { state: true },
+    tickerDetail: { state: true },
     ask: { state: true },
     menu: { state: true },
     toast: { state: true },
@@ -390,7 +391,7 @@ export class AfDisplay extends LitElement {
   disconnectedCallback(): void {
     super.disconnectedCallback();
     this.resize?.disconnect();
-    for (const t of [this.menuTimer, this.pressTimer, this.rotationTimer, this.alarmTimer, this.pipTimer, this.noticeTimer, this.takeoverTimer, this.mediaTimer, this.mediaQueue, this.popupTimer, this.toastTimer]) clearTimeout(t);
+    for (const t of [this.menuTimer, this.pressTimer, this.rotationTimer, this.alarmTimer, this.pipTimer, this.noticeTimer, this.takeoverTimer, this.mediaTimer, this.mediaQueue, this.popupTimer, this.tickerDetailTimer, this.toastTimer]) clearTimeout(t);
     for (const t of [this.shiftTimer, this.controlTimer, this.mediaTicker, this.mediaPoll, this.miniTicker, this.ringTimer]) clearInterval(t);
   }
 
@@ -681,7 +682,7 @@ export class AfDisplay extends LitElement {
 
   /** Läuft gerade etwas, das ein Neuladen stören würde? */
   get busy(): boolean {
-    return !!(this.alarm || this.pip || this.notice || this.takeover || this.media || this.controlOpen || this.popup || this.ask);
+    return !!(this.alarm || this.pip || this.notice || this.takeover || this.media || this.controlOpen || this.popup || this.tickerDetail || this.ask);
   }
 
   /** Seite zeigen – für ihre normale Dauer, danach geht die Wiedergabeliste dort weiter (außer pausiert). */
@@ -1114,7 +1115,7 @@ export class AfDisplay extends LitElement {
     if (this.mixedBand) return nothing;
     const lines = this.homeLines();
     if (!lines.length) return nothing;
-    const run = lines.map((l) => html`<span class=${l.tone ?? ""}>${l.icon ? anyIcon(l.icon) : nothing}${l.text}</span><i>•</i>`);
+    const run = lines.map((l) => html`<span class="${l.tone ?? ""} ${l.detail && this.detailOn ? "tap" : ""}" @click=${(e: Event) => this.openTickerDetail(e, l.detail)}>${l.icon ? anyIcon(l.icon) : nothing}${l.text}</span><i>•</i>`);
     const move = this.ctx?.ticker !== false && lines.length > 2;
     const up = this.config?.design.news_band?.enabled && this.ctx?.ticker !== false;
     return html`<div class="hticker ${move ? "run" : ""} ${up ? "up" : ""}"><div class="track" style="--d:${lines.length * 9}s">${run}${move ? run : nothing}</div></div>`;
@@ -1123,7 +1124,44 @@ export class AfDisplay extends LitElement {
   /** Zeilen des Laufbands für Zuhause für dieses Display (nachts und abgeschaltet: keine) */
   private homeLines() {
     if (this.night || this.display?.home_ticker === false) return [];
-    return tickerLines(this.hass, this.config?.design.home_ticker, Date.now(), this.display?.id);
+    return tickerLines(this.hass, this.config?.design.home_ticker, Date.now(), this.display?.id, this.tickerMemory);
+  }
+
+  /** Zuletzt gezeigte Zeilen – Ereignisse bleiben nach ihrem Ende noch `hold` Minuten stehen */
+  private tickerMemory: TickerMemory = new Map();
+  private tickerDetail?: TickerDetail;
+  private tickerDetailTimer?: number;
+
+  private get detailOn(): boolean {
+    return this.config?.design.ticker_detail !== false && !this.preview;
+  }
+
+  /** Antippen einer Zeile: Einzelheiten zeigen (statt das Dashboard zu öffnen) */
+  private openTickerDetail(e: Event, detail?: TickerDetail): void {
+    if (!detail || !this.detailOn) return;
+    e.stopPropagation();
+    clearTimeout(this.tickerDetailTimer);
+    this.tickerDetail = detail;
+    this.requestUpdate();
+    this.tickerDetailTimer = window.setTimeout(() => this.closeTickerDetail(), 60e3);
+  }
+
+  private closeTickerDetail(): void {
+    clearTimeout(this.tickerDetailTimer);
+    this.tickerDetail = undefined;
+    this.requestUpdate();
+  }
+
+  private renderTickerDetail() {
+    const d = this.tickerDetail;
+    if (!d) return nothing;
+    return html`<div class="ov popup">
+      <div class="pbox tdetail">
+        <div class="ptitle display">${d.title}</div>
+        ${d.body ? html`<p class="tbody">${d.body}</p>` : nothing}
+        ${d.rows?.length ? html`<div class="trows">${d.rows.map((r) => html`<span>${r.name}</span><b class="num">${r.value}</b>`)}</div>` : nothing}
+      </div>
+    </div>`;
   }
 
   /** Beide Laufbänder in einem – nur wo das Nachrichten-Band überhaupt läuft */
@@ -1148,7 +1186,7 @@ export class AfDisplay extends LitElement {
       this.bandKey = key;
       this.bandOptions = { ...band, variant: "ticker" };
     }
-    return html`<af-news class="newsband" .hass=${this.hass} .ctx=${this.ctx} .options=${this.bandOptions} .lead=${band.mix ? this.homeLines() : []}></af-news>`;
+    return html`<af-news class="newsband" .hass=${this.hass} .ctx=${this.ctx} .options=${this.bandOptions} .lead=${band.mix ? this.homeLines() : []} @af-ticker=${(e: CustomEvent<TickerDetail>) => this.openTickerDetail(e, e.detail)}></af-news>`;
   }
 
   private renderChips() {
@@ -1470,6 +1508,7 @@ export class AfDisplay extends LitElement {
       if (!hit("pbox")) this.closePopup();
       return;
     }
+    if (this.tickerDetail) return this.closeTickerDetail(); // Antippen irgendwo schließt
     if (this.alarm) return this.closeAlarm();
     if (this.notice) return this.closeNotice();
     if (this.media && (this.media.style === "fullscreen" || hit("mcard"))) return this.closeMedia();
@@ -1697,7 +1736,7 @@ export class AfDisplay extends LitElement {
       const kind = SWIPEABLE.find((c) => card.classList.contains(c))!;
       this.swipe = { el: kind === "notice" ? ((card.querySelector(".box") as HTMLElement | null) ?? card) : card, kind, x: e.clientX, y: e.clientY, dx: 0 };
     }
-    if (!this.touchable || this.menu || this.alarm || this.controlOpen || this.popup || this.ask) return;
+    if (!this.touchable || this.menu || this.alarm || this.controlOpen || this.popup || this.tickerDetail || this.ask) return;
     const path = e.composedPath() as HTMLElement[];
     // Widgets mit eigener Aktion, Pfeile, Karten und Einblendungen behalten ihr Verhalten
     if (path.some((el) => el.classList && ["act", "nav", "mmini", "mcard", "pip", "chip", "ov"].some((c) => el.classList.contains(c)))) return;
@@ -1843,7 +1882,7 @@ export class AfDisplay extends LitElement {
     const d = this.display;
     const on = d?.nav ?? d?.control?.enabled !== false;
     if (!on || this.streamMode || this.preview || this.fixedPage || this.night || this.takeover) return nothing;
-    if (this.alarm || this.controlOpen || this.popup || this.ask || this.media?.style === "fullscreen") return nothing;
+    if (this.alarm || this.controlOpen || this.popup || this.tickerDetail || this.ask || this.media?.style === "fullscreen") return nothing;
     const go = (e: Event, dir: 1 | -1) => {
       e.stopPropagation();
       this.browse(dir);
@@ -1897,7 +1936,7 @@ export class AfDisplay extends LitElement {
           ></af-page>`,
       )}
       ${this.renderChips()} ${this.renderNewsBand()} ${this.renderTicker()}
-      ${this.renderEffect()} ${this.renderMini()} ${this.renderMedia()} ${this.renderPip()} ${this.renderPopup()} ${this.renderNotice()} ${this.renderAlarm()}
+      ${this.renderEffect()} ${this.renderMini()} ${this.renderMedia()} ${this.renderPip()} ${this.renderPopup()} ${this.renderTickerDetail()} ${this.renderNotice()} ${this.renderAlarm()}
       ${this.renderAsk()} ${this.renderToast()} ${this.renderNav()} ${this.renderMenu()} ${this.renderHistory()}
     </div>
     ${this.renderControl()}`;
@@ -2770,6 +2809,30 @@ export class AfDisplay extends LitElement {
       .ptitle {
         font-size: 34px;
         margin: 4px 4px 18px;
+      }
+      /* Einzelheiten einer Laufband-Zeile */
+      .tdetail .tbody {
+        margin: 0 4px 18px;
+        font-size: 21px;
+        line-height: 1.45;
+        color: var(--af-ink-2);
+        white-space: pre-line;
+      }
+      .tdetail .trows {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 10px 28px;
+        margin: 0 4px;
+        font-size: 22px;
+        color: var(--af-ink-2);
+      }
+      .tdetail .trows b {
+        font-weight: 500;
+        color: var(--af-ink);
+        text-align: right;
+      }
+      .hticker span.tap {
+        cursor: pointer;
       }
       .ask {
         z-index: 45;
