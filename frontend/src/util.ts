@@ -151,44 +151,180 @@ export interface TickerDetail {
 export type TickerLine = { icon?: string; text: string; tone?: "warn" | "bad"; detail?: TickerDetail; /** Text ohne „seit …“ – für Zeilen, die nach dem Ende stehen bleiben */ base?: string };
 
 /** Stufen von NINA/Wetterwarnungen (severity) und der DWD (warning_N_level 1–4) → Wort und Farbe der Zeile */
-const WARN_LEVEL: Record<string, ["Hinweis" | "Warnung" | "Unwetter" | "Extrem", "warn" | "bad"]> = {
-  minor: ["Hinweis", "warn"],
-  moderate: ["Warnung", "warn"],
+// amtliche Stufen: auch die niedrigste ist eine Warnung (DWD-Stufe 1 „Wetterwarnung“), kein bloßer Hinweis
+const WARN_LEVEL: Record<string, ["Warnung" | "Markante Warnung" | "Unwetter" | "Extrem", "warn" | "bad"]> = {
+  minor: ["Warnung", "warn"],
+  moderate: ["Markante Warnung", "warn"],
   severe: ["Unwetter", "bad"],
   extreme: ["Extrem", "bad"],
 };
-const DWD_LEVEL = ["", "minor", "moderate", "severe", "extreme"];
+
+/** Eine aktive Warnung – gleich, ob sie von NINA (alt oder neu) oder vom DWD kommt */
+export interface WarningItem {
+  headline: string;
+  level: "minor" | "moderate" | "severe" | "extreme";
+  start?: Date | null;
+  end?: Date | null;
+  description?: string;
+  instruction?: string;
+  sender?: string;
+  /** Art der Warnung (DWD: „FROST“) */
+  event?: string;
+  /** Betroffene Gebiete (NINA) bzw. Region (DWD) */
+  areas?: string;
+  /** Messwerte des DWD („minimum temperature: 0 - -3 °C“) */
+  params?: string[];
+  /** Warnfarbe des DWD (#ffeb3b) */
+  color?: string;
+  /** Mehr Informationen (NINA) */
+  url?: string;
+}
+
+const LEVELS = ["minor", "moderate", "severe", "extreme"] as const;
+const levelOf = (v: unknown): WarningItem["level"] => {
+  const l = String(v ?? "").toLowerCase();
+  return (LEVELS as readonly string[]).includes(l) ? (l as WarningItem["level"]) : "moderate";
+};
 
 /**
- * Aktive Warnungen als Zeilen mit ihrem Text: NINA/Wetter-Binärsensoren (headline, severity, expires) und DWD-Sensoren
- * (warning_count, warning_N_headline/_name/_level/_end). Ohne `ids` automatisch alles, was so aussieht.
+ * Neue NINA-Integration: Der Binärsensor („Warnung 1“) trägt nur noch eine Kennung – Überschrift, Absender, Schweregrad …
+ * stehen in eigenen Sensoren desselben Geräts mit derselben Nummer („Überschrift 1“). Erkannt am Übersetzungsschlüssel,
+ * sonst an der Entitäts-ID (deutsch oder englisch).
  */
-export const warningLines = (hass: Hass | undefined, ids?: string[]): TickerLine[] => {
+const ninaParts = (hass: Hass | undefined, id: string): Partial<Record<"headline" | "sender" | "severity" | "description" | "instruction" | "expires" | "areas" | "url", string>> => {
+  const reg = hass?.entities;
+  const dev = reg?.[id]?.device_id;
+  const n = /_(\d+)$/.exec(id)?.[1];
+  if (!reg || !dev || !n) return {};
+  const out: Record<string, string> = {};
+  for (const e of Object.values(reg)) {
+    if (e.device_id !== dev || e.entity_id === id || !e.entity_id.startsWith("sensor.") || !e.entity_id.endsWith(`_${n}`)) continue;
+    const key = `${e.translation_key ?? ""} ${e.entity_id}`;
+    const kind = /headline|uberschrift|ueberschrift/.test(key)
+      ? "headline"
+      : /sender|absender/.test(key)
+        ? "sender"
+        : /severity|schweregrad/.test(key)
+          ? "severity"
+          : /description|beschreibung/.test(key)
+            ? "description"
+            : /recommended|instruction|empfehlung/.test(key)
+              ? "instruction"
+              : /expires|ablauf|gultig_bis/.test(key)
+                ? "expires"
+                : /affected|betroffen/.test(key)
+                  ? "areas"
+                  : /url|informationen|web/.test(key)
+                    ? "url"
+                    : "";
+    const st = hass!.states[e.entity_id];
+    if (kind && st && isAvailable(st)) out[kind] = st.state;
+  }
+  return out;
+};
+
+/** Woher Warnungen kommen – für Widgets, die bei jeder Änderung daran neu zeichnen sollen */
+export const warningSources = (hass: Hass | undefined, ids?: string[]): string[] =>
+  Object.values(hass?.states ?? {})
+    .filter((s) =>
+      ids?.length
+        ? ids.includes(s.entity_id) || hass!.entities?.[s.entity_id]?.platform === "nina"
+        : (s.entity_id.startsWith("binary_sensor.") && (s.attributes.device_class === "safety" || s.attributes.headline !== undefined)) ||
+          s.attributes.warning_count !== undefined ||
+          hass!.entities?.[s.entity_id]?.platform === "nina",
+    )
+    .map((s) => s.entity_id);
+
+/**
+ * Aktive Warnungen mit ihrem Inhalt: NINA (Attribute am Binärsensor oder – neue Integration – eigene Sensoren je
+ * Meldung) und DWD (warning_count, warning_N_…). Ohne `ids` automatisch alles, was so aussieht. Dieselbe Meldung von
+ * NINA und DWD erscheint nur einmal; schwere zuerst.
+ */
+export const warningsOf = (hass: Hass | undefined, ids?: string[]): WarningItem[] => {
   const states = hass?.states ?? {};
   const list = ids?.length ? ids : Object.keys(states);
-  const lines: TickerLine[] = [];
-  const line = (headline: unknown, level: string, until: unknown, more: { description?: unknown; instruction?: unknown; sender?: unknown } = {}) => {
-    const [word, tone] = WARN_LEVEL[level.toLowerCase()] ?? WARN_LEVEL.moderate;
-    const end = parseDate(until);
-    const text = String(headline).replace(/\s+/g, " ").trim().slice(0, 160);
-    const body = [more.description, more.instruction].filter(Boolean).map((x) => String(x).trim()).join("\n\n").slice(0, 1200);
-    const rows = [{ name: t("Stufe"), value: t(word) }, ...(more.sender ? [{ name: t("Sender"), value: String(more.sender) }] : []), ...(end ? [{ name: t("Gültig bis"), value: `${relDay(end)} ${fmtTime(end)}` }] : [])];
-    lines.push({ icon: "mdi:alert", tone, text: `${t(word)}: ${text}${end ? ` · ${t("bis {when}", { when: `${relDay(end)} ${fmtTime(end)}` })}` : ""}`, detail: { title: text, body: body || undefined, rows } });
+  const items: WarningItem[] = [];
+  const seen = new Set<string>();
+  const add = (w: WarningItem) => {
+    const key = w.headline.toLowerCase().replace(/\s+/g, " ").trim();
+    if (!key || seen.has(key)) return;
+    seen.add(key);
+    items.push(w);
   };
+  const text = (v: unknown) => (v == null || v === "" ? undefined : String(v).trim());
   for (const id of list) {
     const s = states[id];
     if (!s || !isAvailable(s)) continue;
     const a = s.attributes;
-    if (id.startsWith("binary_sensor.") && s.state === "on" && a.headline && (ids?.length || a.sender !== undefined || a.severity !== undefined)) line(a.headline, String(a.severity ?? "moderate"), a.expires, { description: a.description, instruction: a.recommended_actions ?? a.instruction, sender: a.sender });
-    else if (id.startsWith("sensor.") && Number(a.warning_count) > 0) {
+    if (id.startsWith("binary_sensor.") && s.state === "on") {
+      const p = a.headline ? {} : ninaParts(hass, id);
+      const known = a.headline ?? p.headline;
+      // ohne Inhalt nur, wenn ausdrücklich gewählt – dann wenigstens mit Namen
+      const headline = known ?? (ids?.length ? a.friendly_name : undefined);
+      if (!headline || !(ids?.length || known)) continue;
+      add({
+        headline: String(headline),
+        level: levelOf(a.severity ?? p.severity),
+        start: parseDate(a.start ?? a.onset),
+        end: parseDate(a.expires ?? p.expires),
+        description: text(a.description ?? p.description),
+        instruction: text(a.recommended_actions ?? a.instruction ?? p.instruction),
+        sender: text(a.sender ?? p.sender),
+        areas: text(a.affected_areas ?? p.areas),
+        url: text(a.web ?? p.url),
+      });
+    } else if (id.startsWith("sensor.") && Number(a.warning_count) > 0) {
       for (let n = 1; n <= Number(a.warning_count); n++) {
         const headline = a[`warning_${n}_headline`] ?? a[`warning_${n}_name`];
-        if (headline) line(headline, DWD_LEVEL[Number(a[`warning_${n}_level`])] ?? "moderate", a[`warning_${n}_end`], { description: a[`warning_${n}_description`], instruction: a[`warning_${n}_instruction`] });
+        if (!headline) continue;
+        add({
+          headline: String(headline),
+          level: LEVELS[Number(a[`warning_${n}_level`]) - 1] ?? "moderate",
+          start: parseDate(a[`warning_${n}_start`]),
+          end: parseDate(a[`warning_${n}_end`]),
+          description: text(a[`warning_${n}_description`]),
+          instruction: text(a[`warning_${n}_instruction`]),
+          sender: "Deutscher Wetterdienst",
+          event: text(a[`warning_${n}_name`]),
+          areas: text(a.region_name),
+          color: text(a[`warning_${n}_color`]),
+          params: Object.entries((a[`warning_${n}_parameters`] ?? {}) as Record<string, unknown>).map(([k, v]) => `${k}: ${String(v).replace(/\[(.+?)\]/g, "$1")}`),
+        });
       }
     }
   }
-  return lines;
+  return items.sort((x, y) => LEVELS.indexOf(y.level) - LEVELS.indexOf(x.level));
 };
+
+/** Zeitraum einer Warnung: „heute 07:35 – 18:35“, „ab morgen 06:00“, „bis heute 18:00“ */
+export const warningSpan = (w: WarningItem): string => {
+  const when = (d: Date) => `${relDay(d)} ${fmtTime(d)}`;
+  if (w.start && w.end) return dayDiff(w.start) === dayDiff(w.end) ? `${relDay(w.start)} ${fmtTime(w.start)} – ${fmtTime(w.end)}` : `${when(w.start)} – ${when(w.end)}`;
+  if (w.start) return t("ab {when}", { when: when(w.start) });
+  return w.end ? t("bis {when}", { when: when(w.end) }) : "";
+};
+
+/** Stufe einer Warnung als Wort und Farbe */
+export const warningLevel = (w: WarningItem): [string, "warn" | "bad"] => {
+  const [word, tone] = WARN_LEVEL[w.level];
+  return [t(word), tone];
+};
+
+/** Aktive Warnungen als Zeilen fürs Laufband – mit Einzelheiten zum Antippen */
+export const warningLines = (hass: Hass | undefined, ids?: string[]): TickerLine[] =>
+  warningsOf(hass, ids).map((w) => {
+    const [word, tone] = warningLevel(w);
+    const headline = w.headline.replace(/\s+/g, " ").trim().slice(0, 160);
+    const when = (d: Date) => `${relDay(d)} ${fmtTime(d)}`;
+    const body = [w.description, w.instruction].filter(Boolean).join("\n\n").slice(0, 1200);
+    const rows = [
+      { name: t("Stufe"), value: word },
+      ...(w.sender ? [{ name: t("Sender"), value: w.sender }] : []),
+      ...(w.start ? [{ name: t("Gültig ab"), value: when(w.start) }] : []),
+      ...(w.end ? [{ name: t("Gültig bis"), value: when(w.end) }] : []),
+    ];
+    return { icon: "mdi:alert", tone, text: `${word}: ${headline}${w.end ? ` · ${t("bis {when}", { when: when(w.end) })}` : ""}`, detail: { title: headline, body: body || undefined, rows } };
+  });
 
 const minutesSince = (s: HassEntity, now: number) => Math.floor((now - new Date(s.last_changed).getTime()) / 60e3);
 const sinceText = (min: number) => (min >= 1 ? (min < 90 ? t("seit {n} min", { n: min }) : t("seit {n} h", { n: Math.round(min / 60) })) : "");

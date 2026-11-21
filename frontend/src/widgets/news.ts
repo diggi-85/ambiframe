@@ -5,7 +5,7 @@ import { css, html, nothing, type PropertyValues } from "lit";
 import { keyed } from "lit/directives/keyed.js";
 import { widgetStyles } from "../styles";
 import type { Hass } from "../types";
-import { ago, type TickerDetail } from "../util";
+import { ago, fmtTime, type TickerDetail } from "../util";
 import { AfWidget, define } from "./base";
 
 export interface NewsItem {
@@ -79,6 +79,12 @@ const loadNews = (hass: Hass, feeds: string[]): Promise<NewsItem[]> => {
     });
   cache.set(key, { at: entry?.at ?? 0, items: entry?.items ?? [], pending });
   return pending;
+};
+
+/** Feeds eines Widgets: Text („tagesschau“) oder aus dem Editor-Listenfeld {value: …}; leer = Vorgabe */
+const feedsOf = (feeds: unknown, fallback: string[]): string[] => {
+  const f = (Array.isArray(feeds) ? feeds : []).map((x: unknown) => (typeof x === "string" ? x : (x as { value?: string })?.value)).filter((x): x is string => !!x);
+  return f.length ? f : fallback;
 };
 
 const preload = (url: string): Promise<void> =>
@@ -323,11 +329,7 @@ class AfNews extends AfWidget {
   private feedsKey = "";
 
   private get feeds(): string[] {
-    // Text („tagesschau“) oder aus dem Editor-Listenfeld {value: …}
-    const f = (Array.isArray(this.options.feeds) ? this.options.feeds : [])
-      .map((x: unknown) => (typeof x === "string" ? x : (x as { value?: string })?.value))
-      .filter((x: unknown): x is string => !!x);
-    return f.length ? f : defaultFeeds();
+    return feedsOf(this.options.feeds, defaultFeeds());
   }
 
   /** Großbild zeigt nur Meldungen mit Bild */
@@ -448,3 +450,177 @@ class AfNews extends AfWidget {
 }
 
 define("af-news", AfNews);
+
+/* ───────────────────────── Video-Nachrichten ───────────────────────── */
+
+export interface NewsVideo {
+  title: string;
+  url: string;
+  poster?: string;
+  duration?: number;
+  /** Zeitpunkt der Ausgabe „2026-11-21T04:55“ */
+  edition?: string;
+}
+
+/**
+ * Video-Nachrichten: die neueste „tagesschau in 100 Sekunden“ – stumm, in Dauerschleife –, daneben oder darunter die
+ * aktuellen Schlagzeilen. Optionen: source (tagesschau100), headlines (false = ohne), layout (side | below),
+ * feeds (Schlagzeilen, Standard tagesschau), max, label. Auf E-Ink nur das Vorschaubild.
+ */
+class AfNewsVideo extends AfWidget {
+  static properties = { ...AfWidget.properties, video: { state: true }, items: { state: true } };
+
+  static styles = [
+    widgetStyles,
+    css`
+      :host {
+        container-type: inline-size;
+      }
+      .wrap {
+        display: grid;
+        grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+        gap: 28px;
+        height: 100%;
+        align-items: center;
+      }
+      .wrap.below,
+      .wrap.only {
+        grid-template-columns: 1fr;
+        align-content: center;
+      }
+      @container (max-width: 640px) {
+        .wrap {
+          grid-template-columns: 1fr;
+        }
+      }
+      .screen {
+        position: relative;
+        aspect-ratio: 16 / 9;
+        max-height: 100%;
+        border-radius: var(--af-card-radius, 24px);
+        overflow: hidden;
+        background: #000 center / cover no-repeat;
+      }
+      video,
+      .screen img {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+      /* Bildschirmfüllend: über das Raster hinaus bis an die Ränder der Anzeige. Die Bühne ist transformiert,
+         daher bezieht sich „fixed“ auf sie – nicht auf das Browserfenster. */
+      .screen.full {
+        position: fixed;
+        inset: 0;
+        aspect-ratio: auto;
+        max-height: none;
+        border-radius: 0;
+      }
+      .screen.full .edition {
+        left: 48px;
+        bottom: 48px;
+      }
+      .edition {
+        position: absolute;
+        left: 14px;
+        bottom: 12px;
+        padding: 5px 12px;
+        border-radius: 999px;
+        background: rgba(0, 0, 0, 0.55);
+        color: #fff;
+        font-size: calc(15px * var(--af-fs, 1));
+      }
+      .rows {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        min-width: 0;
+      }
+      .rt {
+        font-size: calc(20px * var(--af-fs, 1));
+        line-height: 1.25;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+      }
+      .rm {
+        font-size: calc(16px * var(--af-fs, 1));
+        color: var(--af-ink-3);
+        margin-top: 4px;
+      }
+      .calm {
+        color: var(--af-ink-3);
+        font-size: calc(18px * var(--af-fs, 1));
+      }
+    `,
+  ];
+
+  video?: NewsVideo | null;
+  items: NewsItem[] = [];
+  private timer?: number;
+
+  connectedCallback(): void {
+    super.connectedCallback();
+    // neue Ausgaben erscheinen mehrmals am Tag – alle 10 min nachsehen (der Server merkt sie sich ebenso lange)
+    this.timer = window.setInterval(() => void this.refresh(), REFRESH_MS);
+  }
+
+  disconnectedCallback(): void {
+    super.disconnectedCallback();
+    clearInterval(this.timer);
+  }
+
+  protected firstUpdated(): void {
+    void this.refresh();
+  }
+
+  protected updated(changed: PropertyValues): void {
+    super.updated(changed);
+    if (changed.has("options") && changed.get("options") !== undefined) void this.refresh();
+  }
+
+  private async refresh(): Promise<void> {
+    if (!this.hass) return;
+    const source = String(this.options.source ?? "tagesschau100");
+    const res = await this.hass.callWS<{ video?: NewsVideo | null }>({ type: "ambiframe/news_video", source }).catch(() => undefined);
+    if (res) this.video = res.video ?? null;
+    if (this.options.headlines !== false) this.items = await loadNews(this.hass, feedsOf(this.options.feeds, ["tagesschau"]));
+  }
+
+  render() {
+    const v = this.video;
+    const label = this.options.label === false ? nothing : html`<div class="label">${this.options.label ?? t("tagesschau in 100 Sekunden")}</div>`;
+    if (v === undefined) return html`${label}<div class="calm">${t("Nachrichten werden geladen …")}</div>`;
+    const edition = v?.edition ? new Date(v.edition) : null;
+    const still = !!this.ctx?.still;
+    const full = this.options.layout === "fullscreen";
+    // stumm und in Schleife: so spielen iPad, Android und Fully ohne Antippen ab; neue Ausgabe = neue Adresse = neu laden
+    const screen = v
+      ? html`<div class="screen ${full ? "full" : ""}" style=${v.poster ? `background-image:url('${v.poster}')` : ""}>
+          ${still
+            ? v.poster
+              ? html`<img src=${v.poster} alt="" />`
+              : nothing
+            : !v.url
+              ? nothing
+              : keyed(v.url, html`<video src=${v.url} poster=${v.poster || nothing} muted autoplay loop playsinline preload="auto" disablepictureinpicture></video>`)}
+          ${edition && !Number.isNaN(edition.getTime()) ? html`<span class="edition">${t("Ausgabe {time}", { time: fmtTime(edition) })}</span>` : nothing}
+        </div>`
+      : html`<div class="calm">${t("Gerade keine Ausgabe abrufbar")}</div>`;
+    const showList = this.options.headlines !== false && !full;
+    const list = this.items.slice(0, Number(this.options.max ?? 5));
+    return html`${full ? nothing : label}<div class="wrap ${showList ? (this.options.layout === "below" ? "below" : "") : "only"}">
+      ${screen}
+      ${showList
+        ? html`<div class="rows">
+            ${list.map((i) => html`<div><div class="rt">${i.title}</div><div class="rm">${i.source}${i.published ? ` · ${ago(i.published)}` : ""}</div></div>`)}
+          </div>`
+        : nothing}
+    </div>`;
+  }
+}
+
+define("af-newsvideo", AfNewsVideo);

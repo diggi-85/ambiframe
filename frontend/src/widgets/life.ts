@@ -4,7 +4,7 @@ import { css, html, nothing } from "lit";
 import { anyIcon } from "../icons";
 import { widgetStyles } from "../styles";
 import type { Hass, HassEntity } from "../types";
-import { ago, areaOf, binDays, distanceKm, fmt, fmtTime, nameOf, numberOf, parseDate, placeOf, relDay, stateOf, valueOf } from "../util";
+import { ago, areaOf, binDays, distanceKm, fmt, fmtTime, nameOf, numberOf, parseDate, placeOf, relDay, stateOf, valueOf, warningLevel, warningSources, warningSpan, warningsOf, type WarningItem } from "../util";
 import { AfTickingWidget, define } from "./base";
 
 const listStyles = css`
@@ -722,14 +722,10 @@ class AfList extends AfTickingWidget {
 
 /* ───────────────────────── Warnungen ───────────────────────── */
 
-const SEVERITY: Record<string, [string, string]> = {
-  minor: ["Hinweis", "warn"],
-  moderate: ["Warnung", "warn"],
-  severe: ["Unwetter", "bad"],
-  extreme: ["Extrem", "bad"],
-};
-
-/** Aktive Warnungen (NINA u. ä.). Optionen: entities [binary_sensor], label, calm_text. */
+/**
+ * Aktive Warnungen mit Inhalt – NINA (alte und neue Integration) und DWD. Optionen: entities (leer = automatisch alle
+ * gefundenen), label, calm_text.
+ */
 class AfWarnings extends AfTickingWidget {
   static styles = [
     widgetStyles,
@@ -758,6 +754,70 @@ class AfWarnings extends AfTickingWidget {
         font-size: calc(20px * var(--af-fs, 1));
         color: var(--af-ink-2);
       }
+      /* Ausführlich: je Warnung eine Karte mit allem, was die Quelle liefert – Farbkante in der Warnfarbe.
+         Bis zu drei nebeneinander in einer Reihe; in schmalen Feldern untereinander. */
+      :host {
+        container-type: inline-size;
+      }
+      .cards {
+        display: grid;
+        grid-template-columns: repeat(var(--cols, 1), minmax(0, 1fr));
+        gap: 18px;
+      }
+      @container (max-width: 700px) {
+        .cards {
+          grid-template-columns: 1fr;
+        }
+      }
+      .wc {
+        border-left: 6px solid var(--wc, var(--af-alert));
+        border-radius: 14px;
+        background: var(--af-surface);
+        padding: 18px 22px;
+        min-width: 0;
+      }
+      .wc .h {
+        font-family: var(--af-display);
+        font-size: calc(28px * var(--af-fs, 1));
+        line-height: 1.15;
+        color: var(--af-ink);
+      }
+      .wc .m {
+        margin-top: 8px;
+        font-size: calc(17px * var(--af-fs, 1));
+        color: var(--af-ink-2);
+      }
+      .wc .m .lvl {
+        font-weight: 600;
+        color: var(--wc, var(--af-alert));
+      }
+      .wc p {
+        margin: 12px 0 0;
+        font-size: calc(19px * var(--af-fs, 1));
+        line-height: 1.45;
+        color: var(--af-ink);
+        white-space: pre-line;
+      }
+      .wc .k {
+        display: block;
+        font-size: calc(14px * var(--af-fs, 1));
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--af-ink-3);
+        margin-bottom: 2px;
+      }
+      .wc .small {
+        margin-top: 12px;
+        font-size: calc(16px * var(--af-fs, 1));
+        line-height: 1.4;
+        color: var(--af-ink-2);
+      }
+      .wc .areas {
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+      }
       .calm .ic {
         color: var(--af-good);
         font-size: calc(24px * var(--af-fs, 1));
@@ -766,24 +826,42 @@ class AfWarnings extends AfTickingWidget {
   ];
 
   protected watched() {
-    return (this.options.entities ?? []) as string[];
+    return warningSources(this.hass, this.options.entities as string[] | undefined);
+  }
+
+  /** Eine Warnung mit allem, was ihre Quelle liefert */
+  private card(w: WarningItem) {
+    const [sev, cls] = warningLevel(w);
+    const span = warningSpan(w);
+    const host = w.url ? w.url.replace(/^https?:\/\//, "").replace(/\/$/, "") : "";
+    return html`<div class="wc ${cls}" style=${w.color ? `--wc:${w.color}` : ""}>
+      <div class="h">${w.headline}</div>
+      <div class="m">${[html`<span class="lvl">${sev}${w.event ? ` · ${w.event}` : ""}</span>`, span, w.sender].filter(Boolean).map((x, i) => html`${i ? " · " : ""}${x}`)}</div>
+      ${w.description ? html`<p>${w.description}</p>` : nothing}
+      ${w.instruction ? html`<p><span class="k">${t("Empfehlung")}</span>${w.instruction}</p>` : nothing}
+      ${w.params?.length ? html`<div class="small">${w.params.join(" · ")}</div>` : nothing}
+      ${w.areas ? html`<div class="small areas">${t("Betroffen")}: ${w.areas}</div>` : nothing}
+      ${host ? html`<div class="small">${t("Mehr")}: ${host}</div>` : nothing}
+    </div>`;
   }
 
   render() {
-    const active = ((this.options.entities ?? []) as string[]).map((id) => stateOf(this.hass, id)).filter((s): s is HassEntity => isOn(s));
-    return html`${this.options.label === false ? nothing : html`<div class="label">${this.options.label ?? t("Warnungen")}</div>`}
+    const active = warningsOf(this.hass, this.options.entities as string[] | undefined);
+    const label = this.options.label === false ? nothing : html`<div class="label">${this.options.label ?? t("Warnungen")}</div>`;
+    if (this.options.variant === "full" && active.length)
+      return html`${label}<div class="cards" style="--cols:${Math.min(3, active.length === 4 ? 2 : active.length)}">${active.map((w) => this.card(w))}</div>`;
+    return html`${label}
       ${active.length
-        ? active.map((s) => {
-            const a = s.attributes;
-            const [sevDe, cls] = SEVERITY[String(a.severity ?? "").toLowerCase()] ?? ["Warnung", "warn"];
-            const sev = t(sevDe);
-            const until = parseDate(a.expires);
+        ? active.map((w) => {
+            const [sev, cls] = warningLevel(w);
+            const when = (d: Date) => `${relDay(d)} ${fmtTime(d)}`;
+            const span = w.start && w.start.getTime() > Date.now() ? t("ab {when}", { when: when(w.start) }) : w.end ? t("bis {when}", { when: when(w.end) }) : "";
             return html`<div class="row">
               <span class=${cls}>${anyIcon("warning")}</span>
               <div class="grow">
-                <div class="a">${a.headline ?? a.friendly_name}</div>
-                <div class="b ${cls}">${sev}${until ? ` · ${t("bis {when}", { when: `${relDay(until)} ${fmtTime(until)}` })}` : ""}</div>
-                ${a.description ? html`<div class="desc">${a.description}</div>` : nothing}
+                <div class="a">${w.headline}</div>
+                <div class="b ${cls}">${[sev, span, w.sender].filter(Boolean).join(" · ")}</div>
+                ${w.description ? html`<div class="desc">${w.description}</div>` : nothing}
               </div>
             </div>`;
           })

@@ -247,3 +247,71 @@ describe("Studio: Was läuft wann?", () => {
     expect(dayBands([{ condition: "time", after: "04:00" }])).toEqual([[240, 1440]]);
   });
 });
+
+describe("Studio: neue Fassung nach einem Update", () => {
+  it("lädt ohne offene Änderungen frisch, mit offenen Änderungen erst über den Knopf – und gar nicht bei gleicher Fassung", async () => {
+    const { el } = await mount();
+    const reload = vi.fn(async () => undefined);
+    el.reloadFresh = reload;
+    const version = (v: string) => vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ version: v }) })));
+    (globalThis as Record<string, unknown>).__WB_VERSION__ = "alt";
+    try {
+      version("alt");
+      await el.checkVersion();
+      expect(reload).not.toHaveBeenCalled();
+      version("neu");
+      el.dirty = true;
+      await el.checkVersion();
+      expect(reload).not.toHaveBeenCalled();
+      expect(el.newVersion).toBe(true); // Knopf statt Datenverlust
+      el.dirty = false;
+      await el.checkVersion();
+      expect(reload).toHaveBeenCalledTimes(1);
+    } finally {
+      (globalThis as Record<string, unknown>).__WB_VERSION__ = "test";
+      vi.unstubAllGlobals();
+    }
+  });
+});
+
+describe("Studio: Wiedergabe per Finger sortieren", () => {
+  it("findet den Eintrag unter dem Finger – darüber der erste, darunter der letzte", async () => {
+    const { dropIndex } = await import("../src/panel/studio");
+    const rows = [
+      { top: 100, bottom: 160 },
+      { top: 168, bottom: 228 },
+      { top: 236, bottom: 296 },
+    ];
+    expect(dropIndex(130, rows)).toBe(0);
+    expect(dropIndex(250, rows)).toBe(2);
+    expect(dropIndex(20, rows)).toBe(0);
+    expect(dropIndex(900, rows)).toBe(2);
+    expect(dropIndex(164, rows)).toBe(1); // in der Lücke: der nächste Eintrag
+    expect(dropIndex(50, [])).toBe(0);
+  });
+});
+
+describe("Studio: Einstellung suchen", () => {
+  it("findet Einstellungen über alle Schritte und springt hin – versteckte macht es sichtbar", async () => {
+    const { el } = await mount();
+    el.openDisplay("__all");
+    await el.updateComplete;
+    el.setAdvanced(false);
+    el.settingQuery = "tempo";
+    const hits = el.settingMatches();
+    expect(hits.length).toBeGreaterThan(0);
+    // beide Laufband-Tempos – und das Tempo der Animation unter „Aussehen“ ebenso
+    expect(hits.filter((h: { step: string }) => h.step === "laufband").map((h: { key: string }) => h.key).sort()).toEqual(["design.home_ticker_speed", "design.news_band.speed"]);
+    el.settingQuery = "Bewegung"; // Feinschliff unter „Aussehen“ – nur mit „Erweitert“
+    const motion = el.settingMatches().find((h: { step: string }) => h.step === "aussehen");
+    expect(motion).toBeDefined();
+    el.goToSetting(motion);
+    await el.updateComplete;
+    expect(el.step).toBe("aussehen");
+    expect(el.advanced).toBe(true);
+    expect(el.findKey).toBe(motion.key);
+    expect(el.settingQuery).toBe("");
+    el.settingQuery = "x";
+    expect(el.settingMatches()).toEqual([]); // erst ab zwei Zeichen
+  });
+});

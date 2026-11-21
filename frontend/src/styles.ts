@@ -1119,7 +1119,8 @@ export const THEME_DEFS: ThemeDef[] = [
     hint: "Terrakotta, Sand und Salbei, weiche Bögen und eine elegante Serifenschrift",
     ambient: "none",
     tiles: true,
-    shared: { ...SHARED, display: fontStack("playfair"), sans: fontStack("jakarta"), "clock-weight": "500", "clock-track": "-0.01em", "card-radius": "28px", "label-case": "none", "label-track": "0.02em", "label-weight": "600", "label-color": "var(--af-accent)" },
+    // Playfair hat Mediävalziffern – kleine Texte (Uhrzeiten, Datum) behalten die gleich hohen Ziffern der Textschrift
+    shared: { ...SHARED, display: fontStack("playfair"), sans: fontStack("jakarta"), "text-digits": "own", "clock-weight": "500", "clock-track": "-0.01em", "card-radius": "28px", "label-case": "none", "label-track": "0.02em", "label-weight": "600", "label-color": "var(--af-accent)" },
     dark: {
       ...DARK,
       bg: "#2a201b",
@@ -1449,6 +1450,8 @@ export const THEME_DEFS: ThemeDef[] = [
       ...SHARED,
       display: fontStack("playfair"),
       sans: fontStack("newsreader"),
+      // Playfair hat Mediävalziffern – kleine Texte (Uhrzeiten, Datum) behalten die Ziffern der Textschrift
+      "text-digits": "own",
       "clock-weight": "800",
       "clock-track": "-0.02em",
       "label-font": fontStack("inter"),

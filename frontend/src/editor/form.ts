@@ -201,6 +201,7 @@ export class AfForm extends LitElement {
     value: { attribute: false },
     pickers: { state: true },
     advanced: { type: Boolean },
+    highlight: { attribute: false },
   };
 
   hass?: Hass;
@@ -208,6 +209,21 @@ export class AfForm extends LitElement {
   value: Record<string, any> = {};
   /** false = einfacher Modus: Feinwerte ausblenden */
   advanced = true;
+  /** Schlüssel eines Felds, das angesteuert werden soll (Suche nach Einstellungen) */
+  highlight = "";
+
+  protected updated(changed: Map<string, unknown>): void {
+    if (!changed.has("highlight") || !this.highlight) return;
+    const field = this.renderRoot.querySelector<HTMLElement>(`.field[data-key="${CSS.escape(this.highlight)}"]`);
+    if (!field) return;
+    // zugeklappte Abschnitte („Töne“, „Videostream“) öffnen, dann hinscrollen und kurz aufleuchten lassen
+    const details = this.closest("details");
+    if (details) details.open = true;
+    field.scrollIntoView({ block: "center", behavior: "smooth" });
+    field.classList.remove("hl");
+    void field.offsetWidth;
+    field.classList.add("hl");
+  }
   private pickers = !!customElements.get("ha-entity-picker");
 
   constructor() {
@@ -454,7 +470,7 @@ export class AfForm extends LitElement {
         break;
     }
     const wide = ["list", "object", "autolist", "yaml", "conditions", "textarea", "entities"].includes(f.type);
-    return html`<div class="field ${wide ? "wide" : ""}">
+    return html`<div class="field ${wide ? "wide" : ""}" data-key=${f.key}>
       ${f.label ? html`<label class="lbl">${t(f.label)}</label>` : nothing}
       <div class="ctl">${control}</div>
       ${f.help ? html`<div class="help">${t(f.help)}</div>` : nothing}
@@ -480,6 +496,18 @@ export class AfForm extends LitElement {
     }
     .field.wide {
       grid-template-columns: 1fr;
+    }
+    /* gefunden über „Einstellung suchen“ */
+    .field.hl {
+      animation: hl 2.4s ease-out;
+      border-radius: 8px;
+    }
+    @keyframes hl {
+      0%,
+      40% {
+        background: color-mix(in srgb, var(--primary-color) 22%, transparent);
+        box-shadow: 0 0 0 6px color-mix(in srgb, var(--primary-color) 22%, transparent);
+      }
     }
     .lbl {
       color: var(--secondary-text-color);

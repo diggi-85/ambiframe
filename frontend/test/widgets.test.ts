@@ -5,6 +5,8 @@ import { CLOCKS, litCells } from "../src/widgets/wordclock";
 import "../src/widgets/clocks";
 import "../src/widgets/places";
 import "../src/widgets/energy";
+import "../src/widgets/life";
+import "../src/widgets/news";
 import { airKindOf, airLevel, countdownText, moonPhase, readDepartures, sunTimes, targetDate, tileOf, timerLeft } from "../src/widgets/plus";
 import type { Hass, HassEntity } from "../src/types";
 
@@ -565,5 +567,139 @@ describe("Wer war an der Tür?", () => {
     await empty.updateComplete;
     expect(text(empty)).toContain("Noch niemand");
     empty.remove();
+  });
+});
+
+describe("Warnungen (NINA alt und neu, DWD)", () => {
+  // neue NINA-Integration: Binärsensor nur mit Kennung, Inhalt in eigenen Sensoren desselben Geräts mit derselben Nummer
+  const ninaNeu = () => {
+    const hass = hassOf([
+      ent("binary_sensor.nina_ort_1", "on", { id: "dwd.1", device_class: "safety", friendly_name: "Ort Warnung 1" }),
+      ent("sensor.ort_uberschrift_1", "Amtliche WARNUNG vor GLÄTTE"),
+      ent("sensor.ort_schweregrad_1", "moderate"),
+      ent("sensor.ort_absender_1", "Deutscher Wetterdienst"),
+      ent("sensor.ort_uberschrift_2", "unavailable"),
+      ent("binary_sensor.nina_ort_2", "off", { device_class: "safety" }),
+      ent("sensor.dwd_warnstufe", "2", {
+        warning_count: 2,
+        warning_1_headline: "Amtliche WARNUNG vor FROST",
+        warning_1_level: 1,
+        warning_1_description: "Leichter Frost bis -3 °C.",
+        warning_1_end: new Date(Date.now() + 5 * 3600e3).toISOString(),
+        warning_2_headline: "Amtliche WARNUNG vor GLÄTTE", // dieselbe wie bei NINA
+        warning_2_level: 2,
+      }),
+    ]);
+    const reg = (entity_id: string, extra: Record<string, unknown> = {}) => [entity_id, { entity_id, device_id: "ort", platform: "nina", ...extra }];
+    hass.entities = Object.fromEntries([
+      reg("binary_sensor.nina_ort_1"),
+      reg("sensor.ort_uberschrift_1", { translation_key: "headline" }),
+      reg("sensor.ort_schweregrad_1", { translation_key: "severity" }),
+      reg("sensor.ort_absender_1", { translation_key: "sender" }),
+      reg("sensor.ort_uberschrift_2", { translation_key: "headline" }),
+      reg("binary_sensor.nina_ort_2"),
+    ]);
+    return hass;
+  };
+
+  it("liest die neue NINA aus den Sensoren der Meldung, den DWD aus seinen Attributen – und doppelte nur einmal", async () => {
+    const { warningsOf } = await import("../src/util");
+    const list = warningsOf(ninaNeu());
+    expect(list.map((w) => w.headline)).toEqual(["Amtliche WARNUNG vor GLÄTTE", "Amtliche WARNUNG vor FROST"]); // schwerere zuerst
+    expect(list[0]).toMatchObject({ level: "moderate", sender: "Deutscher Wetterdienst" });
+    expect(list[1]).toMatchObject({ level: "minor", description: "Leichter Frost bis -3 °C." });
+  });
+
+  it("zeigt im Widget jede offene Warnung mit Überschrift, Stufe, Zeitraum und Beschreibung – auch ohne Auswahl", async () => {
+    const el = await mount("af-warnings", ninaNeu(), {});
+    const rows = [...el.shadowRoot!.querySelectorAll(".row")].map((r) => r.textContent!.replace(/\s+/g, " "));
+    expect(rows).toHaveLength(2);
+    expect(rows[0]).toMatch(/GLÄTTE.*(Warnung|Warning).*Deutscher Wetterdienst/);
+    expect(rows[1]).toMatch(/FROST.*(bis|until).*Leichter Frost/);
+  });
+
+  it("nimmt bei ausdrücklich gewählten Sensoren nur diese – ohne Inhalt wenigstens mit Namen", async () => {
+    const { warningsOf } = await import("../src/util");
+    const hass = hassOf([ent("binary_sensor.warnung_x", "on", { friendly_name: "Warnung X" }), ent("sensor.dwd", "1", { warning_count: 1, warning_1_headline: "Sturm" })]);
+    expect(warningsOf(hass, ["binary_sensor.warnung_x"]).map((w) => w.headline)).toEqual(["Warnung X"]);
+  });
+});
+
+describe("Warnungen ausführlich", () => {
+  it("zeigt je Warnung alles, was die Quelle liefert – Beschreibung, Empfehlung, Messwerte, Region, Warnfarbe", async () => {
+    const hass = hassOf([
+      ent("sensor.dwd", "1", {
+        region_name: "Musterstadt",
+        warning_count: 1,
+        warning_1_name: "FROST",
+        warning_1_headline: "Amtliche WARNUNG vor FROST",
+        warning_1_level: 1,
+        warning_1_description: "Es tritt leichter Frost auf.",
+        warning_1_instruction: "Frostschutz ergreifen.",
+        warning_1_parameters: { "minimum temperature": "0 - -3 [°C]" },
+        warning_1_color: "#ffeb3b",
+        warning_1_start: new Date(Date.now() - 3600e3).toISOString(),
+        warning_1_end: new Date(Date.now() + 5 * 3600e3).toISOString(),
+      }),
+    ]);
+    const el = await mount("af-warnings", hass, { variant: "full" });
+    const card = el.shadowRoot!.querySelector(".wc") as HTMLElement;
+    const text = card.textContent!.replace(/\s+/g, " ");
+    for (const part of ["Amtliche WARNUNG vor FROST", "FROST", "Es tritt leichter Frost auf.", "Frostschutz ergreifen.", "minimum temperature: 0 - -3 °C", "Musterstadt", "Deutscher Wetterdienst"]) expect(text).toContain(part);
+    expect(card.getAttribute("style")).toContain("#ffeb3b");
+  });
+});
+
+describe("Video-Nachrichten", () => {
+  const video = { title: "tagesschau in 100 Sekunden", url: "https://cdn.example/TV-20261121-0455-5000.webxl.h264.mp4", poster: "https://images.example/p.webp", duration: 101, edition: "2026-11-21T04:55" };
+  const hassWith = (v: unknown) => {
+    const hass = hassOf([]) as unknown as Record<string, unknown>;
+    hass.callWS = vi.fn(async (msg: { type: string }) =>
+      msg.type === "ambiframe/news_video" ? { video: v } : { items: [{ title: "Erste Schlagzeile", source: "tagesschau", published: new Date().toISOString() }] },
+    );
+    return hass as unknown as Hass;
+  };
+  const ready = async (el: El) => {
+    await new Promise((r) => setTimeout(r, 0));
+    await el.updateComplete;
+  };
+
+  it("spielt die neueste Ausgabe stumm in Schleife und zeigt daneben die Schlagzeilen", async () => {
+    const el = await mount("af-newsvideo", hassWith(video));
+    await ready(el);
+    const v = el.shadowRoot!.querySelector("video")!;
+    expect(v.getAttribute("src")).toBe(video.url);
+    for (const attr of ["muted", "autoplay", "loop", "playsinline"]) expect(v.hasAttribute(attr)).toBe(true);
+    expect(text(el)).toMatch(/04:55/);
+    expect(text(el)).toContain("Erste Schlagzeile");
+  });
+
+  it("zeigt auf E-Ink nur das Vorschaubild, ohne Schlagzeilen auf Wunsch nur das Video, ohne Ausgabe einen Hinweis", async () => {
+    const eink = document.createElement("af-newsvideo") as El;
+    eink.hass = hassWith(video);
+    eink.options = { headlines: false };
+    eink.ctx = { still: true };
+    document.body.append(eink);
+    await eink.updateComplete;
+    await ready(eink);
+    expect(eink.shadowRoot!.querySelector("video")).toBeNull();
+    expect(eink.shadowRoot!.querySelector(".screen img")!.getAttribute("src")).toBe(video.poster);
+    expect(eink.shadowRoot!.querySelector(".rows")).toBeNull();
+    const none = await mount("af-newsvideo", hassWith(null));
+    await ready(none);
+    expect(text(none)).toMatch(/keine Ausgabe|No edition/);
+  });
+});
+
+describe("Video-Nachrichten bildschirmfüllend", () => {
+  it("füllt die ganze Anzeige ohne Schlagzeilen und Überschrift", async () => {
+    const hass = hassOf([]) as unknown as Record<string, unknown>;
+    hass.callWS = vi.fn(async (msg: { type: string }) => (msg.type === "ambiframe/news_video" ? { video: { title: "t", url: "https://cdn.example/a.mp4", edition: "2026-11-21T04:55" } } : { items: [{ title: "Schlagzeile", source: "x" }] }));
+    const el = await mount("af-newsvideo", hass as unknown as Hass, { layout: "fullscreen" });
+    await new Promise((r) => setTimeout(r, 0));
+    await el.updateComplete;
+    expect(el.shadowRoot!.querySelector(".screen")!.classList.contains("full")).toBe(true);
+    expect(el.shadowRoot!.querySelector(".rows")).toBeNull();
+    expect(el.shadowRoot!.querySelector(".label")).toBeNull();
   });
 });

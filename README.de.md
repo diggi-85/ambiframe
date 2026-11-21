@@ -47,7 +47,7 @@ Ist die Wäsche fertig, steht es kurz da und bleibt dann als kleine Erinnerung.
 
 ## Was Ambiframe kann
 
-- **Seiten aus 52 Widgets** in einem 12×8-Raster mit halben Schritten: Uhr, Datum, Tagesuhr, Karte, To-do-Liste, Pendelzeit, Text, Wetter (aktuell, Karte,
+- **Seiten aus 53 Widgets** in einem 12×8-Raster mit halben Schritten: Uhr, Datum, Tagesuhr, Karte, To-do-Liste, Pendelzeit, Text, Wetter (aktuell, Karte,
   Stunden, Tage, Regen-Vorschau, Zeile), Wert, Räume, Status („Gerade“), Kalender/Müll, Infozeile, Kamera und **jede
   Lovelace-Karte** – die vollständige Liste steht unter [Widgets](#widgets).
 - **Widgets für den Alltag:** Küchentimer (HA-Timer mit Schnellstart-Knöpfen), Pinnwand (Text-Helfer, z. B. vom
@@ -361,7 +361,7 @@ events:
 | `today` | `calendars`, `weather` – Termine, Wetter und Müll des Tages |
 | `waste` | `bins: [{name, entity, color, out}]`, `max`, `highlight` (Tage) |
 | `activity` | `variant: list` (Standard: eine Zeile), `entities`, `exclude`, `max`, `within` (Minuten) |
-| `warnings` | `entities`, `calm_text` |
+| `warnings` | Offene Warnungen mit Überschrift, Stufe, Zeitraum, Absender und Beschreibung – NINA (alte und neue Integration) und DWD, dieselbe Meldung nur einmal: `entities` (leer = automatisch gefunden), `variant: full` (je Warnung eine Karte mit Beschreibung, Empfehlung, Messwerten, Zeitraum, Absender, betroffenen Gebieten und Warnfarbe), `calm_text` |
 | `list` | `rows: [{name, entity, attribute, icon, format, unit, decimals}]` |
 | `persons` | `persons: [{entity, name, location}]` |
 | `media` | `entities`, `variant: full` (Standard: kompakt), `show_paused` |
@@ -378,6 +378,7 @@ events:
 | `job` | `title`, `progress`, `remaining`, `end`, `layer`, `layers`, `status`, `temps` (z. B. 3D-Drucker) |
 | `qr` | `ssid`, `password`, `encryption`, `hidden`, `show_password`, `hint` oder `image` |
 | `news` | `variant` (`list`/`ticker`, Standard: Großbild), `feeds`, `interval`, `max`, `speed` |
+| `newsvideo` | Die neueste *tagesschau in 100 Sekunden*, stumm und in Dauerschleife, daneben oder darunter die aktuellen Schlagzeilen (auf E-Ink nur das Vorschaubild). Nur für den privaten, nicht-kommerziellen Gebrauch, wie es die tagesschau erlaubt (höchstens 60 Abrufe pro Stunde – Ambiframe braucht 12): `headlines` (false = nur Video), `layout` (`below`, oder `fullscreen` – nur Video, bis an die Ränder), `feeds`, `max`, `label` |
 | `daily` | `kind: quote` (Standard: Wikipedia-Artikel), `language`, `source`, `image` |
 | `summary` | `style: card` (Standard: ohne Rahmen), `size` |
 | `timer` | `entities` (timer.*, leer = alle), `presets` („5, 10, 15“ Minuten), `target`, `show_idle` |

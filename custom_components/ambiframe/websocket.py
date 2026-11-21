@@ -17,7 +17,7 @@ from .const import DATA_WS_REGISTERED, DOMAIN, LANGUAGES, PLACEHOLDERS, SIGNAL_C
 from .daily import ARTICLE_LANGUAGES, QUOTE_SOURCES
 from .defaults import build_default_config
 from .lang import resolve_lang
-from .news import PRESETS
+from .news import PRESETS, VIDEO_SOURCES
 from .summary import SIGNAL_SUMMARY_UPDATED
 from .store import AmbiframeStore
 
@@ -39,6 +39,7 @@ def async_register_commands(hass: HomeAssistant) -> None:
         ws_display_pause,
         ws_displays_status,
         ws_news,
+        ws_news_video,
         ws_daily,
         ws_icloud_photos,
         ws_placeholder_photos,
@@ -227,12 +228,17 @@ def _configured_feeds(config: dict[str, Any]) -> set[str]:
     feeds: set[str] = set()
     for page in config.get("pages", []):
         for widget in page.get("widgets", []):
-            if widget.get("type") == "news":
+            if widget.get("type") in ("news", "newsvideo"):
                 for feed in (widget.get("options") or {}).get("feeds") or []:
                     # Text oder aus dem Editor-Listenfeld {"value": …}
                     value = feed.get("value") if isinstance(feed, dict) else feed
                     if isinstance(value, str):
                         feeds.add(value)
+    # Nachrichten-Laufband über allen Seiten (design.news_band) – eigene Adressen dort sind ebenso erlaubt
+    for feed in ((config.get("design") or {}).get("news_band") or {}).get("feeds") or []:
+        value = feed.get("value") if isinstance(feed, dict) else feed
+        if isinstance(value, str):
+            feeds.add(value)
     return feeds
 
 
@@ -251,6 +257,15 @@ async def ws_news(hass: HomeAssistant, connection: websocket_api.ActiveConnectio
     allowed = set(PRESETS) | _configured_feeds(store.config)
     feeds = [f for f in msg["feeds"] if f in allowed]
     connection.send_result(msg["id"], {"items": await store.news.async_items(feeds, msg["limit"])})
+
+
+@websocket_api.websocket_command({vol.Required("type"): "ambiframe/news_video", vol.Required("source"): vol.In(list(VIDEO_SOURCES))})
+@websocket_api.async_response
+async def ws_news_video(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
+    """Neueste Ausgabe einer Video-Nachrichtenquelle (tagesschau in 100 Sekunden)."""
+    if (store := _store(hass, connection, msg)) is None:
+        return
+    connection.send_result(msg["id"], {"video": await store.news.async_video(msg["source"])})
 
 
 @websocket_api.websocket_command(

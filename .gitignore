@@ -20,3 +20,6 @@ __pycache__/
 # Bildvergleiche: Abweichungen eines Laufs (Referenzbilder werden eingecheckt)
 frontend/test/visual/_diff/
 exports/
+
+# Eigene Adresse der Samba-Freigabe für scripts/deploy.sh
+scripts/deploy.local

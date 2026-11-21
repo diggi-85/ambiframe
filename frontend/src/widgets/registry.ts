@@ -61,6 +61,7 @@ export const WIDGETS: Record<string, WidgetType> = {
   qr: { tag: "af-qr", name: "WLAN-QR-Code", icon: "mdi:qrcode", size: [6, 7] },
   job: { tag: "af-job", name: "Auftrag/Druck", icon: "mdi:printer-3d", size: [4, 6] },
   news: { tag: "af-news", name: "Nachrichten", icon: "mdi:newspaper-variant-outline", size: [12, 7] },
+  newsvideo: { tag: "af-newsvideo", name: "Video-Nachrichten (tagesschau in 100 Sekunden)", icon: "mdi:television-play", size: [12, 6] },
   daily: { tag: "af-daily", name: "Tagesinhalt (Wikipedia, Zitat)", icon: "mdi:book-open-page-variant-outline", size: [12, 8] },
   today: { tag: "af-today", name: "Tagesvorschau", icon: "mdi:calendar-today-outline", size: [12, 7] },
   timer: { tag: "af-timer", name: "Timer", icon: "mdi:timer-outline", size: [5, 4] },

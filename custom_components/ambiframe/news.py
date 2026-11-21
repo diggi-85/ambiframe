@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 from email.utils import parsedate_to_datetime
 import html
+import json
 import logging
 import re
 import time
@@ -155,6 +156,50 @@ def parse_feed(data: bytes, source: str) -> list[dict[str, Any]]:
     return items
 
 
+# Videos „tagesschau in 100 Sekunden“: die Seite bettet die Player-Daten als JSON in data-v ein (Stand 11/2026)
+VIDEO_SOURCES: dict[str, tuple[str, str]] = {
+    "tagesschau100": ("tagesschau in 100 Sekunden", "https://www.tagesschau.de/tagesschau_in_100_sekunden"),
+}
+VIDEO_CACHE_SECONDS = 300
+_DATA_V = re.compile(r'data-v="([^"]+)"')
+_EDITION = re.compile(r"TV-(\d{8})-(\d{4})")
+
+
+def parse_video_page(page: str, title: str) -> dict[str, Any] | None:
+    """Neueste Ausgabe aus den Player-Daten: MP4 bis 1280 px (Tablets), Vorschaubild, Dauer, Zeitpunkt der Ausgabe.
+
+    Stehen mehrere Folgen auf der Seite, gewinnt die jüngste Sendezeit – nicht die erste, die zufällig oben steht.
+    """
+    found: list[dict[str, Any]] = []
+    for raw in _DATA_V.findall(page):
+        try:
+            data = json.loads(html.unescape(raw))
+        except ValueError:
+            continue
+        mc = data.get("mc") if isinstance(data, dict) else None
+        meta = (mc or {}).get("meta") or {}
+        if title not in f"{meta.get('title', '')} {meta.get('seriesTitle', '')}":
+            continue
+        media = [m for s in mc.get("streams") or [] for m in s.get("media") or [] if m.get("mimeType") == "video/mp4" and m.get("url")]
+        if not media:
+            continue
+        # größte Fassung bis 1280 px – 1920 px lohnt auf Tablets nicht und kostet Datenvolumen
+        media.sort(key=lambda m: int(m.get("maxHResolutionPx") or 0))
+        best = ([m for m in media if int(m.get("maxHResolutionPx") or 0) <= 1280] or media)[-1]
+        edition = _EDITION.search(best["url"])
+        poster = data.get("posterImage")
+        found.append({
+            "title": meta.get("title") or title,
+            "url": best["url"],
+            "poster": poster if isinstance(poster, str) and poster.startswith("http") else "",
+            "duration": meta.get("durationSeconds") or mc.get("durationSeconds"),
+            # „20261121-0455“ → 2026-11-21T04:55 (Ortszeit der Sendung)
+            "edition": f"{edition.group(1)[:4]}-{edition.group(1)[4:6]}-{edition.group(1)[6:]}T{edition.group(2)[:2]}:{edition.group(2)[2:]}" if edition else "",
+        })
+    # „2026-11-21T04:55“ lässt sich als Text vergleichen; ohne Zeitpunkt zählt die Reihenfolge auf der Seite
+    return max(found, key=lambda v: v["edition"]) if found else None
+
+
 class NewsService:
     """Holt Feeds, merkt sie sich 10 min und ersetzt zu kleine Bilder durch das Artikelbild (einmal je Artikel)."""
 
@@ -163,6 +208,21 @@ class NewsService:
         self._feeds: dict[str, tuple[float, list[dict[str, Any]]]] = {}
         self._og: dict[str, str] = {}
         self._lock = asyncio.Lock()
+        self._videos: dict[str, tuple[float, dict[str, Any] | None]] = {}
+
+    async def async_video(self, source: str) -> dict[str, Any] | None:
+        """Neueste Ausgabe einer Video-Quelle, 10 min zwischengespeichert (bei Fehlern die letzte bekannte)."""
+        if source not in VIDEO_SOURCES:
+            return None
+        cached = self._videos.get(source)
+        if cached and time.monotonic() - cached[0] < VIDEO_CACHE_SECONDS:
+            return cached[1]
+        title, url = VIDEO_SOURCES[source]
+        page = await self._fetch(url)
+        found = parse_video_page(page.decode("utf-8", "replace"), title) if page else None
+        result = found or (cached[1] if cached else None)
+        self._videos[source] = (time.monotonic() if found else time.monotonic() - VIDEO_CACHE_SECONDS + 60, result)
+        return result
 
     @staticmethod
     def resolve(feed: str) -> tuple[str, str]:

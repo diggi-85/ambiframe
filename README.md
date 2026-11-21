@@ -48,7 +48,7 @@ Dutch and French).</sub>
 
 ## Features
 
-- **Pages built from 52 widgets** on a 12×8 grid with half-cell steps: clock, date, day clock, map, to-do list, commute, text, weather (current, card,
+- **Pages built from 53 widgets** on a 12×8 grid with half-cell steps: clock, date, day clock, map, to-do list, commute, text, weather (current, card,
   hourly, daily, rain preview, line), value, rooms, status ("right now"), calendar/waste, info line, camera and **any
   Lovelace card** – the full list is under [Widgets](#widgets).
 - **Everyday widgets:** kitchen timer (HA timers with quick-start buttons), notice board (text helpers, e.g. set from
@@ -350,7 +350,7 @@ events:
 | `today` | `calendars`, `weather` – appointments, weather and waste for the day |
 | `waste` | `bins: [{name, entity, color, out}]`, `max`, `highlight` (days) |
 | `activity` | `variant: list` (default: one line), `entities`, `exclude`, `max`, `within` (minutes) |
-| `warnings` | `entities`, `calm_text` |
+| `warnings` | Open warnings with headline, level, time span, sender and description – NINA (old and new integration) and DWD, the same warning only once: `entities` (empty = found automatically), `variant: full` (one card per warning with description, recommendation, measured values, time span, sender, affected areas and warning colour), `calm_text` |
 | `list` | `rows: [{name, entity, attribute, icon, format, unit, decimals}]` |
 | `persons` | `persons: [{entity, name, location}]` |
 | `media` | `entities`, `variant: full` (default: compact), `show_paused` |
@@ -367,6 +367,7 @@ events:
 | `job` | `title`, `progress`, `remaining`, `end`, `layer`, `layers`, `status`, `temps` (e.g. 3D printer) |
 | `qr` | `ssid`, `password`, `encryption`, `hidden`, `show_password`, `hint` or `image` |
 | `news` | `variant` (`list`/`ticker`, default: large image), `feeds`, `interval`, `max`, `speed` |
+| `newsvideo` | The latest *tagesschau in 100 Sekunden*, muted and looping, with the current headlines beside or below it (on e-ink only the preview image). For private, non-commercial use only, as tagesschau allows (at most 60 requests per hour – Ambiframe makes 12): `headlines` (false = video only), `layout` (`below`, or `fullscreen` – video only, edge to edge), `feeds`, `max`, `label` |
 | `daily` | `kind: quote` (default: Wikipedia article), `language`, `source`, `image` |
 | `summary` | `style: card` (default: no frame), `size` |
 | `timer` | `entities` (timer.*, empty = all), `presets` ("5, 10, 15" minutes), `target`, `show_idle` |

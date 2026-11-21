@@ -11,7 +11,7 @@ import { lang, locale, t } from "../i18n";
 import { anyIcon, iconSvg } from "../icons";
 import { PALETTES, THEME_DEFS, seasonTheme } from "../styles";
 import type { AmbiframeConfig, AmbientKind, Condition, DisplayConfig, EventConfig, Hass, HassEntity, PageConfig, SoundConfig } from "../types";
-import { formContext, type Field } from "../editor/form";
+import { formContext, isAdvanced, type Field } from "../editor/form";
 import "../editor/form";
 import "../editor/sounds";
 import "../editor/page-editor";
@@ -79,6 +79,13 @@ const WHEN: { id: string; name: string; show_if: Condition[] }[] = [
 ];
 /** Zeitfenster eines Eintrags als Abschnitte des Tages in Minuten – für das Band „Was läuft wann?“ */
 // shortcut: nur die erste Uhrzeit-Bedingung zählt; bei mehreren Zeitfenstern je Eintrag die Schnittmenge rechnen
+/** Ziel beim Ziehen mit dem Finger: der Eintrag unter dem Finger, in einer Lücke der nächste, darunter der letzte */
+export const dropIndex = (y: number, rows: { top: number; bottom: number }[]): number => {
+  if (!rows.length) return 0;
+  const at = rows.findIndex((r) => y < r.bottom);
+  return at === -1 ? rows.length - 1 : at;
+};
+
 export const dayBands = (show_if?: Condition[]): [number, number][] => {
   const c = show_if?.find((x) => x.condition === "time") as { after?: string; before?: string } | undefined;
   const min = (v?: string) => {
@@ -180,6 +187,7 @@ export class AmbiframeStudio extends LitElement {
   static properties = {
     hass: { attribute: false },
     draft: { state: true },
+    newVersion: { state: true },
     view: { state: true },
     displayId: { state: true },
     step: { state: true },
@@ -255,6 +263,37 @@ export class AmbiframeStudio extends LitElement {
   private saved = "";
   /** Neuerer Stand vom Server, solange hier ungespeicherte Änderungen offen sind */
   private external = "";
+  /** Auf dem Server liegt eine neuere Fassung des Studios als die geladene */
+  newVersion = false;
+  private versionTimer?: number;
+  private onVisible = (): void => {
+    if (!document.hidden) void this.checkVersion();
+  };
+
+  /**
+   * Neuere Fassung auf dem Server? Ohne offene Änderungen sofort frisch laden; mit offenen Änderungen erst nach dem
+   * Speichern (Knopf oben) – damit nie eine alte Fassung die Konfiguration schreibt.
+   */
+  async checkVersion(): Promise<void> {
+    if (__WB_VERSION__ === "test" || __WB_VERSION__ === "dev") return;
+    try {
+      const res = await fetch("/ambiframe_static/version.json", { cache: "no-store" });
+      const server = res.ok ? ((await res.json()) as { version?: string }).version : undefined;
+      if (!server || server === __WB_VERSION__) return;
+      if (this.dirty) this.newVersion = true;
+      else await this.reloadFresh();
+    } catch {
+      /* nächster Versuch beim nächsten Mal */
+    }
+  }
+
+  /** Bundle am Browser-Zwischenspeicher vorbei holen, dann neu laden */
+  private async reloadFresh(): Promise<void> {
+    const fresh = fetch(import.meta.url, { cache: "reload" }).catch(() => undefined);
+    await Promise.race([fresh, new Promise((r) => setTimeout(r, 8000))]);
+    location.reload();
+  }
+
   /** Einmal gewarnt: der nächste Klick auf „Speichern“ überschreibt */
   private overwrite = false;
   private unsubConfig?: Promise<unknown>;
@@ -264,12 +303,18 @@ export class AmbiframeStudio extends LitElement {
     void this.load();
     window.addEventListener("keydown", this.onKey);
     this.statusTimer = window.setInterval(() => void this.loadStatus(), 15e3);
+    // Nach einem Update (HACS) läuft hier sonst die alte Fassung weiter, bis jemand hart neu lädt
+    this.versionTimer = window.setInterval(() => void this.checkVersion(), 120e3);
+    document.addEventListener("visibilitychange", this.onVisible);
+    void this.checkVersion();
   }
 
   disconnectedCallback(): void {
     super.disconnectedCallback();
     window.removeEventListener("keydown", this.onKey);
+    document.removeEventListener("visibilitychange", this.onVisible);
     clearInterval(this.statusTimer);
+    clearInterval(this.versionTimer);
     void this.unsubConfig?.then((u) => (typeof u === "function" ? u() : undefined)).catch(() => undefined);
     this.unsubConfig = undefined;
   }
@@ -436,6 +481,106 @@ export class AmbiframeStudio extends LitElement {
   }
 
   /** Eintrag der Wiedergabeliste an eine andere Stelle ziehen */
+  /* ───────── Einstellung suchen ───────── */
+
+  /** Suchtext und das Feld, das nach einem Treffer angesteuert wird */
+  settingQuery = "";
+  findKey = "";
+
+  /** Alle Einstellungen dieser Ansicht mit ihrem Schritt – „advanced“, wenn sie nur mit „Erweitert“ zu sehen sind */
+  settingsIndex(): { step: Step; label: string; key: string; advanced: boolean }[] {
+    const c = this.draft!;
+    const of = (step: Step, fields: Field[], advanced = false) =>
+      fields.filter((f) => f.label).map((f) => ({ step, label: t(f.label), key: f.key, advanced: advanced || isAdvanced(f), help: f.help ? t(f.help) : "" }));
+    const list = this.all
+      ? [
+          ...of("aussehen", notShownAbove(LOOK_FIELDS.filter((f) => f.key !== "design.mode")), true),
+          ...of("aussehen", notShownAbove(MOTION_FIELDS), true),
+          ...of("laufband", HOME_TICKER_FIELDS),
+          ...of("laufband", NEWS_BAND_FIELDS),
+          ...of("technik", DESIGN_FIELDS),
+          ...of("technik", SUMMARY_FIELDS),
+        ]
+      : [
+          ...of("inhalte", displayFields(c).filter((f) => f.key.startsWith("night."))),
+          ...of("aussehen", notShownAbove(DISPLAY_DESIGN_FIELDS.filter((f) => f.key !== "design.css")), true),
+          ...of("technik", displayFields(c).filter((f) => !ELSEWHERE.has(f.key) && !f.key.startsWith("night."))),
+          ...of("technik", DISPLAY_SOUND_FIELDS),
+          ...of("technik", DISPLAY_STREAM_FIELDS),
+          ...of("technik", DISPLAY_PHOTO_FIELDS),
+        ];
+    return list;
+  }
+
+  /** Treffer zum Suchtext – in Name und Hilfetext, höchstens acht */
+  settingMatches(): { step: Step; label: string; key: string; advanced: boolean }[] {
+    const q = this.settingQuery.trim().toLowerCase();
+    if (q.length < 2) return [];
+    return (this.settingsIndex() as { step: Step; label: string; key: string; advanced: boolean; help: string }[])
+      .filter((e) => e.label.toLowerCase().includes(q) || e.help.toLowerCase().includes(q))
+      .slice(0, 8);
+  }
+
+  /** Zum Treffer springen: Schritt öffnen, bei Bedarf „Erweitert“ einschalten, Feld hervorheben */
+  goToSetting(e: { step: Step; key: string; advanced: boolean }): void {
+    if (e.advanced && !this.advanced) this.setAdvanced(true);
+    this.step = e.step;
+    this.settingQuery = "";
+    this.findKey = e.key;
+    this.requestUpdate();
+    window.setTimeout(() => {
+      this.findKey = "";
+      this.requestUpdate();
+    }, 3000);
+  }
+
+  private renderSettingSearch() {
+    const hits = this.settingMatches();
+    const names = new Map((this.all ? ALL_STEPS : DISPLAY_STEPS).map(([s, name]) => [s, t(name)]));
+    return html`<div class="setsearch">
+      <input
+        type="search"
+        placeholder=${t("Einstellung suchen …")}
+        .value=${this.settingQuery}
+        @input=${(ev: Event) => {
+          this.settingQuery = (ev.target as HTMLInputElement).value;
+          this.requestUpdate();
+        }}
+      />
+      ${hits.length
+        ? html`<div class="hits">${hits.map((h) => html`<button @click=${() => this.goToSetting(h)}><b>${h.label}</b><span>${names.get(h.step) ?? ""}</span></button>`)}</div>`
+        : this.settingQuery.trim().length >= 2
+          ? html`<div class="hits"><span class="muted">${t("Nichts gefunden")}</span></div>`
+          : nothing}
+    </div>`;
+  }
+
+  /** Ziehen per Finger (HTML-Ziehen geht auf Tablets nicht): an der Nummer greifen, auf einen anderen Eintrag ziehen */
+  dragOver?: number;
+  private touchDrag(ev: PointerEvent, from: number): void {
+    if (ev.pointerType === "mouse") return; // Maus: HTML-Ziehen am ganzen Eintrag
+    ev.preventDefault();
+    const handle = ev.currentTarget as HTMLElement;
+    const rows = [...(this.renderRoot.querySelectorAll(".playlist:not(.lib) > li") as NodeListOf<HTMLElement>)].map((li) => li.getBoundingClientRect());
+    handle.setPointerCapture?.(ev.pointerId);
+    const move = (e: PointerEvent) => {
+      this.dragOver = dropIndex(e.clientY, rows);
+      this.requestUpdate();
+    };
+    const up = (e: PointerEvent) => {
+      handle.removeEventListener("pointermove", move);
+      handle.removeEventListener("pointerup", up);
+      handle.removeEventListener("pointercancel", up);
+      const to = e.type === "pointerup" ? dropIndex(e.clientY, rows) : from;
+      this.dragOver = undefined;
+      if (to !== from) this.movePlaylist(from, to);
+      else this.requestUpdate();
+    };
+    handle.addEventListener("pointermove", move);
+    handle.addEventListener("pointerup", up);
+    handle.addEventListener("pointercancel", up);
+  }
+
   movePlaylist(from: number, to: number): void {
     if (!Number.isInteger(from) || from === to) return;
     this.mutateDisplay((d) => {
@@ -729,7 +874,7 @@ export class AmbiframeStudio extends LitElement {
           const p = pageOf(e.page);
           const when = whenOf(e.show_if);
           return html`<li
-            class=${at === i ? "on" : ""}
+            class="${at === i ? "on" : ""} ${this.dragOver === i ? "over" : ""}"
             draggable="true"
             title=${t("Ziehen zum Sortieren")}
             @dragstart=${(ev: DragEvent) => ev.dataTransfer?.setData("text/plain", String(i))}
@@ -740,7 +885,7 @@ export class AmbiframeStudio extends LitElement {
             }}
             @click=${() => (this.pageIdx = i)}
           >
-            <span class="num">${i + 1}</span>
+            <span class="num" title=${t("Ziehen zum Sortieren")} @pointerdown=${(ev: PointerEvent) => this.touchDrag(ev, i)}>${i + 1}</span>
             <div class="what">
               <b>${p?.name ?? e.page}</b>
               <span class="types">${this.widgetTags(p)}</span>
@@ -1419,6 +1564,7 @@ export class AmbiframeStudio extends LitElement {
     return html`<af-form
       .hass=${this.hass}
       .advanced=${this.advanced}
+      .highlight=${this.findKey}
       .fields=${fields}
       .value=${value}
       @value-changed=${(e: CustomEvent) => {
@@ -1461,7 +1607,7 @@ export class AmbiframeStudio extends LitElement {
       <nav class="steps">
         <button class="back" @click=${() => (this.view = "overview")}>${iconSvg("back")} ${t("Übersicht")}</button>
         <h2>${this.all ? t("Alle Displays") : d!.name}</h2>
-        ${this.wizard ? html`<p class="muted">${t("Einrichtung in vier Schritten")}</p>` : nothing}
+        ${this.wizard ? html`<p class="muted">${t("Einrichtung in vier Schritten")}</p>` : this.renderSettingSearch()}
         ${all.map(
           ([s, name, q], i) => html`<button class="step ${this.step === s ? "on" : ""} ${this.wizard && i < idx ? "done" : ""}" @click=${() => ((this.step = s), (this.pageIdx = 0))}>
             <span class="n">${i + 1}</span><span><b>${t(name)}</b><small>${t(q)}</small></span>
@@ -1646,6 +1792,18 @@ export class AmbiframeStudio extends LitElement {
         <b>Ambiframe</b>
         ${this.note ? html`<span class="note ${this.note.kind}" @click=${() => (this.note = null)}>${this.note.text}</span>` : nothing}
         <span class="spacer"></span>
+        ${this.newVersion
+          ? html`<button
+              class="ghost"
+              title=${t("Ambiframe wurde aktualisiert – das Studio lädt die neue Fassung, sobald gespeichert ist.")}
+              @click=${async () => {
+                if (this.dirty) await this.save();
+                if (!this.dirty) await this.reloadFresh();
+              }}
+            >
+              ${t("Speichern und neue Fassung laden")}
+            </button>`
+          : nothing}
         ${this.renderHealth()}
         <label class="inline" title=${t("Weitere Einstellungen, eigene Bedingungen, Farben, CSS und YAML")}
           ><input type="checkbox" .checked=${this.advanced} @change=${(e: Event) => this.setAdvanced((e.target as HTMLInputElement).checked)} />${t("Erweitert")}</label
@@ -2070,9 +2228,58 @@ export class AmbiframeStudio extends LitElement {
     .playlist li.on {
       border-color: var(--s-acc);
     }
+    /* Einstellung suchen – links über den Schritten */
+    .setsearch {
+      position: relative;
+    }
+    .setsearch input {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 8px 10px;
+      border-radius: 10px;
+      border: 1px solid var(--s-line);
+      background: var(--s-card);
+      color: var(--s-ink);
+      font: inherit;
+      font-size: 13px;
+    }
+    .setsearch .hits {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      margin-top: 6px;
+    }
+    .setsearch .hits button {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      text-align: left;
+      border: 0;
+      background: none;
+      color: var(--s-ink);
+      padding: 6px 8px;
+      border-radius: 8px;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    .setsearch .hits button:hover {
+      background: var(--s-card);
+    }
+    .setsearch .hits span {
+      color: var(--s-mute);
+      flex: none;
+    }
     .playlist .num {
       color: var(--s-mute);
       text-align: center;
+      /* Griff zum Ziehen per Finger – der Bildlauf darf ihn nicht übernehmen */
+      touch-action: none;
+      cursor: grab;
+      padding: 8px 0;
+    }
+    .playlist li.over {
+      border-color: var(--s-acc);
+      box-shadow: inset 0 0 0 1px var(--s-acc);
     }
     .users {
       margin: 0;

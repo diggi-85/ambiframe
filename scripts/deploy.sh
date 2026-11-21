@@ -6,8 +6,22 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 TARGET="${AMBIFRAME_TARGET:-/Volumes/config/custom_components/ambiframe}"
 
+# Freigabe „config“ (Samba-Add-on) bei Bedarf selbst verbinden – macOS nutzt dafür die im Schlüsselbund gespeicherte
+# Anmeldung. Adresse anpassbar: AMBIFRAME_SMB=smb://mein-ha.local/config ./scripts/deploy.sh
+# Eigene Adresse dauerhaft in scripts/deploy.local (wird nicht eingecheckt), z. B. AMBIFRAME_SMB=smb://mein-ha.local/config
+[ -f "$ROOT/scripts/deploy.local" ] && . "$ROOT/scripts/deploy.local"
+SMB="${AMBIFRAME_SMB:-smb://homeassistant.local/config}"
+if [ ! -d "$(dirname "$TARGET")" ] && [ "$(uname)" = "Darwin" ] && [ -z "${AMBIFRAME_TARGET:-}" ]; then
+  echo "Verbinde $SMB …"
+  open "$SMB"
+  # macOS braucht für das Verbinden gern über 30 s
+  for _ in $(seq 1 90); do
+    [ -d "$(dirname "$TARGET")" ] && break
+    sleep 1
+  done
+fi
 if [ ! -d "$(dirname "$TARGET")" ]; then
-  echo "Freigabe nicht gefunden: $(dirname "$TARGET") – im Finder mit smb://<ha-ip>/config verbinden." >&2
+  echo "Freigabe nicht gefunden: $(dirname "$TARGET") – im Finder mit $SMB verbinden (Anmeldung einmal im Schlüsselbund sichern)." >&2
   exit 1
 fi
 

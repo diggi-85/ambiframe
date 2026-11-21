@@ -25,7 +25,7 @@ const PALETTE: [string, string[]][] = [
   ["Zuhause", ["rooms", "status", "warnings", "activity", "covers", "vacuum", "batteries", "persons", "map", "pet", "camera", "doorlog"]],
   ["Energie und Auto", ["power", "price", "consumers", "balance", "appliances", "car", "commute"]],
   ["Alltag", ["today", "agenda", "calendar", "waste", "todo", "board", "departures", "qr", "job"]],
-  ["Medien und Inhalte", ["media", "news", "daily", "summary", "infoline", "image", "text"]],
+  ["Medien und Inhalte", ["media", "news", "newsvideo", "daily", "summary", "infoline", "image", "text"]],
   ["Werte und Diagramme", ["value", "list", "gauge", "chart", "card"]],
 ];
 

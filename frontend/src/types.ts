@@ -10,7 +10,7 @@ export interface HassEntity {
 
 export interface Hass {
   states: Record<string, HassEntity>;
-  entities?: Record<string, { entity_id: string; area_id?: string | null; device_id?: string | null }>;
+  entities?: Record<string, { entity_id: string; area_id?: string | null; device_id?: string | null; platform?: string; translation_key?: string | null }>;
   devices?: Record<string, { area_id?: string | null }>;
   areas?: Record<string, { area_id: string; name: string }>;
   user?: { is_admin: boolean; name: string };

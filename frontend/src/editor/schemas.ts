@@ -413,6 +413,39 @@ export const WIDGET_FIELDS: Record<string, Field[]> = {
     { key: "size", label: "Schriftgröße Punkte (px)", type: "number", min: 14, max: 40, placeholder: "22" },
     LABEL,
   ],
+  newsvideo: [
+    LABEL,
+    {
+      key: "source",
+      label: "Sendung",
+      type: "select",
+      options: [[undefined, "tagesschau in 100 Sekunden"]],
+      help: "Die neueste Ausgabe, stumm und in Dauerschleife – erscheint mehrmals am Tag neu.",
+    },
+    {
+      key: "layout",
+      label: "Anordnung",
+      type: "select",
+      options: [
+        [undefined, "Schlagzeilen neben dem Video"],
+        ["below", "Schlagzeilen unter dem Video"],
+        ["fullscreen", "Bildschirmfüllend (nur Video, bis an die Ränder)"],
+      ],
+    },
+    { key: "headlines", label: "Schlagzeilen dazu", type: "boolean", default: true, when: (v) => v.layout !== "fullscreen" },
+    {
+      key: "feeds",
+      label: "Quellen der Schlagzeilen",
+      type: "list",
+      addLabel: "Quelle",
+      help: "Leer = tagesschau.",
+      itemLabel: (f) => NEWS_PRESETS.find(([id]) => id === f.value)?.[1] ?? f.value ?? "Quelle",
+      newItem: () => ({ value: "tagesschau" }),
+      fields: [{ key: "value", label: "Quelle", type: "text", suggestions: NEWS_PRESETS, placeholder: "tagesschau … oder https://…" }],
+      when: (v) => v.headlines !== false && v.layout !== "fullscreen",
+    },
+    { key: "max", label: "Schlagzeilen", type: "number", min: 1, max: 12, placeholder: "5", when: (v) => v.headlines !== false && v.layout !== "fullscreen" },
+  ],
   news: [
     {
       key: "variant",
@@ -872,7 +905,17 @@ export const WIDGET_FIELDS: Record<string, Field[]> = {
   ],
   warnings: [
     LABEL,
-    { key: "entities", label: "Warn-Sensoren", type: "entities", domains: ["binary_sensor"] },
+    {
+      key: "variant",
+      label: "Darstellung",
+      type: "select",
+      options: [
+        [undefined, "Liste"],
+        ["full", "Ausführlich (alles zu jeder Warnung)"],
+      ],
+      help: "Ausführlich: Beschreibung, Empfehlung, Messwerte, Zeitraum, Absender, betroffene Gebiete – je Warnung eine Karte in ihrer Warnfarbe.",
+    },
+    { key: "entities", label: "Warn-Sensoren", type: "entities", domains: ["binary_sensor", "sensor"], help: "Leer = alle aktiven Warnungen von NINA und DWD automatisch – mit Überschrift, Zeitraum und Beschreibung." },
     { key: "calm_text", label: "Text ohne Warnung", type: "text", placeholder: "Keine Warnungen" },
   ],
 };
@@ -2094,6 +2137,16 @@ export const PAGE_TEMPLATES: { id: string; name: string; build: (hass?: Hass) =>
         w("wetter", "weather", 8, 1, 4, 6, { entity: firstOf(hass, "weather"), variant: "card" }),
         w("datum", "date", 8, 7, 4, 1, { align: "end" }),
       ],
+    }),
+  },
+  {
+    id: "tagesschau100",
+    name: "tagesschau in 100 Sekunden",
+    build: () => ({
+      duration: 110,
+      background: { type: "none" },
+      palette: "normal",
+      widgets: [w("video", "newsvideo", 0, 0, 12, 8, { label: false })],
     }),
   },
   {
