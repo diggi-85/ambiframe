@@ -208,7 +208,7 @@ class AfPrice extends AfTickingWidget {
         h.start.getHours() % 6 === 0
           ? svg`<text class="t3" x=${i * bw + bw / 2} y=${H} text-anchor="middle">${h.start.getHours() === 0 && i > 0 ? t("morgen") : `${h.start.getHours()}`}</text>`
           : nothing;
-      return svg`<rect x=${i * bw + 1.5} y=${H - 20 - bh} width=${Math.max(2, bw - 3)} height=${bh} rx="2" fill=${color} opacity=${past ? 0.3 : isNow ? 1 : 0.75}></rect>${lbl}`;
+      return svg`<rect class="grow-y" style="--af-j:${(i / shown.length).toFixed(3)}" x=${i * bw + 1.5} y=${H - 20 - bh} width=${Math.max(2, bw - 3)} height=${bh} rx="2" fill=${color} opacity=${past ? 0.3 : isNow ? 1 : 0.75}></rect>${lbl}`;
     });
 
     return html`${label}
@@ -292,18 +292,6 @@ class AfPower extends AfTickingWidget {
         bottom: 0;
         border-radius: 4px;
         background: var(--af-accent);
-        transform-origin: left;
-        animation: var(--af-grow, af-grow 0.9s var(--af-ease) both);
-      }
-      @keyframes af-grow {
-        from {
-          transform: scaleX(0);
-        }
-      }
-      @media (prefers-reduced-motion: reduce) {
-        .bar i {
-          animation: none;
-        }
       }
       .share {
         font-size: calc(16px * var(--af-fs, 1));

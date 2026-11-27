@@ -1,5 +1,6 @@
 // Gemeinsame Datenquellen eines Displays: Wettervorhersagen und Fotos
 import type { AmbientSettings } from "./display/ambient";
+import type { Motion } from "./styles";
 import type { Hass, Photo, AmbiframeConfig, PlaceholderSource } from "./types";
 
 export type ForecastType = "hourly" | "daily";
@@ -52,6 +53,9 @@ interface PhotoItem {
   credit: string;
 }
 
+/** gleichbleibender Schlüssel – signierte Adressen ändern nur ihre Parameter */
+const photoKey = (i: PhotoItem): string => i.mediaId ?? (i.url ?? "").split("?")[0];
+
 const shuffle = <T>(list: T[]): T[] => {
   for (let i = list.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -72,6 +76,8 @@ export class PhotoProvider {
   private index = -1;
   private loading?: Promise<void>;
   private loadedAt = 0;
+  /** in dieser Runde schon gezeigt */
+  private seen = new Set<string>();
 
   constructor(
     private readonly getHass: () => Hass | undefined,
@@ -126,7 +132,10 @@ export class PhotoProvider {
         // ohne Platzhalter weiter
       }
     }
-    this.items = shuffle(items);
+    // erst die in dieser Runde noch nicht gezeigten – Neuladen (iCloud alle 5 min) beginnt keinen neuen Durchlauf
+    const fresh = items.filter((i) => !this.seen.has(photoKey(i)));
+    if (!fresh.length) this.seen.clear();
+    this.items = fresh.length ? [...shuffle(fresh), ...shuffle(items.filter((i) => this.seen.has(photoKey(i))))] : shuffle(items);
     this.index = -1;
     this.loadedAt = Date.now();
   }
@@ -139,6 +148,7 @@ export class PhotoProvider {
     if (!this.items.length) return null;
     this.index = (this.index + 1) % this.items.length;
     const item = this.items[this.index];
+    this.seen.add(photoKey(item));
     const credit = this.getConfig()?.credit ? item.credit : "";
     if (item.url) return { url: item.url, credit };
     const hass = this.getHass();
@@ -194,11 +204,15 @@ export const loadEvents = (hass: Hass, calendars: string[], days = 2): Promise<C
 /** Ganztägig, wenn ohne Uhrzeit („2026-10-17“) */
 export const isAllDay = (e: CalEvent): boolean => !e.start.includes("T");
 
-export const preload = (url: string): Promise<boolean> =>
+/** Hochkant: deutlich höher als breit */
+export const tallPhoto = (s: { w: number; h: number }): boolean => s.h > s.w * 1.1;
+
+/** Lädt ein Bild vor; liefert seine Größe oder null, wenn es nicht lädt */
+export const preload = (url: string): Promise<{ w: number; h: number } | null> =>
   new Promise((resolve) => {
     const img = new Image();
-    img.onload = () => resolve(true);
-    img.onerror = () => resolve(false);
+    img.onload = () => resolve({ w: img.naturalWidth, h: img.naturalHeight });
+    img.onerror = () => resolve(null);
     img.src = url;
   });
 
@@ -221,4 +235,12 @@ export interface DisplayContext {
   still?: boolean;
   /** Abstand zwischen den Kacheln in px (Raster: 16) */
   gap?: number;
+  /** Stil des Displays (für die passende Bewegung von Zahlen und Balken) */
+  theme?: string;
+  /** Bewegung dieser Seite (setzt af-page) – fehlt = aus dem Design */
+  motion?: Motion;
+  /** performance.now(), ab dem sich Zahlen bewegen dürfen (Seitenwechsel weitgehend eingeblendet) */
+  motionAt?: number;
+  /** Widget bleibt beim Seitenwechsel stehen (auf beiden Seiten gleich): erstes Zeigen ohne Hochzählen */
+  calm?: boolean;
 }

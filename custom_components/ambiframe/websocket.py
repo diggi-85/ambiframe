@@ -39,6 +39,7 @@ def async_register_commands(hass: HomeAssistant) -> None:
         ws_display_pause,
         ws_displays_status,
         ws_news,
+        ws_news_check,
         ws_news_video,
         ws_daily,
         ws_icloud_photos,
@@ -257,6 +258,16 @@ async def ws_news(hass: HomeAssistant, connection: websocket_api.ActiveConnectio
     allowed = set(PRESETS) | _configured_feeds(store.config)
     feeds = [f for f in msg["feeds"] if f in allowed]
     connection.send_result(msg["id"], {"items": await store.news.async_items(feeds, msg["limit"])})
+
+
+@websocket_api.websocket_command({vol.Required("type"): "ambiframe/news_check", vol.Required("feed"): vol.All(str, vol.Length(min=1, max=500))})
+@websocket_api.require_admin
+@websocket_api.async_response
+async def ws_news_check(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
+    """Editor: eine Quelle probeweise abrufen, bevor sie gespeichert wird (nur Admins – ruft beliebige Adressen ab)."""
+    if (store := _store(hass, connection, msg)) is None:
+        return
+    connection.send_result(msg["id"], await store.news.async_check(msg["feed"]))
 
 
 @websocket_api.websocket_command({vol.Required("type"): "ambiframe/news_video", vol.Required("source"): vol.In(list(VIDEO_SOURCES))})

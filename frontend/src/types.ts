@@ -89,6 +89,9 @@ export interface WidgetLook {
   opacity?: number;
   /** Innenabstand in px */
   padding?: number;
+  /** Bewegung nur dieser Kachel: off = still; motion_duration = eigene Dauer in s (fehlt = wie die Seite) */
+  motion?: "off";
+  motion_duration?: number;
   /** Kachel: eigene Kartenfarbe und deren Deckkraft in % */
   bg?: string;
   bg_opacity?: number;
@@ -127,7 +130,8 @@ export interface PageConfig {
   duration: number;
   /** ambient: Hintergrund-Animation dieser Seite; fehlt = wie Design */
   background: {
-    type: "none" | "photo" | "color" | "camera";
+    /** music: unscharfes Cover des laufenden Titels (wie das Musik-Vollbild) */
+    type: "none" | "photo" | "color" | "camera" | "music";
     color?: string;
     ambient?: AmbientKind;
     /** camera: HA-Kamera oder Webcam-Link; Standbild alle refresh s (0 = live, Standard 20) */
@@ -142,8 +146,12 @@ export interface PageConfig {
     shade?: "none" | "light" | "strong";
   };
   palette: "normal" | "night";
+  /** Laufbänder auf dieser Seite ausblenden: no_news, no_home oder none (beide); fehlt = wie eingestellt */
+  tickers?: "no_news" | "no_home" | "none";
   /** Übergang beim Erscheinen dieser Seite; fehlt = wie Display/Design */
   transition?: Partial<TransitionConfig>;
+  /** Bewegung von Zahlen und Diagrammen auf dieser Seite; fehlt = wie Design */
+  motion?: MotionConfig;
   show_if?: Condition[];
   /** Eigenes CSS nur für diese Seite */
   css?: string;
@@ -180,7 +188,24 @@ export type AmbientKind =
   | "fireworks"
   | "hearts"
   | "weather";
-export type TransitionKind = "fade" | "blur" | "slide" | "zoom" | "cube" | "flip" | "page";
+/** Bewegung von Zahlen, Balken, Kurven und Karten – jede Angabe fehlt = Standard */
+export interface MotionConfig {
+  /** nur pro Seite: Art der Bewegung (im Design: chart_motion) */
+  style?: "soft" | "spring" | "fade" | "off";
+  /** Sekunden je Bewegung (Standard 1.1) */
+  duration?: number;
+  /** subtle: kurzer Weg ab ~65 %, normal, strong: voller Weg, Karten steigen weiter auf */
+  strength?: "subtle" | "normal" | "strong";
+  /** Karten erscheinen nacheinander (Standard soft) */
+  stagger?: "off" | "soft" | "strong";
+  /** Neuer Wert, während die Seite steht: glow (aufleuchten, Standard), arrow (▲▼), both, off */
+  highlight?: "off" | "glow" | "arrow" | "both";
+  /** Welche Zahlen hochzählen: big (große), all (Standard), none */
+  count?: "big" | "all" | "none";
+  /** page: nur beim Erscheinen der Seite, always (Standard): auch bei neuen Werten gleiten */
+  when?: "page" | "always";
+}
+export type TransitionKind = "fade" | "blur" | "slide" | "zoom" | "cube" | "flip" | "page" | "curtain" | "circle" | "rise" | "random";
 export interface TransitionConfig {
   type: TransitionKind;
   /** Sekunden für den ganzen Wechsel */
@@ -242,6 +267,23 @@ export interface EventConfig {
   mini_cover?: boolean;
   mini_progress?: boolean;
   mini_background?: "none";
+  /** Form des Musik-Banners (Karte und Mini-Karte): card (Standard), bar = Leiste über die ganze Breite, cover = großes Cover, Text darunter */
+  mini_layout?: "card" | "bar" | "cover" | "pill";
+  /** Mini-Ansicht und zusätzlich beim Liedwechsel kurz das Cover im Vollbild */
+  mini_full?: boolean;
+  /** Kamera-Bild-im-Bild: Ecke, Größe, Form (card mit Text darunter, video = nur Bild mit Titel darauf), Ausblenden-Knöpfe */
+  pip_position?: "bottom-right" | "bottom-left" | "top-right" | "top-left";
+  pip_size?: "small" | "large";
+  pip_layout?: "card" | "video";
+  pip_snooze?: boolean;
+  /** Antippen des Bild-im-Bilds: full = Kamera im Vollbild (Standard), close = schließen */
+  pip_tap?: "full" | "close";
+  /** Kamera gleich im Vollbild statt als Bild-im-Bild */
+  open_full?: boolean;
+  /** Meldet eine zweite Kamera gleichzeitig: beide bildschirmfüllend */
+  both_full?: boolean;
+  /** Vollbild-Kamera endet nach so vielen Sekunden; fehlt/0 = erst, wenn man sie schließt */
+  full_duration?: number;
   /** Ruhezeit „HH:MM“–„HH:MM“: stumm (mute) oder gar nicht zeigen (skip) */
   quiet?: { after?: string; before?: string };
   quiet_action?: "mute" | "skip";
@@ -304,7 +346,7 @@ export interface DisplayConfig {
 }
 
 export type DisplayDesign = Partial<
-  Pick<AmbiframeConfig["design"], "accent" | "evening" | "fonts" | "ambient" | "colors" | "radius" | "card_style" | "gap" | "css" | "language" | "cover_colors" | "cover_players" | "palette">
+  Pick<AmbiframeConfig["design"], "accent" | "evening" | "fonts" | "ambient" | "colors" | "radius" | "card_style" | "gap" | "css" | "language" | "cover_colors" | "cover_players" | "palette" | "chart_motion" | "motion" | "ticker_look">
 >;
 
 /** far: aus der Ferne – deutlich größer, Kleingedrucktes (Zweitzeilen, Details) entfällt */
@@ -317,7 +359,9 @@ export interface HomeTickerItem {
   /** Nur auf diesen Displays (leer = auf allen) */
   displays?: string[];
   /** batteries: eine Zeile je Akku unter `below` % (Standard 15) – statt jede Entität einzeln einzutragen */
-  kind?: "batteries" | "warnings" | "group";
+  kind?: "batteries" | "warnings" | "group" | "music";
+  /** Bei kind: music – kleines Cover vor der Zeile (Standard an) */
+  cover?: boolean;
   /** Bei kind: group – diese Entitäten werden zu einer Zeile zusammengefasst („3 Fenster offen“) */
   entities?: string[];
   /** Gruppe: Namen der Treffer als Bereich („Flur, Keller“, doppelte zusammengefasst) statt als Name der Entität */
@@ -344,7 +388,7 @@ export interface HomeTickerItem {
   icon?: string;
 }
 
-export type Theme = "ruhig" | "klar" | "glass" | "editorial" | "aurora" | "pixel" | "arcade" | "cockpit" | "tonal" | "kacheln" | "klartext" | "fallblatt" | "millennium" | "glanz" | "handheld" | "bauhaus" | "softui" | "boho" | "landhaus" | "natur" | "galerie" | "papier" | "eink" | "zeitung" | "artdeco" | "terminal" | "verspielt" | "leitsystem" | "swiss" | "rams" | "lobby" | "bilderbuch" | "weihnachten" | "rgb" | "saisonal"
+export type Theme = "signature" | "ruhig" | "klar" | "glass" | "daheim" | "editorial" | "aurora" | "pixel" | "arcade" | "cockpit" | "wohnapp" | "axel" | "klartext" | "fallblatt" | "bauhaus" | "softui" | "boho" | "landhaus" | "galerie" | "papier" | "eink" | "artdeco" | "terminal" | "verspielt" | "leitsystem" | "swiss" | "rams" | "lobby" | "bilderbuch" | "saisonal"
   // „Jahreszeiten“ zur Laufzeit – nicht in der Konfiguration
   | "saison-weihnachten" | "saison-silvester" | "saison-valentin" | "saison-ostern" | "saison-halloween" | "saison-fruehling" | "saison-sommer" | "saison-herbst" | "saison-winter";
 
@@ -391,12 +435,18 @@ export interface AmbiframeConfig {
     cover_colors?: boolean;
     /** Nur diese Player; leer = alle */
     cover_players?: string[];
-    /** Große Zahlen zählen zum neuen Wert, Balken wachsen (fehlt = an) */
+    /** Veraltet (bis 0.18): false = keine Bewegung – heute chart_motion: "off" */
     count_up?: boolean;
+    /** Bewegung von Zahlen, Balken, Kurven und Ringen: soft (ruhig), spring (federnd), fade (einblenden), off; fehlt = wie der Stil */
+    chart_motion?: "soft" | "spring" | "fade" | "off";
+    /** Feinheiten der Bewegung (Tempo, Deutlichkeit, nacheinander, Hervorhebung) */
+    motion?: Omit<MotionConfig, "style">;
     /** Nachrichten-Laufband am unteren Rand über allen Seiten (Optionen wie beim Nachrichten-Widget) */
-    news_band?: { enabled?: boolean; feeds?: unknown[]; max?: number; speed?: number; /** Zeilen des Laufbands für Zuhause laufen im selben Band vorweg */ mix?: boolean };
+    news_band?: { enabled?: boolean; feeds?: unknown[]; max?: number; speed?: number; /** Zeilen des Laufbands für Zuhause laufen im selben Band vorweg */ mix?: boolean; /** Quellen im Wechsel statt nur nach Zeit */ interleave?: boolean };
     /** Antippen einer Laufband-Zeile öffnet die Einzelheiten (fehlt = an) */
     ticker_detail?: boolean;
+    /** Form der Laufbänder: passend zum Stil (fehlt), Leiste, schwebend oder nur Linie */
+    ticker_look?: "bar" | "float" | "line";
     /** Laufband am unteren Rand über allen Seiten – nur sichtbar, wenn eine Zeile zutrifft */
     home_ticker?: HomeTickerItem[];
     /** Tempo des Laufbands für Zuhause in px/s (wie beim Nachrichten-Laufband, Standard 45) */
@@ -418,6 +468,10 @@ export interface AmbiframeConfig {
     placeholder?: PlaceholderSource;
     /** Platzhalter auch zwischen die eigenen Fotos mischen */
     placeholder_mix?: boolean;
+    /** Hochkant-Fotos auf Querformat: pair = zwei nebeneinander (Standard), fit = ganz zeigen, fill = füllend zuschneiden */
+    portrait?: "pair" | "fit" | "fill";
+    /** Langsames Zoomen/Schwenken der Fotos: off, soft, strong; fehlt = normal (Richtung wechselt je Foto) */
+    motion?: "off" | "soft" | "strong";
   };
   /** KI-Zusammenfassung (ai_task, bevorzugt Gemini) */
   /** Eigene Töne für Ereignisse: Name und Quelle (Link, /local/… oder media-source://…) */
@@ -436,4 +490,8 @@ export interface AmbiframeConfig {
 export interface Photo {
   url: string;
   credit: string;
+  /** zweites Hochkant-Foto daneben (Querformat-Display) */
+  pair?: string;
+  /** Hochkant-Foto ganz zeigen, unscharf hinterlegt */
+  fit?: boolean;
 }

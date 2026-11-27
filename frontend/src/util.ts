@@ -148,7 +148,7 @@ export interface TickerDetail {
   body?: string;
   rows?: { name: string; value: string }[];
 }
-export type TickerLine = { icon?: string; text: string; tone?: "warn" | "bad"; detail?: TickerDetail; /** Text ohne „seit …“ – für Zeilen, die nach dem Ende stehen bleiben */ base?: string };
+export type TickerLine = { icon?: string; /** kleines Bild statt Icon (Musik-Cover) */ img?: string; /** Logo der Quelle (Warnungen: DWD, NINA) */ logo?: string; text: string; tone?: "warn" | "bad"; detail?: TickerDetail; /** Text ohne „seit …“ – für Zeilen, die nach dem Ende stehen bleiben */ base?: string };
 
 /** Stufen von NINA/Wetterwarnungen (severity) und der DWD (warning_N_level 1–4) → Wort und Farbe der Zeile */
 // amtliche Stufen: auch die niedrigste ist eine Warnung (DWD-Stufe 1 „Wetterwarnung“), kein bloßer Hinweis
@@ -170,6 +170,8 @@ export interface WarningItem {
   sender?: string;
   /** Art der Warnung (DWD: „FROST“) */
   event?: string;
+  /** Woher die Warnung kommt – für das Logo */
+  source?: "dwd" | "nina";
   /** Betroffene Gebiete (NINA) bzw. Region (DWD) */
   areas?: string;
   /** Messwerte des DWD („minimum temperature: 0 - -3 °C“) */
@@ -270,6 +272,7 @@ export const warningsOf = (hass: Hass | undefined, ids?: string[]): WarningItem[
         description: text(a.description ?? p.description),
         instruction: text(a.recommended_actions ?? a.instruction ?? p.instruction),
         sender: text(a.sender ?? p.sender),
+        source: "nina",
         areas: text(a.affected_areas ?? p.areas),
         url: text(a.web ?? p.url),
       });
@@ -285,6 +288,7 @@ export const warningsOf = (hass: Hass | undefined, ids?: string[]): WarningItem[
           description: text(a[`warning_${n}_description`]),
           instruction: text(a[`warning_${n}_instruction`]),
           sender: "Deutscher Wetterdienst",
+          source: "dwd",
           event: text(a[`warning_${n}_name`]),
           areas: text(a.region_name),
           color: text(a[`warning_${n}_color`]),
@@ -310,6 +314,10 @@ export const warningLevel = (w: WarningItem): [string, "warn" | "bad"] => {
   return [t(word), tone];
 };
 
+/** Logo der Warnquelle – dieselben Markenbilder, die HA bei seinen Integrationen zeigt */
+export const sourceLogo = (source?: WarningItem["source"]): string | undefined =>
+  source ? `https://brands.home-assistant.io/_/${source === "dwd" ? "dwd_weather_warnings" : "nina"}/icon.png` : undefined;
+
 /** Aktive Warnungen als Zeilen fürs Laufband – mit Einzelheiten zum Antippen */
 export const warningLines = (hass: Hass | undefined, ids?: string[]): TickerLine[] =>
   warningsOf(hass, ids).map((w) => {
@@ -323,7 +331,7 @@ export const warningLines = (hass: Hass | undefined, ids?: string[]): TickerLine
       ...(w.start ? [{ name: t("Gültig ab"), value: when(w.start) }] : []),
       ...(w.end ? [{ name: t("Gültig bis"), value: when(w.end) }] : []),
     ];
-    return { icon: "mdi:alert", tone, text: `${word}: ${headline}${w.end ? ` · ${t("bis {when}", { when: when(w.end) })}` : ""}`, detail: { title: headline, body: body || undefined, rows } };
+    return { icon: "mdi:alert", logo: sourceLogo(w.source), tone, text: `${word}: ${headline}${w.end ? ` · ${t("bis {when}", { when: when(w.end) })}` : ""}`, detail: { title: headline, body: body || undefined, rows } };
   });
 
 const minutesSince = (s: HassEntity, now: number) => Math.floor((now - new Date(s.last_changed).getTime()) / 60e3);
@@ -380,6 +388,40 @@ const valueText = (s: HassEntity, it: HomeTickerItem, now: number) => {
   return sinceText(minutesSince(s, now)) || t("gerade");
 };
 
+/**
+ * Musik im Laufband: eine Zeile je laufendem Titel (Gruppen zeigen ihn nur einmal) – mit kleinem Cover.
+ * Text: {title}, {artist}, {album}, {where}; Standard „Titel – Künstler · Raum“.
+ */
+const musicLines = (hass: Hass | undefined, it: HomeTickerItem): TickerLine[] => {
+  const ids = it.entities?.length ? it.entities : Object.keys(hass?.states ?? {}).filter((id) => id.startsWith("media_player."));
+  const seen = new Set<string>();
+  const out: TickerLine[] = [];
+  for (const id of ids) {
+    const s = stateOf(hass, id);
+    const a = s?.attributes ?? {};
+    if (s?.state !== "playing" || !a.media_title) continue;
+    const key = `${a.media_title}|${a.media_artist ?? ""}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const where = nameOfEntity(s, id);
+    const text = it.text
+      ? it.text.replace(/\{title\}/g, String(a.media_title)).replace(/\{artist\}/g, String(a.media_artist ?? "")).replace(/\{album\}/g, String(a.media_album_name ?? "")).replace(/\{where\}/g, where)
+      : [[a.media_title, a.media_artist].filter(Boolean).join(" – "), where].join(" · ");
+    const pic = it.cover === false ? undefined : (a.entity_picture as string | undefined);
+    const line: TickerLine = { icon: it.icon ?? (pic ? undefined : "music"), img: pic, text, base: text };
+    const rows = [
+      [t("Titel"), a.media_title],
+      [t("Künstler"), a.media_artist],
+      [t("Album"), a.media_album_name],
+      [t("Raum"), where],
+    ]
+      .filter(([, v]) => v)
+      .map(([name, value]) => ({ name: String(name), value: String(value) }));
+    out.push(it.detail === false ? line : { ...line, detail: { title: String(a.media_title), rows } });
+  }
+  return out;
+};
+
 /** Zeilen einer einzelnen Konfigurationszeile, die jetzt zutreffen */
 const hitLines = (hass: Hass | undefined, it: HomeTickerItem, now: number): TickerLine[] => {
   const withDetail = (l: TickerLine, detail: TickerDetail): TickerLine => (it.detail === false ? l : { ...l, detail });
@@ -389,6 +431,7 @@ const hitLines = (hass: Hass | undefined, it: HomeTickerItem, now: number): Tick
     const rows = low.map((b) => ({ name: b.name, value: b.level == null ? t("schwach") : `${fmt(b.level, 0)} %` }));
     return low.map((b) => withDetail({ icon: it.icon ?? "mdi:battery-alert", text: `${it.text || t("Akku")} ${b.name}${b.level == null ? "" : ` ${fmt(b.level, 0)} %`}` }, { title: t("Schwache Akkus"), rows }));
   }
+  if (it.kind === "music") return musicLines(hass, it);
   if (it.kind === "group") {
     const hits = (it.entities ?? []).map((id) => ({ id, s: stateOf(hass, id) })).filter((h) => matches(h.s, it, now)) as { id: string; s: HassEntity }[];
     if (hits.length < Math.max(1, Number(it.min) || 1)) return [];
@@ -417,6 +460,25 @@ const hitLines = (hass: Hass | undefined, it: HomeTickerItem, now: number): Tick
 
 /** Zuletzt gezeigte Zeilen je Eintrag – damit Ereignisse nach ihrem Ende noch `hold` Minuten stehen bleiben */
 export type TickerMemory = Map<string, { at: number; line: TickerLine }>;
+
+/**
+ * Nächste Zeile für das laufende Band: zuerst eine, die in dieser Runde noch nicht lief (neue Meldungen kommen so
+ * direkt hinter die gerade sichtbare), sonst beginnt eine neue Runde. Zahlen zählen nicht zur Identität –
+ * „Laden 41 %“ und „Laden 42 %“ sind dieselbe Zeile, „Fenster 1“ und „Fenster 2“ nicht.
+ */
+export const tickerKey = (l: TickerLine): string => `${l.icon ?? ""}|${(l.base ?? l.text).replace(/\d+([.,]\d+)?\s*(%|°\w?|kWh|kW|W|km|min|h|€)/g, "#")}`;
+
+export const nextInRound = <T>(items: T[], seen: Set<string>, key: (item: T) => string): T => {
+  let item = items.find((i) => !seen.has(key(i)));
+  if (!item) {
+    seen.clear();
+    item = items[0];
+  }
+  seen.add(key(item));
+  return item;
+};
+
+export const nextTickerLine = (lines: TickerLine[], seen: Set<string>): TickerLine => nextInRound(lines, seen, tickerKey);
 
 /**
  * Zeilen des Laufbands für Zuhause, die gerade zutreffen – oder noch stehen bleiben (hold). Warnungen laufen vorweg.
@@ -605,4 +667,10 @@ export const batteryOverview = (hass: Hass | undefined, o: BatteryOptions = {}):
   }
   low.sort((a, b) => (a.level ?? -1) - (b.level ?? -1));
   return { devices, low };
+};
+
+/** Seitenverhältnis eines Videos als --ar an das Element (für Größe im Originalformat per CSS) */
+export const videoRatio = (e: Event): void => {
+  const v = e.target as HTMLVideoElement;
+  if (v.videoWidth && v.videoHeight) v.style.setProperty("--ar", String(v.videoWidth / v.videoHeight));
 };

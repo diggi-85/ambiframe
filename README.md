@@ -1,280 +1,333 @@
-<p align="center"><img src="https://raw.githubusercontent.com/diggi-85/ambiframe/main/docs/logo.png" alt="Ambiframe – Home Assistant Integration" width="640"></p>
+<p align="center"><picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/diggi-85/ambiframe/main/docs/brand/logo-claim-en-light.svg">
+  <img src="https://raw.githubusercontent.com/diggi-85/ambiframe/main/docs/brand/logo-claim-en.svg" alt="Ambiframe – Calm until it matters." width="560">
+</picture></p>
+
+<h3 align="center">Turn your tablet into the most beautiful screen in your home.</h3>
+
+<p align="center">
+  A photo frame that thinks along: photos, the time and the weather – and right when it matters,<br>
+  the front door, the finished laundry or the song that's playing.<br>
+  <b>For Home Assistant. Free. No cloud account.</b>
+</p>
+
+<p align="center">
+  <a href="https://my.home-assistant.io/redirect/hacs_repository/?owner=diggi-85&repository=ambiframe&category=integration"><img src="https://my.home-assistant.io/badges/hacs_repository.svg" alt="Install with HACS"></a>
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/HACS-Integration-41BDF5?style=flat-square" alt="HACS">
+  <img src="https://img.shields.io/badge/Home%20Assistant-2025.1%2B-18BCF2?style=flat-square&logo=homeassistant&logoColor=white" alt="Home Assistant 2025.1+">
+  <img src="https://img.shields.io/badge/Languages-EN%20%C2%B7%20DE%20%C2%B7%20NL%20%C2%B7%20FR-F4B14A?style=flat-square" alt="English, German, Dutch, French">
+  <img src="https://img.shields.io/badge/License-MIT-lightgrey?style=flat-square" alt="MIT license">
+</p>
 
 <p align="center"><b>English</b> · <a href="README.de.md">Deutsch</a></p>
 
-# Ambiframe
+<p align="center"><img src="https://raw.githubusercontent.com/diggi-85/ambiframe/main/docs/screenshots/en/hero.jpg" alt="Ambiframe on a tablet: large clock, date and weather over a photo"></p>
 
-**Calm ambient displays for Home Assistant.** Ambiframe turns tablets and TVs into a photo frame with a brain:
-day to day it shows photos, the time, the weather and only what matters right now. When someone rings, the front door
-appears. When the laundry is done, it says so briefly and then stays as a small reminder.
+---
 
-![Photo frame: clock, date and info line over a photo](https://raw.githubusercontent.com/diggi-85/ambiframe/main/docs/screenshots/en/photo-frame.jpg)
+## Why Ambiframe?
+
+A dashboard on the wall is handy – and usually busy: buttons, numbers and tiles nobody looks at. Ambiframe flips that
+around. **Day to day it's a calm, beautiful screen.** Only when something happens does it speak up – and then it steps
+back again.
 
 <table>
   <tr>
-    <td width="33%"><img src="https://raw.githubusercontent.com/diggi-85/ambiframe/main/docs/screenshots/en/doorbell.jpg" alt="Doorbell: live picture of the front door in full screen"></td>
-    <td width="33%"><img src="https://raw.githubusercontent.com/diggi-85/ambiframe/main/docs/screenshots/en/birthday.jpg" alt="Birthday with confetti"></td>
-    <td width="33%"><img src="https://raw.githubusercontent.com/diggi-85/ambiframe/main/docs/screenshots/en/music-cover.jpg" alt="Now playing in the colours of the cover"></td>
-  </tr>
-  <tr>
-    <td align="center"><sub><b>Someone’s at the door</b> – live camera</sub></td>
-    <td align="center"><sub><b>Moments</b> – confetti for a birthday</sub></td>
-    <td align="center"><sub><b>Music</b> in the colours of the cover</sub></td>
-  </tr>
-  <tr>
-    <td width="33%"><img src="https://raw.githubusercontent.com/diggi-85/ambiframe/main/docs/screenshots/en/weather-aurora.jpg" alt="Weather page with aurora animation"></td>
-    <td width="33%"><img src="https://raw.githubusercontent.com/diggi-85/ambiframe/main/docs/screenshots/en/word-clock.jpg" alt="Word clock with brass face"></td>
-    <td width="33%"><img src="https://raw.githubusercontent.com/diggi-85/ambiframe/main/docs/screenshots/en/style-gallery.jpg" alt="Gallery style: photo in a mount"></td>
-  </tr>
-  <tr>
-    <td align="center"><sub><b>Animated backgrounds</b> – here aurora</sub></td>
-    <td align="center"><sub><b>Word clock</b> in four languages</sub></td>
-    <td align="center"><sub><b>35 styles</b> – here “Gallery”</sub></td>
-  </tr>
-  <tr>
-    <td width="33%"><img src="https://raw.githubusercontent.com/diggi-85/ambiframe/main/docs/screenshots/en/clocks-split-flap.jpg" alt="Analogue clocks and split-flap displays"></td>
-    <td width="33%"><img src="https://raw.githubusercontent.com/diggi-85/ambiframe/main/docs/screenshots/en/everyday.jpg" alt="Timer, notice board, countdown, departures, pollen and rain radar"></td>
-    <td width="33%"><img src="https://raw.githubusercontent.com/diggi-85/ambiframe/main/docs/screenshots/en/studio-display.jpg" alt="Studio with live preview"></td>
-  </tr>
-  <tr>
-    <td align="center"><sub><b>Clocks</b> – station, split-flap, elegant</sub></td>
-    <td align="center"><sub><b>Everyday</b> – timers, departures, rain radar</sub></td>
-    <td align="center"><sub><b>Studio</b> – set up with a live preview</sub></td>
+    <td width="25%" valign="top"><b>🖼️ Beautiful, not busy</b><br><sub>30 styles, each light and dark, with checked contrast. From a gallery mount to a neon arcade – every page looks of a piece.</sub></td>
+    <td width="25%" valign="top"><b>🔔 Speaks up when it matters</b><br><sub>Doorbell with live video, laundry done, music, a birthday with confetti – “moments” interrupt the display and then fade away.</sub></td>
+    <td width="25%" valign="top"><b>🎛️ Set up without YAML</b><br><sub>The Studio with a live preview: pick a display, contents, look, moments – done. A wizard builds everything from your devices on first start.</sub></td>
+    <td width="25%" valign="top"><b>🏠 All yours</b><br><sub>Runs entirely inside your Home Assistant and is part of every backup. No account, no subscription, no third-party cloud.</sub></td>
   </tr>
 </table>
 
-<sub>Screenshots with sample data. Photos: <a href="https://www.instagram.com/chris.gunia">Chris Gunia</a> (the built-in sample photos), front door: Unsplash. Ambiframe follows the language of the Home Assistant user (English, German,
-Dutch and French).</sub>
+## See it in action
 
-## Features
+<table>
+  <tr>
+    <td width="50%"><img src="https://raw.githubusercontent.com/diggi-85/ambiframe/main/docs/screenshots/en/doorbell.jpg" alt="Doorbell: live picture of the front door in full screen"></td>
+    <td width="50%"><img src="https://raw.githubusercontent.com/diggi-85/ambiframe/main/docs/screenshots/en/music-cover.jpg" alt="Now playing: cover art and colours matching the album"></td>
+  </tr>
+  <tr>
+    <td align="center"><b>Someone's at the door.</b> The front door appears in full screen right away – on every display, over a single camera connection.</td>
+    <td align="center"><b>Now playing.</b> The cover on every song change – and if you like, the whole screen takes on the album's colours.</td>
+  </tr>
+  <tr>
+    <td><img src="https://raw.githubusercontent.com/diggi-85/ambiframe/main/docs/screenshots/en/laundry.jpg" alt="Laundry: two washing machines and a dryer with programme, power, time left and cost"></td>
+    <td><img src="https://raw.githubusercontent.com/diggi-85/ambiframe/main/docs/screenshots/en/energy.jpg" alt="Energy summary: usage, cost, solar share and hourly profile"></td>
+  </tr>
+  <tr>
+    <td align="center"><b>Laundry at a glance.</b> Programme, power, “done at” and what the cycle has cost so far – animated while the machine runs.</td>
+    <td align="center"><b>Where your power goes.</b> A daily summary with cost, solar share, comparison with the average and an hourly profile.</td>
+  </tr>
+  <tr>
+    <td><img src="https://raw.githubusercontent.com/diggi-85/ambiframe/main/docs/screenshots/en/smart-home.jpg" alt="Smart home tiles: lights, plugs, lock and blinds, with overview pills on top"></td>
+    <td><img src="https://raw.githubusercontent.com/diggi-85/ambiframe/main/docs/screenshots/en/news.jpg" alt="News: large photo with headline and source logo"></td>
+  </tr>
+  <tr>
+    <td align="center"><b>Like a smart home app.</b> Tap to switch lights and plugs, with the state of the house at the top.</td>
+    <td align="center"><b>News.</b> From any RSS feed, with a large photo and the source's logo – or as a ticker across every page.</td>
+  </tr>
+  <tr>
+    <td><img src="https://raw.githubusercontent.com/diggi-85/ambiframe/main/docs/screenshots/en/weather-aurora.jpg" alt="Weather page with aurora animation"></td>
+    <td><img src="https://raw.githubusercontent.com/diggi-85/ambiframe/main/docs/screenshots/en/birthday.jpg" alt="Birthday with confetti over the photo frame"></td>
+  </tr>
+  <tr>
+    <td align="center"><b>28 ambient animations.</b> Aurora, snow, a fireplace, raindrops on the window – or simply “like the weather”.</td>
+    <td align="center"><b>Special moments.</b> Confetti, fireworks or hearts – automatically from your birthday calendar, for example.</td>
+  </tr>
+  <tr>
+    <td><img src="https://raw.githubusercontent.com/diggi-85/ambiframe/main/docs/screenshots/en/word-clock.jpg" alt="Word clock with brass face"></td>
+    <td><img src="https://raw.githubusercontent.com/diggi-85/ambiframe/main/docs/screenshots/en/clocks-split-flap.jpg" alt="Station clock, elegant clock, dot clock, split-flap clock and departures"></td>
+  </tr>
+  <tr>
+    <td align="center"><b>Word clock</b> in four languages – black, white, brass or copper.</td>
+    <td align="center"><b>Clocks to fall for.</b> Station, elegant, dots – and split-flap like on the platform.</td>
+  </tr>
+  <tr>
+    <td><img src="https://raw.githubusercontent.com/diggi-85/ambiframe/main/docs/screenshots/en/everyday.jpg" alt="Everyday: timer, notice board, countdown, departures, pollen and rain radar"></td>
+    <td><img src="https://raw.githubusercontent.com/diggi-85/ambiframe/main/docs/screenshots/en/photo-frame.jpg" alt="Photo frame: clock, date and info line over a photo"></td>
+  </tr>
+  <tr>
+    <td align="center"><b>For everyday life.</b> Kitchen timer, notice board, countdown, departures, pollen and rain radar.</td>
+    <td align="center"><b>And most of the time: simply beautiful.</b> Your photos from HA, iCloud or Google – time and weather on top.</td>
+  </tr>
+</table>
 
-- **Pages built from 53 widgets** on a 12×8 grid with half-cell steps: clock, date, day clock, map, to-do list, commute, text, weather (current, card,
-  hourly, daily, rain preview, line), value, rooms, status ("right now"), calendar/waste, info line, camera and **any
-  Lovelace card** – the full list is under [Widgets](#widgets).
-- **Everyday widgets:** kitchen timer (HA timers with quick-start buttons), notice board (text helpers, e.g. set from
-  your phone), countdown (date, date helper or calendar), departures (public transport sensors, line filter, walking
-  time), animated rain radar (RainViewer), sun & moon (sunrise/sunset, day length, moon phase) and pollen & air quality
-  (traffic-light levels, sensors found automatically).
-- **Map, to-do list and commute:** people and cars on a map that fits itself (hide anyone, only who's away, the route
-  to work drawn in); a to-do or shopping list (`todo.*`, live, tap to check off with 4 s to undo); commute times from
-  Waze/Google/HERE with “leave by 7:29” and extra minutes in traffic.
-- **Day clock for older people:** weekday and time of day in large words (“Tuesday – Afternoon”), no digits needed.
-- **A playlist per display.** Pages with a condition (`show_if`) only appear when they are relevant, e.g. waste
-  collection only the evening before.
-- **Events** interrupt the display:
-  - `alarm`: full screen with live camera, e.g. for the doorbell
-  - `live`: picture-in-picture with a cooldown, e.g. for motion – every overlay can be tapped or swiped away
-  - `info`: a notice card, then a small reminder in the top right, e.g. for the washing machine
-  - `page`: shows a specific page, e.g. while a motion sensor is on – at least `duration` s, then `hold_after` s,
-    at most `max` s, with `cooldown` after it ends
-  - `media`: album cover when the track changes (`entities`: players, `style`: `card`/`fullscreen`,
-    `interval`: repeat every n minutes); groups show each track only once
-  - `effect`: an occasion animation over everything – confetti, fireworks, hearts, glitter … with a big title, e.g.
-    "Happy birthday!" from a birthday calendar
-- **Events with sound and rules:** bundled sounds (gong, ding-dong, bell, alarm – repeats until someone taps) or
-  your own link, played on the tablet via Fully; quiet hours (muted or not at all), "only when someone is home", any
-  conditions, and the trigger `to: "*"` = every change – e.g. for buttons and `event.*` entities (fresh events only,
-  optionally only certain `event_types`).
-- **Your own sounds:** a sound library in the editor – files from HA media (`media-source://`), `/local/…` or any link,
-  with ▶ preview. Per event: repeat once, 2–10 times or until tapped/closed, with an adjustable interval.
-- **Reminders and notification centre:** after a notice a small reminder stays in the top right – until tapped, for
-  15 min to 1 day, or not at all. From several reminders on they stack like iOS notifications with a count; tap to
-  expand or clear all. A notification centre (quick menu → *Notifications*) lists what happened, grouped by day.
-- **Now playing mini card:** permanent or per track for a while, how long after pausing, conditions and quiet hours,
-  corner, size, cover, progress and background.
-- **Night mode** (dimmed clock that drifts to prevent burn-in) and **evening mood**.
-- **Screen off when everyone is away:** pick the people per display; with Fully the screen turns off, the doorbell and
-  other moments still wake it.
-- **35 styles, each light and dark:** Calm (soft lamplight), **Clear** (StandBy-like: pure black or white, filled panels), Glass, Aurora, Editorial, Pixel (LED dot matrix),
-  Arcade (neon), Cockpit, Tonal, Tiles, Clear text (large and high contrast), Split-flap, Millennium, Gloss, Handheld,
-  Bauhaus, Soft UI, Boho, Country house, Nature, **Gallery** (an exhibition room: ceiling spotlights, photos in a mount), **Paper** (black
-  on a paper tone with fine grain), **E-Ink** (no motion or fades at all, bold type, greyscale photos – for e-paper displays),
-  **Newspaper**, **Art Deco**, **Terminal**, **Playful**, **Wayfinding** (yellow on anthracite like airport signs),
-  **Swiss Grid** (strict grid, huge numbers, signal red), **Rams** (warm grey, orange accent, speaker grille), **Lobby**
-  (hotel reception: bottle green, double brass frame, fine serifs), **Picture book** (for children: hills, sun or moon, cut-out cards), **Christmas** (fir green and candle gold,
-  fairy lights along the top, gentle snow), **RGB** (like a gaming PC: glowing edges that cycle through all
-  colours) – and
-  **Seasons**, which changes by
-  itself: spring, summer, autumn, winter, plus Christmas, New Year's Eve, Valentine's Day, Easter and Halloween. Tile
-  styles put widgets into cards automatically. Light/dark automatically by the sun (with a soft fade) or fixed,
-  adjustable per display. Every style keeps a minimum contrast in light and dark (secondary text, small print and accent
-  colour are checked automatically), and decorations stay behind cards instead of running through text.
-- **Tiles your way:** one card style for all widgets (filled, glass, outline only or no surface), spacing and corners;
-  per tile its own card colour and opacity, corner radius, border, glass, shadow and heading on/off.
-- **Colour palettes** on top of any style (Nordic, Vampire, Mocha, Retro, Night city) or **Course of the day** – the
-  colours drift with the time. Optionally **colours from the album cover**: while music plays, background, accent and
-  cards take on the cover's colours and fade back afterwards.
-- **13 fonts** bundled locally (including Fraunces, Instrument Serif, Playfair, Inter, Geist, Outfit), separately
-  for clock/titles and text, and per widget. Numbers (times, temperatures, minutes) always use the style's title
-  font, words the text font – so a page looks of a piece.
-- **Background animations** – strength, speed and colour adjustable, per page, off at night and with "reduce motion":
-  - calm: floating particles, flowing gradient, colour shift, aurora, light shimmer, fog
-  - nature & weather: snow, raindrops on the window (lens-like), wind, drifting clouds, starry sky, fireflies, falling
-    leaves, cherry blossoms, bubbles – or **like the weather**, which switches with your weather entity
-  - cosy: fireplace, lava lamp, waves, glitter
-  - bold: code rain, star flight, line play, bouncing logo, pipes
-- **Page transitions:** fade, blur, slide, zoom, cube, flip or page turn with any duration – globally, per display,
-  per page.
-- **Clocks:** word clock (German, English, Dutch, French; faces black, white, brass, copper), analogue clock (station,
-  plain, elegant, dots), split-flap clock and departures, LED pixel display with 8×8 icons, typewriter text.
-- **Readable from across the room:** far-view pages show one thing filling the screen (time, one value, one
-  sentence – the *Huge* look of the value and text widgets); the text size *from afar* enlarges everything by 60 % and
-  drops the small print. Large numbers count to their new value and bars grow when the page changes (off on e-ink,
-  with reduced motion, in the video stream – or switch it off).
-- **Home ticker:** a band along the bottom over every page that only appears while something applies – a window open
-  for 20 minutes, the washing machine done, a battery below 15 %. Set the lines under *All displays → Tickers*: every line can be switched off, limited to single displays, and one
-  line can report *all* low batteries at once. A **group** line folds several entities into one (“3 windows open”, or by area: “Motion: hall, cellar”), texts can
-  show values (`{state}`, an attribute, another entity such as `{sensor.charge_level}`, times as clock time), states can be
-  lists or “all except” (`!none`), **keep showing**
-  holds an event for a few minutes after it is over (motion detected: 2 min), and a **tap on a line opens the details**
-  – which windows, since when, the full text of a warning – all switchable per line or for everyone. A **warnings** line shows active DWD and NINA warnings with their text,
-  in red and ahead of everything else – found automatically, or pick the entities. The **news ticker** can run there too, on every page instead of only on a
-  news page – and both can be **mixed** into one band.
-- **The Studio:** one editor for everything, always with a live preview – built around the display, with a page
-  editor for arranging widgets, undo and hints about what's missing – see [The Studio](#the-studio).
-- **Control mode:** a tap brings up the HA dashboard – pick it from a list, or leave it on each user's own default
-  dashboard; after a minute without touch Ambiframe returns.
-- **Native camera** via Home Assistant's own stream (WebRTC/HLS) – all displays share one connection to the camera,
-  which matters for cameras that allow only a few (e.g. Tapo). Until the live picture runs, the latest snapshot is shown
-  instead of an empty area; MJPEG only as a fallback.
-- **Photos** from any HA media source (the `ambiframe` folder, but also Immich, Synology Photos & co.), from a shared
-  **iCloud** or **Google Photos album** (Google unofficial, up to about 300 photos). As long as there are no photos of
-  your own – or mixed in – **placeholder images**: built-in sample photos (also offline), the Wikimedia picture of the
-  day, public-domain paintings, NASA space images, random photos (Lorem Picsum) or Bing.
-- **News** from any RSS, Atom or RDF feed; suggestions in English (BBC, Guardian, Sky News, NPR, New York Times, ABC,
-  CBC, Al Jazeera, DW), German (tagesschau, n-tv, SPIEGEL, ZDFheute, Deutschlandfunk, ZEIT, FAZ, SZ, heise, ORF,
-  SRF), Dutch (NOS, NU.nl, VRT NWS) and French (Le Monde, franceinfo, RFI, Le Figaro). Without a choice, sources match the display language. Large image with headline, list or ticker; the server
-  fetches the feeds (cached for 10 min) and swaps small thumbnails for large images. The ticker can be switched per
-  display and is off on TVs and in the video stream (it would freeze or stutter there).
-- **Webcams and cameras as background:** pages can use an HA camera or a webcam link (image, MJPEG, `.m3u8`, YouTube
-  live) as their background; the editor suggests public webcams. The darkening behind clock and text is adjustable per
-  page (normal, light, strong or off).
-- **Info line** with weather, appointments, all waste bins in rotation, running appliances with remaining time,
-  "window open and it's raining", what's playing, the robot vacuum and the car charging.
-- **Daily content and day preview:** Wikipedia article of the day (English, German or Swedish) and a quote (ZenQuotes:
-  quote of the day, or Wikiquote: German quote of the week); in the morning appointments, weather and waste collection
-  at a glance.
-- **AI summary** (via `ai_task`, e.g. Gemini) at set times: a headline and 3–5 points from weather, appointments,
-  waste, electricity price/PV, car and home – exactly the data Ambiframe already shows. Widget, "Good morning" page,
-  sensor *Ambiframe summary* (for announcements), button and action `ambiframe.generate_summary`.
-- **On the TV:** a display can be sent as a video stream (up to 25 fps) to an Apple TV (AirPlay) or an LG webOS TV –
-  with the switch *On the TV* or the actions `ambiframe.show_on_tv` / `ambiframe.stop_on_tv`. Requires the Puppet
-  app (formerly add-on). Step-by-step guide (German): [`docs/airplay-apple-tv.md`](docs/airplay-apple-tv.md).
-- **Languages:** English, German, Dutch and French – the interface, editor, starter configuration and AI summary.
-- **iPad and iPhone via the HA app:** the dashboard card `custom:ambiframe-card` (`display: <id>`) in kiosk mode
-  shows Ambiframe full screen, also for users without admin rights.
-- **Landscape and portrait:** displays detect their orientation (also when rotated) or use a fixed one. In portrait,
-  Ambiframe rearranges every page automatically (side by side → stacked); the editor ("Landscape | Portrait") lets you
-  fine-tune the portrait layout (`widget.portrait`). The stage adapts to the aspect ratio (16:9, 4:3, phone) – no bars
-  and no squashed widgets.
-- **More building blocks:** pet (counter, times, weekly history), daily balance from long-term statistics, guest
-  Wi-Fi QR code, job/3D print (progress, remaining time, layer, temperatures), robot vacuum with map, image entities.
-- **Free building blocks:** *Text & template* – any text with Jinja (`{{ states('sensor.x') }}`, live) and optional
-  Markdown; *History* – line, area or bars for one or more entities; *Gauge* – ring or half circle with colour
-  steps; *Image* – link, `/local/…`, `media-source://…`, template or entity picture. Ambiframe renders templates on
-  the server: displays without an admin user may only render templates that are part of the saved configuration.
-- **Your own look:** custom colours for light and dark (background, text, accent, cards, good/warning/cool) on any
-  style, corner radius, custom CSS globally and per page; save styles, export and import them as YAML. Per widget:
-  as a card, accent and text colour, size, opacity, padding (`look`).
-- **Comfortable editing:** half-cell grid (drag, resize, arrow keys), multi-select (⇧/⌘-click), drag groups together,
-  guides for aligned edges, copy/paste with
-  ⌘C/⌘V (as YAML – also between pages, tabs and devices), your own templates for widget groups and whole pages,
-  pages as YAML export/import. The editor also works on a phone.
-- **Tap actions:** every widget can do something on tap or long press – toggle, open HA details, run a script/action,
-  show a page, open a pop-up with any Lovelace card, pause the playlist or bring up the HA dashboard; optionally with
-  a confirmation ("Open the gate – really?").
-- **Controllable from Home Assistant:** every display is a device with the entities *Page* (select, jumps there),
-  *Pause* (ends after `pause_minutes`, default 60), *Next page*, *Reload*, *Connected* and *Last active* – ideal for
-  automations ("car comes home → energy page").
-- **Keeps itself running:** displays report every 30 s. If one hangs, Ambiframe presses the configured restart button
-  (`watchdog.button`, e.g. Fully "Load start URL"). If you like, Home Assistant notifies you when a display has been
-  offline for `watchdog.notify` minutes – the notification disappears by itself once it is back. After an Ambiframe
-  update all displays reload by themselves – never in the middle of a doorbell or camera event.
-- **Several devices:** without `?display=`, a device asks once which display it is and remembers it. The editor shows
-  under *Playback → Devices* who is showing what.
-- Everything is **stored in Home Assistant** (`.storage/ambiframe`) and is therefore part of every backup.
+### 30 styles – one click
+
+<p align="center"><img src="https://raw.githubusercontent.com/diggi-85/ambiframe/main/docs/screenshots/en/styles.jpg" alt="The same weather page in nine styles: Ambiframe, Glass, At Home, Editorial, Pixel, Bauhaus, Lobby, Swiss Grid and Picture book"></p>
+
+<p align="center"><sub>The same page in Ambiframe, Glass, At Home, Editorial, Pixel, Bauhaus, Lobby, Swiss Grid and Picture book.<br>In the Studio the preview shows any style as soon as you hover over it.</sub></p>
+
+<sub>Screenshots with sample data. Photos: <a href="https://www.instagram.com/chris.gunia">Chris Gunia</a> (the built-in sample photos); front door, news photos and covers: Unsplash. The news sources in the screenshots are made up.</sub>
+
+## On the wall in five minutes
+
+1. **Install** – with the button above via HACS (or [manually](#manually)), then restart Home Assistant.
+2. **Add the integration** – *Settings → Devices & services → Add integration → Ambiframe*.
+3. **Follow the wizard** – Open **Ambiframe** in the sidebar. The wizard asks about the room, contents, moments and
+   photos, and builds a ready-to-go configuration from your devices: weather, rooms by area, waste calendar.
+4. **Connect the tablet** – Copy the display's address from the Studio and open it on the tablet
+   (ideally in [Fully Kiosk Browser](https://www.fully-kiosk.com)). Done.
+
+On iPad and iPhone it works without Fully too: put the `custom:ambiframe-card` card on a dashboard and open the HA app
+in kiosk mode.
+
+## The Studio – everything with a live preview
+
+![Studio: the look of a display with live preview](https://raw.githubusercontent.com/diggi-85/ambiframe/main/docs/screenshots/en/studio-display.jpg)
+
+No YAML, no guessing. The Studio thinks from the display and asks five simple questions:
+
+| Step | Question | What you set |
+|---|---|---|
+| **Location & device** | Where does it hang? | Room (sets sensible defaults), device (Fully, browser or HA app) with an address to copy |
+| **Contents** | What should it show? | Pages in the playlist, order by dragging, duration, “When?” (e.g. mornings only) and the night |
+| **Look** | How should it feel? | Style, light/dark, colours, tiles, ambient animation, motion |
+| **Moments** | When should something happen? | Doorbell, motion, laundry done, music, birthday … with **▶ Test** and your own sounds |
+| **Technical** | Control, sound, TV | Control mode, restart button, offline alert, sounds, video stream to the TV |
+
+On the right the **preview always runs with your real data**: flip through pages, switch light/dark/night, simulate the
+weather (sun, rain, snow, wind) and test moments – without saving anything. **↶ ↷** undoes any step, and at the top
+Ambiframe tells you when something is missing – **Show** jumps straight to it. **All displays** holds what applies to
+every display; each display can differ.
+
+<table>
+  <tr>
+    <td width="50%"><img src="https://raw.githubusercontent.com/diggi-85/ambiframe/main/docs/screenshots/en/page-editor.jpg" alt="Page editor: arranging widgets on the grid"></td>
+    <td width="50%"><img src="https://raw.githubusercontent.com/diggi-85/ambiframe/main/docs/screenshots/en/studio-moments.jpg" alt="Studio: the moments of a display"></td>
+  </tr>
+  <tr>
+    <td align="center"><b>Page editor.</b> Drag, resize and align widgets – with guides, multi-select, ⌘C/⌘V and your own templates.</td>
+    <td align="center"><b>Moments.</b> Ready-made templates, triggers suggested from your entities, tested with one click.</td>
+  </tr>
+</table>
+
+## Everything Ambiframe can do
+
+<details open>
+<summary><b>🔔 Moments – the screen speaks up when it matters</b></summary>
+
+- **Doorbell and cameras:** full screen with live video (`alarm`) or picture-in-picture (`live`) – two cameras side by
+  side, tap to enlarge, corner, size and shape adjustable. All displays share **one** connection to the camera
+  (important for cameras that allow only a few, e.g. Tapo); until the live picture runs, the last snapshot shows.
+- **Notices:** first a card, then a small reminder in the top right – like “Laundry done”. Several stack up like
+  notifications on an iPhone; the **notification centre** shows what happened, grouped by day.
+- **Music:** the cover on every song change as a card, full screen, bar, pill or mini card – even mini *and* briefly
+  full screen. If you like, the whole screen takes on the album's colours.
+- **Show a page:** a motion sensor triggers and the right page appears – as long as it stays on, with hold time,
+  maximum and cooldown.
+- **Occasions:** confetti, fireworks, hearts, glitter … with a big title – e.g. “Happy birthday!” from a birthday calendar.
+- **With sound and rules:** chime, ding-dong, bell, alarm or your own sounds from HA media; quiet hours (muted or not at
+  all), “only when someone is home”, any conditions, buttons and `event.*` entities.
+- **Who was at the door?** The latest doorbell and camera moments with a snapshot.
+
+</details>
+
+<details>
+<summary><b>🧩 55 widgets – from the clock to any Lovelace card</b></summary>
+
+- **Time:** clock, date, word clock (4 languages, 4 faces), analogue clocks (station, plain, elegant, dots), split-flap,
+  LED pixel display, **day clock for seniors** (“Tuesday – afternoon”, no digits at all).
+- **Weather:** now, card, hours, days, rain preview, animated **rain radar**, sun & moon, pollen & air, DWD and NINA
+  **warnings** with the source's logo.
+- **Home:** rooms with ventilation tips, a “right now” status, **smart home tiles** with overview pills, blinds,
+  batteries, robot vacuum with map, pet, print job/3D printing, Wi-Fi QR code for guests.
+- **Energy:** electricity price (Tibber, cheapest hours), solar and consumption, biggest consumers, **daily and weekly
+  summary** with hourly profile, cost and solar share, **appliances** with programme, time left and cost, car (battery,
+  range, charging, lock).
+- **On the go:** map with people and cars, commute time (“leave by 7:29”), departures, calendar and agenda, waste
+  collection with **German bins in their real colours** – or the yellow bag.
+- **Everyday:** kitchen timer, notice board (set from your phone), countdown, to-do and shopping list (tap to tick off).
+- **Reading:** news from any RSS/Atom feed (with logos, and every source is checked as you add it), *tagesschau in
+  100 seconds* as video, Wikipedia article and quote of the day, an **AI summary** in the morning (via `ai_task`).
+- **Free building blocks:** text with Jinja and Markdown, history (line, area, bars), gauge (ring/half), image, camera
+  and webcam – and **any Lovelace card**.
+- **Tap actions:** every widget can toggle, run an action, show a page or a pop-up with a Lovelace card – with a
+  confirmation if you like (“Open the gate – really?”).
+
+The full list with every option is under [Widgets](#widgets).
+
+</details>
+
+<details>
+<summary><b>🎨 Look – 30 styles, animations, motion</b></summary>
+
+- **30 styles, each light and dark:** **Ambiframe** (the brand's own style and the default: ink and paper, fine rounded frames, a single point of amber light), Calm, **Clear** (like StandBy), Glass, Aurora, Editorial, Pixel, Arcade, Cockpit,
+  At Home, Home App, Axel, Clear text, Split-flap, Bauhaus, Soft UI, Boho, Country house, **Gallery**, **Paper**,
+  **E-Ink** (for e-paper displays), Art Deco, Terminal, Playful, **Wayfinding**, **Swiss Grid**, **Rams**, **Lobby**,
+  **Picture book** (for children) – and **Seasons**, which changes by itself: spring to winter, Christmas, New Year's
+  Eve, Valentine's Day, Easter, Halloween. Every style meets a checked minimum contrast.
+- **Light and dark by the sun** – with a soft cross-fade – or fixed, per display.
+- **Colour palettes** (Nordic, Vampire, Mocha, Retro, Night city) or **Course of the day**: colours drift with the time.
+- **28 ambient animations:** particles, aurora, fog, snow, raindrops on the window, wind, clouds, starry sky, fireflies,
+  leaves, cherry blossoms, fireplace, lava lamp, waves … or **like the weather**.
+- **Motion with feeling:** bars grow, lines draw in, numbers count up – calm, springy or fading. Widgets that stay the
+  same on the next page simply stay put during the transition.
+- **10 page transitions:** fade, blur, slide, zoom, cube, flip, page turn, curtain, circle, rise – or a different one
+  each time.
+- **Tickers in style:** floating, as a bar or just a line – matching the chosen style.
+- **13 fonts** bundled locally, card styles (filled, glass, outline), your own colours for light and dark, custom CSS,
+  save, share and import styles.
+
+</details>
+
+<details>
+<summary><b>📰 Tickers – only there when something applies</b></summary>
+
+- **Home ticker:** appears only while something applies – a window open for 20 minutes, the washing machine done, a
+  battery below 15 %, a severe weather warning. Groups combine lines (“3 windows open”), and tapping a line shows the
+  details.
+- **News ticker** across every page – mixed with the home ticker and the current song if you like.
+- New items join at the back – nothing you're reading jumps.
+
+</details>
+
+<details>
+<summary><b>📷 Photos – yours, from any source</b></summary>
+
+- Any **HA media source** (folder, Immich, Synology Photos …), a shared **iCloud** or **Google Photos album**.
+- Portrait photos on landscape displays shown as a **side-by-side pair** instead of cropped.
+- Until you add your own: built-in sample photos (offline too), Wikimedia picture of the day, public-domain paintings,
+  NASA images.
+- Webcams and HA cameras as a page background.
+
+</details>
+
+<details>
+<summary><b>📺 Devices and operation – it just keeps running</b></summary>
+
+- **Any tablet:** Fully Kiosk (wakes the screen for moments and turns it off when everyone is away), any browser, iPad
+  and iPhone via the HA app.
+- **On the TV:** as a video stream to Apple TV (AirPlay) or LG webOS – see
+  [`docs/airplay-apple-tv.md`](docs/airplay-apple-tv.md).
+- **Landscape and portrait:** pages rearrange themselves in portrait; any aspect ratio without black bars.
+- **Night mode** with a dimmed, wandering clock. **Control mode:** a tap brings up your HA dashboard, after a minute it returns.
+- **Controllable from Home Assistant:** every display is a device with *Page*, *Pause*, *Next page*, *Reload* and
+  *Connected* – ideal for automations (“car arrives home → energy page”).
+- **Keeps itself running:** if a display hangs, Ambiframe restarts it; after an update every display reloads itself –
+  never in the middle of a doorbell.
+- **Readable from afar:** distance pages with one single, huge piece of information.
+- **Four languages:** English, German, Dutch, French – interface, Studio and AI summary.
+- Everything is **stored in Home Assistant** and is part of every backup.
+
+</details>
 
 ## Installation
 
-### HACS (custom repository)
+### HACS (recommended)
+
+<a href="https://my.home-assistant.io/redirect/hacs_repository/?owner=diggi-85&repository=ambiframe&category=integration"><img src="https://my.home-assistant.io/badges/hacs_repository.svg" alt="Install with HACS"></a>
+
+Or by hand:
 
 1. HACS → ⋮ → *Custom repositories* → `https://github.com/diggi-85/ambiframe`, type *Integration*.
-2. Install "Ambiframe" and restart Home Assistant.
+2. Install “Ambiframe” and restart Home Assistant.
 3. *Settings → Devices & services → Add integration → Ambiframe*.
 
 ### Manually
 
 Copy `custom_components/ambiframe` to `/config/custom_components/`, restart, add the integration.
 
-## Setup
+### Setting up the tablet
 
-1. Open **Ambiframe** in the sidebar. On first start, Ambiframe creates a starter configuration from your entities
-   (weather, rooms by area, waste calendar) and a wizard sets up your first display.
-2. Open your display (or **+ Add display**) and copy its address under **Location & device**, e.g.
-   `http://homeassistant.local:8123/ambiframe-display?display=ambiframe`.
-3. On the tablet (recommended: [Fully Kiosk Browser](https://www.fully-kiosk.com)) set it as the start URL and log in
+1. Open **Ambiframe** in the sidebar, choose the display (or **+ Add display**) and copy its address under
+   **Location & device**, e.g. `http://homeassistant.local:8123/ambiframe-display?display=ambiframe`.
+2. Enter it as the start URL on the tablet (recommended: [Fully Kiosk Browser](https://www.fully-kiosk.com)) and sign in
    once – ideally with a separate HA user without admin rights.
-4. Optionally enable the *JavaScript interface* in Fully. Ambiframe then wakes the screen for events.
+3. Optionally enable the *JavaScript interface* in Fully: Ambiframe then wakes the screen for moments.
 
-On an iPad or iPhone, create a dashboard with only the `custom:ambiframe-card` card and open it in the HA app's kiosk
-mode.
+## FAQ
 
-## The Studio
+<details>
+<summary><b>Which tablet do I need?</b></summary>
 
-Everything is set up in the Studio. Changes are only stored with **Save** (⌘S or Ctrl+S); **Discard** brings back the last saved
-state, **↶ ↷** (⌘Z, ⇧⌘Z or Ctrl+Z, Ctrl+Y) undo and redo single steps. At the top Ambiframe shows when something is missing (e.g. an
-entity that no longer exists) – **Show** jumps to the spot.
+Any with an up-to-date browser. Inexpensive Android tablets with Fully Kiosk are ideal, because Ambiframe can then wake
+the screen and turn it off. iPads run through the HA app. On slower devices Ambiframe picks lighter transitions by
+itself, and for e-paper displays there's the **E-Ink** style with no motion at all.
 
-![Studio: the look of a display with live preview](https://raw.githubusercontent.com/diggi-85/ambiframe/main/docs/screenshots/en/studio-display.jpg)
+</details>
 
-The Studio starts from the display. The **overview** shows every display as a live preview together with the devices
-currently showing it, plus the **All displays** card. Each display answers the same questions in five steps:
+<details>
+<summary><b>Does Ambiframe replace my dashboard?</b></summary>
 
-| Step | Question | What you set there |
-|---|---|---|
-| **Location & device** | Where is it? | Location (sets sensible defaults), device (Fully, browser or HA app) with the address to copy |
-| **Contents** | What should it show? | Pages of the playlist, order (drag to sort), duration, “When?” (e.g. only in the morning) with a day band showing what runs when, and the night |
-| **Look** | How should it feel? | Style, light/dark, colours, tiles, background animation |
-| **Moments** | When should something happen? | Doorbell, motion, laundry done, music, birthday … with **▶ Test**, custom sounds |
-| **Technical** | Control, sound, video stream | Control mode, restart button and offline notification, sounds, video stream to the TV, photos |
+It complements it. Ambiframe is for the screen you glance at in passing. Tap it and **control mode** brings up your
+usual HA dashboard; after a minute without touch, Ambiframe returns. Any Lovelace card can also be placed directly as a
+widget.
 
-**All displays** is the shared page: look for all, moments, the **page library** and photos & AI. Whatever a display
-does not set itself comes from there. Small labels show where a value comes from – *as all displays ↗* or
-*own value ↺* (one click resets it).
+</details>
 
-On the right the **preview** always runs with your real data: flip through pages, switch light/dark/night, simulate
-weather (sun, rain, snow, wind, clear night) and test moments without saving anything. Hovering over a style shows it
-in the preview right away.
+<details>
+<summary><b>Do I need an account or a cloud?</b></summary>
 
-**Advanced** (at the top, remembered per device) reveals everything else: more fields, custom conditions in the
-playlist, fonts, contrast and text size (up to *from afar*: +60 %, no small print), custom colours for light and dark, custom CSS, custom styles (save, export,
-import) and, under *All displays → Photos & AI*, the whole configuration as **YAML**.
+No. Ambiframe runs entirely inside your Home Assistant and stores everything there. It only goes online for content you
+choose yourself – news feeds, the rain radar, placeholder photos or a shared album, for example.
 
-![Studio: the moments of a display](https://raw.githubusercontent.com/diggi-85/ambiframe/main/docs/screenshots/en/studio-moments.jpg)
+</details>
 
-Moments apply to all displays; per display you only switch on or off which ones it shows. **New moment** offers ready
-templates and suggests the trigger from your entities.
+<details>
+<summary><b>Do I need to know YAML?</b></summary>
 
-On first start a **setup wizard** guides you through location, contents, moments, photos and device.
+No. Everything is done in the Studio with a live preview. If you want, *Advanced* shows the whole configuration as YAML –
+see [For advanced users](#for-advanced-users).
 
-### Designing pages
+</details>
 
-![Page editor: arranging widgets on the grid](https://raw.githubusercontent.com/diggi-85/ambiframe/main/docs/screenshots/en/page-editor.jpg)
+<details>
+<summary><b>What does it cost?</b></summary>
 
-**Design** on a page (under *Contents* or in the page library) opens the page editor inside the Studio: all pages on
-the left, the page as a live picture in the middle, the settings of the selected widget or page on the right. **Back**
-returns to where you came from.
+Nothing. Ambiframe is open source under the MIT license.
 
-- Add widgets from the bar at the bottom (with search; hovering shows the widget on the page before you add it), drag them, resize at the bottom-right corner; a grid with half cells and
-  guides for aligned edges.
-- Multi-select with ⇧/⌘-click (Windows: Shift/Ctrl), arrow keys move (with ⇧ resize), ⌘C/⌘V (Ctrl+C/V) copies as YAML – also between pages and
-  devices, ⌘D duplicates, ⌫ deletes.
-- **Landscape | Portrait** switches to the portrait layout, which can be adjusted separately.
-- Per page: duration, background (photo, camera, webcam, colour), darken, brightness, transition, animation, condition.
-- Per widget (with *Advanced*): condition, tile (card, colour, radius, border, glass, shadow, heading), colours, size
-  and what a tap does; custom templates for widget groups and whole pages, pages as YAML.
+</details>
 
-## Configuration
+---
+
+## For advanced users
+
+### Configuration
 
 In the Studio under **All displays → Photos & AI → For advanced users: YAML** (with **Advanced**) or with the action
 `ambiframe.import_config`. Ambiframe creates a matching starter
@@ -354,11 +407,11 @@ events:
 | `list` | `rows: [{name, entity, attribute, icon, format, unit, decimals}]` |
 | `persons` | `persons: [{entity, name, location}]` |
 | `media` | `entities`, `variant: full` (default: compact), `show_paused` |
-| `appliances` | `items: [{name, running, icon, power, progress, end, cost}]`, `empty_text` |
+| `appliances` | `items: [{name, running, icon, power, progress, end, cost, program}]`, `variant: cards` (one animated card per running appliance), `empty_text` |
 | `price` | `entity`, `home` (Tibber), `window` (cheapest hours), `tomorrow`, `note` |
 | `power` | `production: [{name, entity}]`, `consumption`, `consumption_first`, `forecast`, `forecast_remaining`, `extra`, `extra_name` |
 | `consumers` | `count`, `devices`, `exclude` |
-| `balance` | `switch_hour`, `groups` (YAML) |
+| `balance` | `switch_hour`, `period: week` (weekly review), `profile: {entity, solar}` (hourly profile), `compare` (comparison with the average), `groups` (YAML) |
 | `batteries` | `part`, `devices`, `threshold`, `max`, `exclude` |
 | `car` | `name`, `battery`, `range`, `location`, `charging`, `plugged`, `charger_power`, `time_full`, `lock`, `limit`, `inside_temp` |
 | `vacuum` | `vacuums: [{entity, name, battery, room, map}]` |
@@ -367,7 +420,7 @@ events:
 | `job` | `title`, `progress`, `remaining`, `end`, `layer`, `layers`, `status`, `temps` (e.g. 3D printer) |
 | `qr` | `ssid`, `password`, `encryption`, `hidden`, `show_password`, `hint` or `image` |
 | `news` | `variant` (`list`/`ticker`, default: large image), `feeds`, `interval`, `max`, `speed` |
-| `newsvideo` | The latest *tagesschau in 100 Sekunden*, muted and looping, with the current headlines beside or below it (on e-ink only the preview image). For private, non-commercial use only, as tagesschau allows (at most 60 requests per hour – Ambiframe makes 12): `headlines` (false = video only), `layout` (`below`, or `fullscreen` – video only, edge to edge), `feeds`, `max`, `label` |
+| `newsvideo` | The latest *tagesschau in 100 Sekunden*, muted and looping, with the current headlines beside or below it (on e-ink only the preview image). For private, non-commercial use only, as tagesschau allows (at most 60 requests per hour – the video check makes 4, checking every 15 minutes): `headlines` (false = video only), `layout` (`below`, or `fullscreen` – video only, edge to edge), `until_end` (next page only after the video, at most 5 minutes), `feeds`, `max`, `label` |
 | `daily` | `kind: quote` (default: Wikipedia article), `language`, `source`, `image` |
 | `summary` | `style: card` (default: no frame), `size` |
 | `timer` | `entities` (timer.*, empty = all), `presets` ("5, 10, 15" minutes), `target`, `show_idle` |
@@ -381,6 +434,8 @@ events:
 | `radar` | `zoom` (4–7), `map` (auto/light/dark/osm), `map_url`, `frames` (6 = last hour), `speed`, `latitude`/`longitude` |
 | `sky` | `show` (sun/moon, empty = both), `latitude`/`longitude` (default: home) |
 | `air` | `entities: [{entity, name, kind, scale}]` (pollen, aqi, pm25, pm10, ozone, no2; empty = automatic), `only_elevated`, `max` |
+| `hometiles` | Smart home tiles: `entities` (tapping toggles lights, switches, fans), `label` |
+| `pills` | Overview pills: climate, lights, security, speakers – found automatically from your entities |
 | `card` | `card:` any Lovelace card configuration |
 
 All widgets support `align`/`valign` (start/center/end), `show_if` (conditions) as well as `tap_action` and

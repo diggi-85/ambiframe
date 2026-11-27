@@ -3,7 +3,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { FONTS } from "../src/fonts";
-import { THEME_DEFS, THEMES } from "../src/styles";
+import { MERGED_THEMES, THEME_DEFS, THEMES } from "../src/styles";
 import { AMBIENT_OPTIONS, PLACEHOLDER_OPTIONS } from "../src/editor/schemas";
 
 const constPy = readFileSync(new URL("../../custom_components/ambiframe/const.py", import.meta.url), "utf8");
@@ -72,7 +72,11 @@ describe("Zusammengelegte Stile", () => {
     expect(normalizeTheme("gold")).toEqual({ theme: "ruhig", light: false });
     expect(normalizeTheme("minimal")).toEqual({ theme: "klar", light: false });
     expect(normalizeTheme("weissgold")).toEqual({ theme: "ruhig", light: true });
-    expect(normalizeTheme("gibtsnicht").theme).toBe("ruhig");
+    expect(normalizeTheme("gibtsnicht").theme).toBe("signature");
+    // entfernte Stile → nächster Verwandter
+    expect(normalizeTheme("glanz").theme).toBe("glass");
+    expect(normalizeTheme("pastell").theme).toBe("wohnapp");
+    expect(normalizeTheme("weihnachten").theme).toBe("saisonal");
   });
 });
 
@@ -111,5 +115,29 @@ describe("Lesbarkeit aller Stile", () => {
     expect(contrastOn("#000000", "#ffffff")).toBeCloseTo(21, 0);
     expect(contrastOn("rgba(0, 0, 0, 0)", "#ffffff")).toBeCloseTo(1, 5);
     expect(contrastOn("linear-gradient(red, blue)", "#fff")).toBeNull();
+  });
+});
+
+describe("Bewegung von Zahlen, Balken und Diagrammen", () => {
+  it("eigene Wahl vor alter Abschaltung vor Vorgabe des Stils", async () => {
+    const { chartMotion, CHART_ANIMS } = await import("../src/styles");
+    expect(chartMotion({ chart_motion: "spring", count_up: false }, "galerie")).toBe("spring");
+    expect(chartMotion({ count_up: false }, "verspielt")).toBe("off");
+    expect(chartMotion({}, "verspielt")).toBe("spring");
+    expect(chartMotion({}, "galerie")).toBe("fade");
+    expect(chartMotion(undefined, "standard")).toBe("soft");
+    expect(CHART_ANIMS.off.bar).toBe("none");
+    expect(CHART_ANIMS.soft.bar).toBeUndefined();
+  });
+});
+
+
+describe("Umleitung alter Stile", () => {
+  it("ist im Frontend und in const.py gleich und zeigt nur auf vorhandene Stile", () => {
+    const m = /^MERGED_THEMES: Final = \{([\s\S]*?)\}/m.exec(constPy);
+    expect(m, "MERGED_THEMES fehlt in const.py").toBeTruthy();
+    const py = Object.fromEntries([...m![1].matchAll(/"([^"]+)": "([^"]+)"/g)].map((x) => [x[1], x[2]]));
+    expect(py).toEqual(MERGED_THEMES);
+    for (const to of Object.values(MERGED_THEMES)) expect(THEMES.some((x) => x.id === to), to).toBe(true);
   });
 });

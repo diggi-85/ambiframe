@@ -164,18 +164,6 @@ class AfWeather extends AfWidget {
         bottom: 0;
         border-radius: var(--af-bar-radius, 3px);
         background: var(--af-bar-fill, linear-gradient(90deg, var(--af-cold), var(--af-accent)));
-        transform-origin: left;
-        animation: var(--af-grow, af-grow 0.9s var(--af-ease) both);
-      }
-      @keyframes af-grow {
-        from {
-          transform: scaleX(0);
-        }
-      }
-      @media (prefers-reduced-motion: reduce) {
-        .bar i {
-          animation: none;
-        }
       }
       .line {
         display: flex;
@@ -312,7 +300,7 @@ class AfWeather extends AfWidget {
     const area = `${d} L${x(pts.length - 1)},${bot + 10} L${x(0)},${bot + 10} Z`;
     const step = pts.length > 8 ? 2 : 1;
     return html`${label}
-      <svg class="chart" width=${W} height=${H} viewBox="0 0 ${W} ${H}">
+      <svg class="chart chart-reveal" width=${W} height=${H} viewBox="0 0 ${W} ${H}">
         <defs>
           <linearGradient id="wg" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0" stop-color="var(--af-accent)" stop-opacity=".22" />

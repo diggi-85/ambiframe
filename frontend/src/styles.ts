@@ -1,7 +1,7 @@
 // Design-Tokens: sieben Stile, jeder hell und dunkel, dazu Abend, Nacht, Fotos und gemeinsame Widget-Stile
 import { css, unsafeCSS } from "lit";
 import { digitFamily, fontStack } from "./fonts";
-import type { AmbientKind, ColorSet, Theme } from "./types";
+import type { AmbientKind, ColorSet, MotionConfig, Theme } from "./types";
 
 type Tokens = Record<string, string>;
 
@@ -29,9 +29,6 @@ interface ThemeDef {
 
 const SERIF = fontStack("fraunces");
 const SANS = fontStack("inter");
-/** Schrift wie auf Desktops um 2001 (auf Tablets ohne Tahoma: Verdana oder Systemschrift) */
-// Tablets (Android, iPad) haben weder Tahoma noch Verdana – dann die mitgelieferte Inter statt einer Systemschrift
-const TAHOMA = `Tahoma, Verdana, "Segoe UI", ${fontStack("inter")}`;
 
 /** Grundwerte dunkel/hell („Ruhig“); die übrigen Stile überschreiben nur, was sie anders machen. */
 const DARK: Tokens = {
@@ -216,6 +213,71 @@ export const seasonTheme = (date: Date): Theme => {
 
 export const THEME_DEFS: ThemeDef[] = [
   {
+    // Der Stil der Marke (docs/brand): Tinte und Papier, feine Rahmen mit runden Ecken wie das Zeichen,
+    // Bernstein nur als Punkt – auf jeder Karte oben rechts und im Doppelpunkt der Uhr
+    id: "signature",
+    name: "Ambiframe",
+    hint: "Der Stil der Marke: Tinte und Papier, feine runde Rahmen, ein Lichtpunkt in Bernstein – modern und klar",
+    ambient: "none",
+    tiles: true,
+    air: 1.08,
+    shared: {
+      ...SHARED,
+      display: fontStack("outfit"),
+      sans: fontStack("geist"),
+      "clock-weight": "200",
+      "clock-track": "-0.03em",
+      "card-radius": "22px",
+      "card-art": "radial-gradient(circle at calc(100% - 17px) 17px, var(--af-accent) 0 3.5px, transparent 4.2px)",
+      "label-weight": "500",
+      "label-track": "0.14em",
+      "bar-radius": "999px",
+      // Balken neutral in der Schriftfarbe – Bernstein bleibt dem Punkt (und der Spitze) vorbehalten
+      "bar-fill": "color-mix(in srgb, var(--af-ink) 60%, transparent)",
+      "curve-w": "2.5",
+    },
+    dark: {
+      ...DARK,
+      bg: "#0f1012",
+      ink: "#f4f1ea",
+      "ink-2": "rgba(244, 241, 234, 0.68)",
+      "ink-3": "rgba(244, 241, 234, 0.46)",
+      line: "rgba(244, 241, 234, 0.1)",
+      surface: "rgba(244, 241, 234, 0.04)",
+      accent: "#f4b14a",
+      "accent-soft": "rgba(244, 177, 74, 0.14)",
+      card: "rgba(244, 241, 234, 0.025)",
+      "card-border": "1.5px solid rgba(244, 241, 234, 0.16)",
+      "card-shadow": "none",
+      panel: "rgba(22, 23, 26, 0.96)",
+      chip: "rgba(15, 16, 18, 0.72)",
+      veil: "rgba(15, 16, 18, 0.55)",
+      colon: "var(--af-accent)",
+      "colon-opacity": "1",
+    },
+    light: {
+      ...LIGHT,
+      bg: "#f4f1ea",
+      ink: "#0f1012",
+      "ink-2": "rgba(15, 16, 18, 0.66)",
+      "ink-3": "rgba(15, 16, 18, 0.48)",
+      line: "rgba(15, 16, 18, 0.1)",
+      surface: "rgba(255, 255, 255, 0.5)",
+      // Bernstein auf hellem Grund: kräftiger (Marke #EE9A1F), für Schrift und Linien noch etwas dunkler
+      accent: "#c97a0a",
+      "accent-soft": "rgba(238, 154, 31, 0.14)",
+      card: "rgba(255, 255, 255, 0.35)",
+      "card-border": "1.5px solid rgba(15, 16, 18, 0.14)",
+      "card-shadow": "none",
+      panel: "rgba(250, 248, 243, 0.96)",
+      chip: "rgba(244, 241, 234, 0.82)",
+      shadow: "0 30px 80px rgba(15, 16, 18, 0.12)",
+      veil: "rgba(244, 241, 234, 0.55)",
+      colon: "#ee9a1f",
+      "colon-opacity": "1",
+    },
+  },
+  {
     id: "ruhig",
     name: "Ruhig",
     hint: "Serifen-Uhr, warmes Weiß, Bambus – ein leiser Lichtschein wie von einer Leselampe",
@@ -322,6 +384,72 @@ export const THEME_DEFS: ThemeDef[] = [
       veil: "rgba(233, 237, 247, 0.45)",
       shadow: "0 30px 80px rgba(40, 50, 100, 0.18)",
       mist: "rgba(255, 255, 255, 0.55)",
+    },
+  },
+  {
+    id: "daheim",
+    name: "Daheim",
+    hint: "Wie eine Smart-Home-App: rauchige Glaskacheln über warmem, unscharfem Himmel, große runde Ecken",
+    ambient: "none",
+    tiles: true,
+    shared: {
+      ...SHARED,
+      // Systemschrift auf Apple-Geräten, sonst die mitgelieferte Inter
+      display: `-apple-system, "SF Pro Display", ${SANS}`,
+      sans: `-apple-system, "SF Pro Text", ${SANS}`,
+      "clock-weight": "600",
+      "clock-track": "-0.03em",
+      "card-radius": "28px",
+    },
+    dark: {
+      ...DARK,
+      bg: "#6b5a44",
+      "bg-art":
+        "radial-gradient(70% 55% at 75% 100%, rgba(255, 190, 90, 0.75), transparent 65%), radial-gradient(60% 50% at 20% 85%, rgba(150, 95, 40, 0.8), transparent 70%), linear-gradient(180deg, #7fa6cf 0%, #a9bfd2 32%, #c8b391 58%, #8a6a42 100%)",
+      ink: "#ffffff",
+      "ink-2": "rgba(255, 255, 255, 0.78)",
+      "ink-3": "rgba(255, 255, 255, 0.58)",
+      line: "rgba(255, 255, 255, 0.18)",
+      surface: "rgba(255, 255, 255, 0.12)",
+      accent: "#ffcc00",
+      "accent-soft": "rgba(255, 204, 0, 0.2)",
+      cold: "#5ac8fa",
+      good: "#34c759",
+      alert: "#ff9f0a",
+      card: "rgba(70, 52, 30, 0.42)",
+      "card-border": "1px solid rgba(255, 255, 255, 0.1)",
+      "card-filter": "blur(30px) saturate(1.6)",
+      "card-shadow": "inset 0 1px 0 rgba(255, 255, 255, 0.16), 0 10px 30px rgba(40, 25, 10, 0.18)",
+      panel: "rgba(90, 70, 45, 0.72)",
+      chip: "rgba(80, 90, 100, 0.45)",
+      veil: "rgba(60, 45, 30, 0.35)",
+      shadow: "0 24px 60px rgba(40, 25, 10, 0.35)",
+      mist: "rgba(255, 255, 255, 0.1)",
+    },
+    light: {
+      ...LIGHT,
+      bg: "#d9cbb4",
+      "bg-art":
+        "radial-gradient(70% 55% at 75% 100%, rgba(255, 200, 110, 0.7), transparent 65%), radial-gradient(60% 50% at 20% 85%, rgba(190, 140, 80, 0.6), transparent 70%), linear-gradient(180deg, #8fb4da 0%, #c2d3e2 34%, #e3cfa8 62%, #b48d5c 100%)",
+      ink: "#ffffff",
+      "ink-2": "rgba(255, 255, 255, 0.82)",
+      "ink-3": "rgba(255, 255, 255, 0.64)",
+      line: "rgba(255, 255, 255, 0.24)",
+      surface: "rgba(255, 255, 255, 0.18)",
+      accent: "#ffcc00",
+      "accent-soft": "rgba(255, 204, 0, 0.22)",
+      cold: "#32ade6",
+      good: "#30b350",
+      alert: "#ff9500",
+      card: "rgba(105, 78, 42, 0.5)",
+      "card-border": "1px solid rgba(255, 255, 255, 0.16)",
+      "card-filter": "blur(30px) saturate(1.6)",
+      "card-shadow": "inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 10px 30px rgba(60, 40, 15, 0.14)",
+      panel: "rgba(120, 95, 60, 0.7)",
+      chip: "rgba(100, 110, 120, 0.4)",
+      veil: "rgba(120, 95, 60, 0.3)",
+      shadow: "0 24px 60px rgba(60, 40, 15, 0.25)",
+      mist: "rgba(255, 255, 255, 0.14)",
     },
   },
   {
@@ -620,126 +748,127 @@ export const THEME_DEFS: ThemeDef[] = [
     },
   },
   {
-    id: "tonal",
-    name: "Tonal",
-    hint: "Runde, farbige Flächen in Pastelltönen, große freundliche Schrift",
-    ambient: "none",
-    tiles: true,
-    shared: {
-      ...SHARED,
-      display: fontStack("outfit"),
-      sans: fontStack("jakarta"),
-      "clock-weight": "500",
-      "clock-track": "-0.02em",
-      "card-radius": "36px",
-      "label-case": "none",
-      "label-track": "0",
-      "label-weight": "700",
-      "label-color": "var(--af-accent)",
-    },
-    dark: {
-      ...DARK,
-      bg: "#141218",
-      ink: "#e6e0e9",
-      "ink-2": "rgba(230, 224, 233, 0.72)",
-      "ink-3": "rgba(230, 224, 233, 0.5)",
-      line: "rgba(230, 224, 233, 0.1)",
-      surface: "rgba(208, 188, 255, 0.08)",
-      accent: "#d0bcff",
-      "accent-soft": "rgba(208, 188, 255, 0.18)",
-      cold: "#a8c7fa",
-      good: "#80d99a",
-      alert: "#ffb4ab",
-      card: "color-mix(in srgb, var(--af-accent) 22%, var(--af-bg))",
-      "card-border": "0 solid transparent",
-      colon: "var(--af-accent)",
-      "colon-opacity": "1",
-      panel: "rgba(43, 41, 48, 0.97)",
-      chip: "rgba(43, 41, 48, 0.85)",
-      veil: "rgba(20, 18, 24, 0.55)",
-    },
-    light: {
-      ...LIGHT,
-      bg: "#fef7ff",
-      ink: "#1d1b20",
-      "ink-2": "rgba(29, 27, 32, 0.7)",
-      "ink-3": "rgba(29, 27, 32, 0.48)",
-      line: "rgba(29, 27, 32, 0.08)",
-      surface: "rgba(103, 80, 164, 0.06)",
-      accent: "#6750a4",
-      "accent-soft": "rgba(103, 80, 164, 0.12)",
-      cold: "#2b62c4",
-      good: "#2e7d4f",
-      alert: "#ba1a1a",
-      card: "color-mix(in srgb, var(--af-accent) 22%, var(--af-bg))",
-      "card-border": "0 solid transparent",
-      colon: "var(--af-accent)",
-      "colon-opacity": "1",
-      panel: "rgba(243, 237, 247, 0.97)",
-      chip: "rgba(243, 237, 247, 0.85)",
-    },
-  },
-  {
-    id: "kacheln",
-    name: "Kacheln",
-    hint: "Abgerundete Widget-Kacheln über einem weichen Hintergrundbild, farbige Überschriften",
+    id: "axel",
+    name: "Axel",
+    hint: "Wie ein Sprachassistent mit Bildschirm: kühles Blaugrau mit weichem Verlauf, Milchglas-Kacheln, Cyan als Akzent – dunkel in Nachtblau",
     ambient: "none",
     tiles: true,
     shared: {
       ...SHARED,
       display: SANS,
-      "clock-weight": "600",
-      "clock-track": "-0.04em",
-      "card-radius": "30px",
-      "card-pad": "30px",
+      "clock-weight": "400",
+      "clock-track": "-0.02em",
+      "card-radius": "16px",
+      "card-pad": "22px",
       "label-case": "none",
       "label-track": "0",
-      "label-weight": "650",
-      "label-color": "var(--af-accent)",
+      "label-weight": "600",
+      "label-color": "var(--af-ink-2)",
     },
     dark: {
       ...DARK,
-      bg: "#0d1022",
-      "bg-art": blobs("rgba(80, 90, 255, 0.55)", "rgba(255, 80, 150, 0.4)", "rgba(255, 170, 60, 0.35)"),
-      ink: "#ffffff",
-      "ink-2": "rgba(235, 235, 245, 0.68)",
-      "ink-3": "rgba(235, 235, 245, 0.45)",
-      line: "rgba(255, 255, 255, 0.12)",
+      bg: "#0e1922",
+      "bg-art": blobs("rgba(40, 110, 140, 0.45)", "rgba(30, 70, 110, 0.4)", "rgba(190, 140, 90, 0.18)"),
+      ink: "#f2f7fa",
+      "ink-2": "rgba(242, 247, 250, 0.72)",
+      "ink-3": "rgba(242, 247, 250, 0.48)",
+      line: "rgba(255, 255, 255, 0.1)",
       surface: "rgba(255, 255, 255, 0.08)",
-      accent: "#0a84ff",
-      "accent-soft": "rgba(10, 132, 255, 0.18)",
-      cold: "#64d2ff",
-      good: "#30d158",
-      alert: "#ff453a",
-      card: "rgba(28, 28, 32, 0.66)",
+      accent: "#1fc6e8",
+      "accent-soft": "rgba(31, 198, 232, 0.16)",
+      cold: "#5fb8e6",
+      good: "#3bc47a",
+      alert: "#ff6a5c",
+      card: "rgba(30, 48, 62, 0.62)",
       "card-border": "0 solid transparent",
-      "card-filter": "blur(30px) saturate(1.8)",
-      "card-shadow": "0 10px 30px rgba(0, 0, 0, 0.25)",
-      panel: "rgba(28, 28, 32, 0.9)",
-      chip: "rgba(28, 28, 32, 0.66)",
-      veil: "rgba(10, 12, 26, 0.45)",
+      "card-filter": "blur(24px) saturate(1.3)",
+      "card-shadow": "none",
+      panel: "rgba(24, 38, 50, 0.95)",
+      chip: "rgba(24, 38, 50, 0.8)",
+      veil: "rgba(14, 25, 34, 0.5)",
     },
     light: {
       ...LIGHT,
-      bg: "#dfe6f5",
-      "bg-art": blobs("rgba(120, 140, 255, 0.55)", "rgba(255, 150, 190, 0.5)", "rgba(255, 200, 120, 0.5)"),
-      ink: "#000000",
-      "ink-2": "rgba(60, 60, 67, 0.75)",
-      "ink-3": "rgba(60, 60, 67, 0.5)",
-      line: "rgba(60, 60, 67, 0.12)",
-      surface: "rgba(255, 255, 255, 0.5)",
-      accent: "#007aff",
-      "accent-soft": "rgba(0, 122, 255, 0.12)",
-      cold: "#32ade6",
-      good: "#34c759",
-      alert: "#ff3b30",
-      card: "rgba(255, 255, 255, 0.72)",
+      bg: "#d6e1e8",
+      "bg-art": blobs("rgba(255, 255, 255, 0.7)", "rgba(150, 190, 210, 0.5)", "rgba(235, 215, 190, 0.45)"),
+      ink: "#14232e",
+      "ink-2": "rgba(20, 35, 46, 0.7)",
+      "ink-3": "rgba(20, 35, 46, 0.48)",
+      line: "rgba(20, 35, 46, 0.1)",
+      surface: "rgba(255, 255, 255, 0.6)",
+      accent: "#0a8fb3",
+      "accent-soft": "rgba(10, 143, 179, 0.14)",
+      cold: "#1d7fb8",
+      good: "#1f9d55",
+      alert: "#e0453a",
+      card: "rgba(255, 255, 255, 0.66)",
       "card-border": "0 solid transparent",
-      "card-filter": "blur(30px) saturate(1.8)",
-      "card-shadow": "0 10px 30px rgba(40, 50, 100, 0.12)",
-      panel: "rgba(255, 255, 255, 0.92)",
-      chip: "rgba(255, 255, 255, 0.72)",
-      veil: "rgba(223, 230, 245, 0.45)",
+      "card-filter": "blur(24px) saturate(1.3)",
+      "card-shadow": "0 2px 12px rgba(20, 50, 70, 0.08)",
+      panel: "rgba(255, 255, 255, 0.95)",
+      chip: "rgba(255, 255, 255, 0.78)",
+      veil: "rgba(214, 225, 232, 0.5)",
+    },
+  },
+  {
+    id: "wohnapp",
+    name: "Wohn-App",
+    hint: "Wie eine Smart-Home-App: helles Grau, weiße Kacheln mit runden Ecken, kräftige Statuspunkte – dunkel als Anthrazit",
+    ambient: "none",
+    tiles: true,
+    shared: {
+      ...SHARED,
+      display: SANS,
+      "clock-weight": "700",
+      "clock-track": "-0.03em",
+      "card-radius": "20px",
+      "card-pad": "24px",
+      "label-case": "none",
+      "label-track": "0",
+      "label-weight": "700",
+      "label-color": "var(--af-ink)",
+    },
+    dark: {
+      ...DARK,
+      bg: "#141518",
+      ink: "#f5f6f8",
+      "ink-2": "rgba(245, 246, 248, 0.7)",
+      "ink-3": "rgba(245, 246, 248, 0.45)",
+      line: "rgba(255, 255, 255, 0.08)",
+      surface: "#2a2c32",
+      accent: "#3d8bff",
+      "accent-soft": "rgba(61, 139, 255, 0.16)",
+      cold: "#4fb3ff",
+      good: "#3ddc6a",
+      alert: "#ff5a4f",
+      card: "#232529",
+      "card-border": "0 solid transparent",
+      "card-filter": "none",
+      "card-shadow": "none",
+      panel: "rgba(35, 37, 41, 0.96)",
+      chip: "rgba(35, 37, 41, 0.92)",
+      veil: "rgba(20, 21, 24, 0.5)",
+    },
+    light: {
+      ...LIGHT,
+      bg: "#f1f2f6",
+      ink: "#15171c",
+      "ink-2": "rgba(21, 23, 28, 0.66)",
+      "ink-3": "rgba(21, 23, 28, 0.44)",
+      line: "rgba(21, 23, 28, 0.08)",
+      surface: "#ffffff",
+      accent: "#2f7cf6",
+      "accent-soft": "rgba(47, 124, 246, 0.12)",
+      cold: "#1ea0e6",
+      good: "#1fb85a",
+      alert: "#f04438",
+      card: "#ffffff",
+      "card-border": "0 solid transparent",
+      "card-filter": "none",
+      "card-shadow": "0 2px 10px rgba(20, 30, 60, 0.07)",
+      panel: "rgba(255, 255, 255, 0.97)",
+      chip: "rgba(255, 255, 255, 0.94)",
+      veil: "rgba(241, 242, 246, 0.5)",
     },
   },
   {
@@ -853,177 +982,6 @@ export const THEME_DEFS: ThemeDef[] = [
       card: "#f7f6f2",
       "card-border": "1px solid rgba(0, 0, 0, 0.08)",
       colon: "var(--af-accent)",
-      "colon-opacity": "1",
-    },
-  },
-  {
-    id: "millennium",
-    name: "Millennium",
-    hint: "Wie ein Desktop um 2001: blaue Fensterleisten, grüner Hügel, blauer Himmel",
-    ambient: "none",
-    tiles: true,
-    shared: {
-      ...SHARED,
-      display: TAHOMA,
-      sans: TAHOMA,
-      "clock-weight": "700",
-      "clock-track": "-0.01em",
-      "card-radius": "9px 9px 4px 4px",
-      "card-pad": "5px 22px 22px",
-      "label-font": TAHOMA,
-      "label-case": "none",
-      "label-track": "0",
-      "label-weight": "700",
-      "label-color": "#ffffff",
-    },
-    dark: {
-      ...DARK,
-      bg: "#0d1b33",
-      "bg-art":
-        "radial-gradient(150% 30% at 22% 112%, #1f3d1a 0 52%, transparent 52.5%), radial-gradient(110% 50% at 88% 110%, #2a4d22 0 50%, transparent 50.5%), " +
-        "linear-gradient(180deg, #050c1c 0%, #10264a 60%, #1d3b66 100%)",
-      ink: "#f2f2f2",
-      "ink-2": "rgba(242, 242, 242, 0.72)",
-      "ink-3": "rgba(242, 242, 242, 0.48)",
-      line: "rgba(255, 255, 255, 0.12)",
-      surface: "rgba(255, 255, 255, 0.06)",
-      accent: "#4fc04a",
-      "accent-soft": "rgba(79, 192, 74, 0.16)",
-      cold: "#5c9cff",
-      card: "linear-gradient(180deg, #3a3a3a 0, #1b1b1b 28px, #2b2b2b 28px)",
-      "card-border": "1px solid #000000",
-      "card-shadow": "inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 6px 18px rgba(0, 0, 0, 0.45)",
-    },
-    light: {
-      ...LIGHT,
-      bg: "#5f9de8",
-      "bg-art":
-        "radial-gradient(150% 30% at 22% 112%, #4f9a35 0 52%, transparent 52.5%), radial-gradient(110% 50% at 88% 110%, #6db446 0 50%, transparent 50.5%), " +
-        "radial-gradient(30% 14% at 70% 22%, rgba(255, 255, 255, 0.85), transparent 70%), linear-gradient(180deg, #1f63cf 0%, #5f9de8 45%, #b3d4f5 75%)",
-      ink: "#111111",
-      "ink-2": "rgba(17, 17, 17, 0.72)",
-      "ink-3": "rgba(17, 17, 17, 0.5)",
-      line: "rgba(0, 0, 0, 0.14)",
-      surface: "rgba(255, 255, 255, 0.5)",
-      accent: "#2f9e31",
-      "accent-soft": "rgba(47, 158, 49, 0.14)",
-      "on-accent": "#ffffff",
-      cold: "#0b56d6",
-      card: "linear-gradient(180deg, #3d8af7 0, #0a5fe0 4px, #0058e6 24px, #0b50cc 28px, #ece9d8 28px)",
-      "card-border": "1px solid #0831d9",
-      "card-shadow": "inset 0 1px 0 rgba(255, 255, 255, 0.5), 0 6px 18px rgba(0, 30, 90, 0.35)",
-    },
-  },
-  {
-    id: "glanz",
-    name: "Glanz",
-    hint: "Glänzendes Glas, Wasser und Himmel – der freundliche Look um 2008",
-    ambient: "bubbles",
-    tiles: true,
-    shared: { ...SHARED, display: fontStack("nunito"), sans: fontStack("nunito"), "clock-weight": "300", "clock-track": "-0.02em", "card-radius": "22px", "label-case": "none", "label-track": "0", "label-weight": "700", "label-color": "var(--af-accent)" },
-    dark: {
-      ...DARK,
-      bg: "#021827",
-      "bg-art":
-        "radial-gradient(120% 55% at 50% 118%, rgba(60, 170, 70, 0.45) 0 45%, transparent 46%), radial-gradient(60% 50% at 75% 15%, rgba(80, 180, 255, 0.35), transparent 70%), " +
-        "linear-gradient(180deg, #03243d 0%, #064a73 60%, #0a6c8e 100%)",
-      ink: "#f2fbff",
-      "ink-2": "rgba(242, 251, 255, 0.74)",
-      "ink-3": "rgba(242, 251, 255, 0.5)",
-      line: "rgba(255, 255, 255, 0.16)",
-      surface: "rgba(255, 255, 255, 0.08)",
-      accent: "#5fd0ff",
-      "accent-soft": "rgba(95, 208, 255, 0.16)",
-      cold: "#5fd0ff",
-      good: "#7fe07a",
-      card: "linear-gradient(180deg, rgba(255, 255, 255, 0.26) 0%, rgba(255, 255, 255, 0.1) 48%, rgba(255, 255, 255, 0.04) 52%, rgba(255, 255, 255, 0.1) 100%)",
-      "card-border": "1px solid rgba(255, 255, 255, 0.35)",
-      "card-filter": "blur(14px) saturate(1.5)",
-      "card-shadow": "inset 0 1px 0 rgba(255, 255, 255, 0.6), 0 12px 30px rgba(0, 20, 40, 0.4)",
-    },
-    light: {
-      ...LIGHT,
-      bg: "#a9e2fb",
-      "bg-art":
-        "radial-gradient(120% 60% at 50% 118%, #7fd06b 0 45%, #5fb84f 45.4%, transparent 46%), radial-gradient(50% 40% at 80% 18%, rgba(255, 255, 255, 0.75), transparent 70%), " +
-        "linear-gradient(180deg, #2fa8ec 0%, #a9e2fb 55%, #e8f8ff 100%)",
-      ink: "#0b2a44",
-      "ink-2": "rgba(11, 42, 68, 0.72)",
-      "ink-3": "rgba(11, 42, 68, 0.5)",
-      line: "rgba(11, 42, 68, 0.12)",
-      surface: "rgba(255, 255, 255, 0.5)",
-      accent: "#0088cc",
-      "accent-soft": "rgba(0, 136, 204, 0.14)",
-      cold: "#0088cc",
-      good: "#2f9a2f",
-      card: "linear-gradient(180deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.6) 48%, rgba(255, 255, 255, 0.4) 52%, rgba(255, 255, 255, 0.6) 100%)",
-      "card-border": "1px solid rgba(255, 255, 255, 0.95)",
-      "card-filter": "blur(12px) saturate(1.4)",
-      "card-shadow": "inset 0 1px 0 #ffffff, 0 12px 30px rgba(0, 80, 140, 0.18)",
-    },
-  },
-  {
-    id: "handheld",
-    name: "Handheld",
-    hint: "Vier Grüntöne und Pixelschrift wie auf einer alten Spielkonsole",
-    ambient: "none",
-    tiles: true,
-    shared: {
-      "num-font": "var(--af-sans)",
-      wide: "0.7",
-      ...SHARED,
-      display: fontStack("doto"),
-      sans: fontStack("space-grotesk"),
-      "clock-weight": "900",
-      "clock-track": "0.02em",
-      "card-radius": "4px",
-      "label-font": fontStack("doto"),
-      "label-weight": "900",
-      "label-track": "0.12em",
-      // LCD-Raster
-      "bg-size": "4px 4px, 4px 4px", "bar-h": "12px", "bar-radius": "0", "bar-mask": "repeating-linear-gradient(90deg, #000 0 6px, transparent 6px 9px)", "curve-dash": "1 7", "curve-w": "4", "curve-area": "0", },
-    dark: {
-      ...DARK,
-      bg: "#0f380f",
-      "bg-art": "linear-gradient(rgba(0, 0, 0, 0.12) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 0, 0, 0.12) 1px, transparent 1px)",
-      ink: "#9bbc0f",
-      "ink-2": "#8bac0f",
-      "ink-3": "#5a7f1a",
-      line: "#306230",
-      surface: "rgba(155, 188, 15, 0.08)",
-      accent: "#9bbc0f",
-      "accent-soft": "rgba(155, 188, 15, 0.16)",
-      cold: "#8bac0f",
-      good: "#9bbc0f",
-      alert: "#c4d84a",
-      card: "#0f380f",
-      "card-border": "3px solid #306230",
-      panel: "rgba(15, 56, 15, 0.96)",
-      chip: "rgba(15, 56, 15, 0.85)",
-      veil: "rgba(15, 56, 15, 0.6)",
-      colon: "var(--af-ink)",
-      "colon-opacity": "1",
-    },
-    light: {
-      ...LIGHT,
-      bg: "#9bbc0f",
-      "bg-art": "linear-gradient(rgba(15, 56, 15, 0.07) 1px, transparent 1px), linear-gradient(90deg, rgba(15, 56, 15, 0.07) 1px, transparent 1px)",
-      ink: "#0f380f",
-      "ink-2": "#306230",
-      "ink-3": "#4b6f2b",
-      line: "#306230",
-      surface: "rgba(15, 56, 15, 0.08)",
-      accent: "#0f380f",
-      "accent-soft": "rgba(15, 56, 15, 0.14)",
-      cold: "#306230",
-      good: "#0f380f",
-      alert: "#0f380f",
-      card: "#8bac0f",
-      "card-border": "3px solid #306230",
-      panel: "rgba(139, 172, 15, 0.97)",
-      chip: "rgba(139, 172, 15, 0.9)",
-      veil: "rgba(155, 188, 15, 0.6)",
-      colon: "var(--af-ink)",
       "colon-opacity": "1",
     },
   },
@@ -1215,50 +1173,6 @@ export const THEME_DEFS: ThemeDef[] = [
     },
   },
   {
-    id: "natur",
-    name: "Natur",
-    hint: "Moos, Blätter und Holz – frische Grüntöne und weiche Formen",
-    ambient: "none",
-    tiles: true,
-    shared: { ...SHARED, display: fontStack("fraunces"), sans: fontStack("jakarta"), "clock-weight": "350", "clock-track": "-0.02em", "card-radius": "24px", "label-case": "none", "label-track": "0", "label-weight": "650", "label-color": "var(--af-accent)" },
-    dark: {
-      ...DARK,
-      bg: "#0d1a12",
-      "bg-art": "radial-gradient(ellipse 16% 34% at 0% 100%, color-mix(in srgb, var(--af-accent) 26%, var(--af-bg)) 0 99%, transparent 100%), radial-gradient(ellipse 26% 16% at 6% 104%, color-mix(in srgb, var(--af-accent) 16%, var(--af-bg)) 0 99%, transparent 100%), radial-gradient(ellipse 14% 30% at 100% 0%, color-mix(in srgb, var(--af-accent) 22%, var(--af-bg)) 0 99%, transparent 100%), radial-gradient(ellipse 24% 12% at 96% -3%, color-mix(in srgb, var(--af-accent) 13%, var(--af-bg)) 0 99%, transparent 100%), " + blobs("rgba(60, 120, 60, 0.4)", "rgba(120, 110, 50, 0.28)", "rgba(40, 100, 80, 0.32)"),
-      ink: "#e6efe0",
-      "ink-2": "rgba(230, 239, 224, 0.72)",
-      "ink-3": "rgba(230, 239, 224, 0.48)",
-      line: "rgba(230, 239, 224, 0.12)",
-      surface: "rgba(230, 239, 224, 0.05)",
-      accent: "#9cc77a",
-      "accent-soft": "rgba(156, 199, 122, 0.16)",
-      cold: "#7fb8c4",
-      good: "#9cc77a",
-      alert: "#e0875a",
-      card: "rgba(255, 255, 255, 0.05)",
-      "card-border": "1px solid rgba(156, 199, 122, 0.16)",
-      "card-filter": "blur(12px)",
-    },
-    light: {
-      ...LIGHT,
-      bg: "#eef2e6",
-      "bg-art": "radial-gradient(ellipse 16% 34% at 0% 100%, color-mix(in srgb, var(--af-accent) 26%, var(--af-bg)) 0 99%, transparent 100%), radial-gradient(ellipse 26% 16% at 6% 104%, color-mix(in srgb, var(--af-accent) 16%, var(--af-bg)) 0 99%, transparent 100%), radial-gradient(ellipse 14% 30% at 100% 0%, color-mix(in srgb, var(--af-accent) 22%, var(--af-bg)) 0 99%, transparent 100%), radial-gradient(ellipse 24% 12% at 96% -3%, color-mix(in srgb, var(--af-accent) 13%, var(--af-bg)) 0 99%, transparent 100%), " + blobs("rgba(120, 170, 90, 0.38)", "rgba(210, 195, 120, 0.32)", "rgba(90, 150, 110, 0.32)"),
-      ink: "#23301f",
-      "ink-2": "rgba(35, 48, 31, 0.72)",
-      "ink-3": "rgba(35, 48, 31, 0.48)",
-      line: "rgba(35, 48, 31, 0.1)",
-      surface: "rgba(255, 255, 255, 0.5)",
-      accent: "#4f7d36",
-      "accent-soft": "rgba(79, 125, 54, 0.13)",
-      cold: "#4a8a9a",
-      good: "#4f7d36",
-      alert: "#c0612f",
-      card: "rgba(255, 255, 255, 0.6)",
-      "card-border": "1px solid rgba(80, 110, 60, 0.15)",
-      "card-filter": "blur(12px)",
-    },
-  },
-  {
     id: "galerie",
     air: 1.35,
     name: "Galerie",
@@ -1439,49 +1353,6 @@ export const THEME_DEFS: ThemeDef[] = [
       veil: "rgba(0, 0, 0, 0.85)",
       mist: "transparent",
       "colon-opacity": "1",
-    },
-  },
-  {
-    id: "zeitung",
-    name: "Zeitung",
-    hint: "Schlagzeilen-Serifen, Doppellinien und Spalten – wie die Titelseite am Morgen",
-    ambient: "none",
-    shared: {
-      ...SHARED,
-      display: fontStack("playfair"),
-      sans: fontStack("newsreader"),
-      // Playfair hat Mediävalziffern – kleine Texte (Uhrzeiten, Datum) behalten die Ziffern der Textschrift
-      "text-digits": "own",
-      "clock-weight": "800",
-      "clock-track": "-0.02em",
-      "label-font": fontStack("inter"),
-      "label-weight": "700",
-      "label-track": "0.2em",
-      ...RULED,
-      "card-pad": "22px 0 0", "bar-h": "3px", "bar-radius": "0", "bar-fill": "var(--af-ink)", "curve-w": "1.5", "curve-area": "0", },
-    dark: {
-      ...DARK,
-      bg: "#171614",
-      "bg-art": "linear-gradient(180deg, transparent 2.6%, color-mix(in srgb, var(--af-ink) 80%, transparent) 2.6% 3.15%, transparent 3.15% 3.7%, color-mix(in srgb, var(--af-ink) 80%, transparent) 3.7% 3.9%, transparent 3.9% 96.3%, color-mix(in srgb, var(--af-ink) 60%, transparent) 96.3% 96.5%, transparent 96.5%)",
-      ink: "#ece6d8",
-      "ink-2": "rgba(236, 230, 216, 0.74)",
-      "ink-3": "rgba(236, 230, 216, 0.5)",
-      line: "rgba(236, 230, 216, 0.18)",
-      accent: "#d4553f",
-      "accent-soft": "rgba(212, 85, 63, 0.14)",
-      "card-rule": "3px double rgba(236, 230, 216, 0.55)",
-    },
-    light: {
-      ...LIGHT,
-      bg: "#f3efe6",
-      "bg-art": "linear-gradient(180deg, transparent 2.6%, color-mix(in srgb, var(--af-ink) 80%, transparent) 2.6% 3.15%, transparent 3.15% 3.7%, color-mix(in srgb, var(--af-ink) 80%, transparent) 3.7% 3.9%, transparent 3.9% 96.3%, color-mix(in srgb, var(--af-ink) 60%, transparent) 96.3% 96.5%, transparent 96.5%)",
-      ink: "#141414",
-      "ink-2": "rgba(20, 20, 20, 0.74)",
-      "ink-3": "rgba(20, 20, 20, 0.52)",
-      line: "rgba(20, 20, 20, 0.2)",
-      accent: "#8b1e1e",
-      "accent-soft": "rgba(139, 30, 30, 0.1)",
-      "card-rule": "3px double rgba(20, 20, 20, 0.7)",
     },
   },
   {
@@ -1947,149 +1818,6 @@ export const THEME_DEFS: ThemeDef[] = [
     },
   },
   {
-    id: "weihnachten",
-    name: "Weihnachten",
-    hint: "Tannengrün, Kerzengold und ein Hauch Rot – mit Lichterkette am oberen Rand und leisem Schnee",
-    ambient: "snow",
-    tiles: true,
-    shared: {
-      ...SHARED,
-      // Fraunces: warme Serifen mit gleich hohen Ziffern (Playfair setzt Mediävalziffern – unruhig bei „10 Uhr“, „6°“)
-      display: fontStack("fraunces"),
-      sans: fontStack("jakarta"),
-      "clock-weight": "400",
-      "clock-track": "-0.01em",
-      "card-radius": "14px",
-      "label-case": "none",
-      "label-track": "0.02em",
-      "label-weight": "600",
-      "label-color": "var(--af-accent)",
-    },
-    dark: {
-      ...DARK,
-      bg: "#0d1f17",
-      // Lichterkette oben, darunter ein warmer Kerzenschein von unten
-      "bg-art": [
-        "radial-gradient(circle at 3.0% 2.2%, #ffd27a 0 0.42%, transparent 0.7%)",
-        "radial-gradient(circle at 10.8% 3.6%, #e0564a 0 0.42%, transparent 0.7%)",
-        "radial-gradient(circle at 18.6% 3.6%, #7fcf8a 0 0.42%, transparent 0.7%)",
-        "radial-gradient(circle at 26.4% 2.2%, #fff3d6 0 0.42%, transparent 0.7%)",
-        "radial-gradient(circle at 34.2% 2.2%, #ffd27a 0 0.42%, transparent 0.7%)",
-        "radial-gradient(circle at 42.0% 3.6%, #e0564a 0 0.42%, transparent 0.7%)",
-        "radial-gradient(circle at 49.8% 3.6%, #7fcf8a 0 0.42%, transparent 0.7%)",
-        "radial-gradient(circle at 57.6% 2.2%, #fff3d6 0 0.42%, transparent 0.7%)",
-        "radial-gradient(circle at 65.4% 2.2%, #ffd27a 0 0.42%, transparent 0.7%)",
-        "radial-gradient(circle at 73.2% 3.6%, #e0564a 0 0.42%, transparent 0.7%)",
-        "radial-gradient(circle at 81.0% 3.6%, #7fcf8a 0 0.42%, transparent 0.7%)",
-        "radial-gradient(circle at 88.8% 2.2%, #fff3d6 0 0.42%, transparent 0.7%)",
-        "radial-gradient(circle at 96.6% 2.2%, #ffd27a 0 0.42%, transparent 0.7%)",
-        "radial-gradient(70% 45% at 50% 105%, rgba(224, 180, 90, 0.16), transparent 70%)",
-      ].join(", "),
-      ...ink("245, 239, 228"),
-      surface: "rgba(255, 255, 255, 0.05)",
-      accent: "#e0b45a",
-      "accent-soft": "rgba(224, 180, 90, 0.16)",
-      cold: "#9cc3d6",
-      good: "#7fcf8a",
-      alert: "#e0564a",
-      card: "rgba(255, 255, 255, 0.05)",
-      "card-border": "1px solid rgba(224, 180, 90, 0.3)",
-      "card-shadow": "none",
-      colon: "var(--af-accent)",
-      "colon-opacity": "1",
-    },
-    light: {
-      ...LIGHT,
-      bg: "#f7f2e8",
-      "bg-art": [
-        "radial-gradient(circle at 3.0% 2.2%, #d9a441 0 0.42%, transparent 0.7%)",
-        "radial-gradient(circle at 10.8% 3.6%, #c0392b 0 0.42%, transparent 0.7%)",
-        "radial-gradient(circle at 18.6% 3.6%, #3f8f57 0 0.42%, transparent 0.7%)",
-        "radial-gradient(circle at 26.4% 2.2%, #e9c46a 0 0.42%, transparent 0.7%)",
-        "radial-gradient(circle at 34.2% 2.2%, #d9a441 0 0.42%, transparent 0.7%)",
-        "radial-gradient(circle at 42.0% 3.6%, #c0392b 0 0.42%, transparent 0.7%)",
-        "radial-gradient(circle at 49.8% 3.6%, #3f8f57 0 0.42%, transparent 0.7%)",
-        "radial-gradient(circle at 57.6% 2.2%, #e9c46a 0 0.42%, transparent 0.7%)",
-        "radial-gradient(circle at 65.4% 2.2%, #d9a441 0 0.42%, transparent 0.7%)",
-        "radial-gradient(circle at 73.2% 3.6%, #c0392b 0 0.42%, transparent 0.7%)",
-        "radial-gradient(circle at 81.0% 3.6%, #3f8f57 0 0.42%, transparent 0.7%)",
-        "radial-gradient(circle at 88.8% 2.2%, #e9c46a 0 0.42%, transparent 0.7%)",
-        "radial-gradient(circle at 96.6% 2.2%, #d9a441 0 0.42%, transparent 0.7%)",
-        "radial-gradient(70% 45% at 50% 105%, rgba(192, 57, 43, 0.08), transparent 70%)",
-      ].join(", "),
-      ...ink("30, 58, 44"),
-      surface: "rgba(255, 255, 255, 0.7)",
-      accent: "#b0302a",
-      "accent-soft": "rgba(176, 48, 42, 0.12)",
-      cold: "#2f6f8f",
-      good: "#2f7d4a",
-      alert: "#b0302a",
-      card: "#fffaf1",
-      "card-border": "1px solid rgba(176, 48, 42, 0.18)",
-      "card-shadow": "0 2px 0 rgba(30, 58, 44, 0.06)",
-      colon: "var(--af-accent)",
-      "colon-opacity": "1",
-    },
-  },
-  {
-    id: "rgb",
-    name: "RGB",
-    hint: "Wie ein Gaming-PC: Schwarz mit leuchtenden Kanten, die langsam durch alle Farben wandern",
-    ambient: "none",
-    tiles: true,
-    shared: {
-      ...SHARED,
-      display: fontStack("space-grotesk"),
-      sans: fontStack("geist"),
-      "clock-weight": "700",
-      "clock-track": "-0.03em",
-      "card-radius": "12px",
-      "label-weight": "700",
-      "label-track": "0.14em",
-      "label-color": "var(--af-accent)", "bar-h": "8px", "bar-radius": "0", "bar-fill": "linear-gradient(90deg, hsl(calc(var(--af-rgb-hue, 280deg) + 120deg) 100% 60%), var(--af-accent))", "curve-w": "3.5", },
-    dark: {
-      ...DARK,
-      bg: "#050507",
-      // Der Farbton --af-rgb-hue wandert (display.ts) – Akzent, Kanten, Leuchten und LED-Leiste folgen
-      "bg-art": "linear-gradient(0deg, var(--af-accent) 0 5px, transparent 5px), radial-gradient(60% 70% at 8% 10%, hsl(var(--af-rgb-hue, 280deg) 100% 50% / 0.3), transparent 60%), radial-gradient(60% 70% at 92% 92%, hsl(calc(var(--af-rgb-hue, 280deg) + 120deg) 100% 50% / 0.3), transparent 60%), radial-gradient(50% 60% at 60% 0%, hsl(calc(var(--af-rgb-hue, 280deg) + 240deg) 100% 50% / 0.3), transparent 60%)",
-      ink: "#ffffff",
-      "ink-2": "rgba(255, 255, 255, 0.74)",
-      "ink-3": "rgba(255, 255, 255, 0.5)",
-      line: "rgba(255, 255, 255, 0.14)",
-      surface: "rgba(255, 255, 255, 0.06)",
-      accent: "hsl(var(--af-rgb-hue, 280deg) 100% 62%)",
-      "accent-soft": "hsl(var(--af-rgb-hue, 280deg) 100% 62% / 0.18)",
-      cold: "#4fd8ff",
-      good: "#5dff8f",
-      alert: "#ff4d6d",
-      card: "rgba(10, 10, 14, 0.82)",
-      "card-border": "2px solid var(--af-accent)",
-      "card-shadow": "0 0 26px hsl(var(--af-rgb-hue, 280deg) 100% 55% / 0.5), inset 0 0 18px hsl(var(--af-rgb-hue, 280deg) 100% 55% / 0.12)",
-      colon: "var(--af-accent)",
-      "colon-opacity": "1",
-    },
-    light: {
-      ...LIGHT,
-      bg: "#f4f4f8",
-      "bg-art": "linear-gradient(0deg, var(--af-accent) 0 5px, transparent 5px), radial-gradient(60% 70% at 8% 10%, hsl(var(--af-rgb-hue, 280deg) 100% 50% / 0.2), transparent 60%), radial-gradient(60% 70% at 92% 92%, hsl(calc(var(--af-rgb-hue, 280deg) + 120deg) 100% 50% / 0.2), transparent 60%), radial-gradient(50% 60% at 60% 0%, hsl(calc(var(--af-rgb-hue, 280deg) + 240deg) 100% 50% / 0.2), transparent 60%)",
-      ink: "#0b0b12",
-      "ink-2": "rgba(11, 11, 18, 0.74)",
-      "ink-3": "rgba(11, 11, 18, 0.52)",
-      line: "rgba(11, 11, 18, 0.14)",
-      surface: "rgba(255, 255, 255, 0.7)",
-      accent: "hsl(var(--af-rgb-hue, 280deg) 90% 42%)",
-      "accent-soft": "hsl(var(--af-rgb-hue, 280deg) 90% 42% / 0.14)",
-      cold: "#0a84c8",
-      good: "#12903f",
-      alert: "#d81b46",
-      card: "#ffffff",
-      "card-border": "2px solid var(--af-accent)",
-      "card-shadow": "0 0 22px hsl(var(--af-rgb-hue, 280deg) 90% 50% / 0.35)",
-      colon: "var(--af-accent)",
-      "colon-opacity": "1",
-    },
-  },
-  {
     id: "saisonal",
     name: "Jahreszeiten",
     hint: "Wechselt von selbst: Frühling, Sommer, Herbst, Winter – und zu Weihnachten, Silvester, Valentinstag, Ostern und Halloween",
@@ -2221,11 +1949,96 @@ for (const t of THEME_DEFS) {
   t.light = readable(t.light);
 }
 
+/** Bewegung, die zum Stil passt: verspielte federn, ruhige und edle blenden nur ein, alle anderen wachsen ruhig */
+const SPRING_THEMES = new Set(["verspielt", "bilderbuch", "arcade"]);
+const FADE_THEMES = new Set(["galerie", "lobby", "papier", "editorial"]);
+export type ChartMotion = "soft" | "spring" | "fade" | "off";
+
+/** Wirksame Bewegung: eigene Wahl, sonst „aus“ für alte Konfigurationen (count_up: false), sonst nach dem Stil */
+export const chartMotion = (design?: { chart_motion?: string; count_up?: boolean; theme?: string }, theme?: string): ChartMotion => {
+  if (design?.chart_motion) return design.chart_motion as ChartMotion;
+  if (design?.count_up === false) return "off";
+  const raw = theme ?? design?.theme ?? "";
+  const id = MERGED_THEMES[raw] ?? raw; // alter Stilname → Nachfolger
+  return SPRING_THEMES.has(id) ? "spring" : FADE_THEMES.has(id) ? "fade" : "soft";
+};
+
+/** CSS-Animationen je Bewegung (leer = Standard aus widgetStyles, also „ruhig“); Dauer kommt aus --af-tempo */
+export const CHART_ANIMS: Record<ChartMotion, { bar?: string; curve?: string; ring?: string; dot?: string; card?: string }> = {
+  soft: {},
+  spring: {
+    bar: "af-grow 1.1s cubic-bezier(0.34, 1.56, 0.64, 1) both",
+    curve: "af-reveal 1.1s cubic-bezier(0.34, 1.3, 0.64, 1) both",
+    ring: "af-sweep 1.1s cubic-bezier(0.34, 1.45, 0.64, 1) both",
+    card: "af-card-in 1.1s cubic-bezier(0.34, 1.4, 0.64, 1) both",
+  },
+  fade: { bar: "af-fade 1.1s ease both", curve: "af-fade 1.1s ease both", ring: "af-fade 1.1s ease both", dot: "af-show 1.1s ease both", card: "af-fade 1.1s ease both" },
+  off: { bar: "none", curve: "none", ring: "none", dot: "none", card: "none" },
+};
+
+/** Grunddauer einer Bewegung in Sekunden – Balken, Kurven, Ringe und Zahlen kommen gemeinsam an */
+export const MOTION_BASE = 1.1;
+export type Motion = Required<MotionConfig>;
+
+/** Wirksame Bewegung: Seite > Design > Stil */
+export const motionOf = (
+  design?: { chart_motion?: string; count_up?: boolean; theme?: string; motion?: MotionConfig },
+  page?: { motion?: MotionConfig },
+  theme?: string,
+): Motion => {
+  const m = { ...design?.motion, ...page?.motion };
+  const d = Number(m.duration);
+  return {
+    style: page?.motion?.style ?? chartMotion(design, theme),
+    duration: Number.isFinite(d) && d > 0 ? Math.max(0.2, Math.min(5, d)) : MOTION_BASE,
+    strength: m.strength ?? "normal",
+    stagger: m.stagger ?? "soft",
+    highlight: m.highlight ?? "glow",
+    count: m.count ?? "all",
+    when: m.when ?? "always",
+  };
+};
+
+/** CSS-Variablen der Bewegung (undefined = Standard aus widgetStyles) */
+export const motionVars = (m: Motion): Record<string, string | undefined> => {
+  const a = CHART_ANIMS[m.style];
+  const tempo = m.duration / MOTION_BASE;
+  const still = m.style === "off";
+  const stagger = still || m.stagger === "off" ? 0 : m.stagger === "strong" ? 140 : 70;
+  return {
+    "--af-bar-anim": a.bar,
+    "--af-curve-anim": a.curve,
+    "--af-ring-anim": a.ring,
+    "--af-dot-anim": a.dot,
+    "--af-card-anim": stagger ? a.card : "none",
+    "--af-tempo": tempo === 1 ? undefined : String(tempo),
+    "--af-from": m.strength === "subtle" ? "0.65" : undefined,
+    "--af-rise": m.strength === "subtle" ? "6px" : m.strength === "strong" ? "28px" : undefined,
+    "--af-card-scale": m.strength === "strong" ? "0.94" : undefined,
+    "--af-stagger": `${Math.round(stagger * tempo)}ms`,
+    "--af-glide": !still && m.when === "always" ? `${(0.9 * tempo).toFixed(2)}s` : "0s",
+  };
+};
+
 /** Für Editor-Auswahl und Vorschauen */
 export const THEMES = THEME_DEFS.filter((t) => !t.hidden).map(({ id, name, hint, ambient, tiles, flap }) => ({ id, name, hint, ambient, tiles, flap }));
 
 /** Alte Stilnamen: „Weißgold“ ist jetzt „Gold“ in hell. */
 /** Ränder-Faktor des Stils („Luft“) – „Jahreszeiten“ folgt der Fassung von heute */
+/** Form der Laufbänder passend zum Stil: schwebend bei Glas und weichen Stilen, nur Linie bei Editorial & Co., sonst Leiste */
+const FLOAT_TICKER = new Set(["signature", "glass", "aurora", "softui", "verspielt", "bilderbuch", "boho", "daheim", "wohnapp", "axel"]);
+const LINE_TICKER = new Set(["editorial", "swiss", "rams", "galerie", "papier", "klartext", "lobby"]);
+export type TickerLook = "bar" | "float" | "line";
+export const tickerLookOf = (theme: string | undefined, chosen?: string): TickerLook =>
+  chosen === "bar" || chosen === "float" || chosen === "line"
+    ? chosen
+    : // „Jahreszeiten“ kommt zur Laufzeit als saison-… an (Frühling, Weihnachten …): weich und farbig → schwebend
+      FLOAT_TICKER.has(theme ?? "") || (theme ?? "").startsWith("saison")
+      ? "float"
+      : LINE_TICKER.has(theme ?? "")
+        ? "line"
+        : "bar";
+
 export const airOf = (theme?: string): number => {
   const id = MERGED_THEMES[theme ?? ""] ?? theme;
   return THEME_DEFS.find((t) => t.id === (id === "saisonal" ? seasonTheme(new Date()) : id))?.air ?? 1;
@@ -2236,11 +2049,29 @@ export const withAir = <G extends { padX: number; padY: number }>(g: G, air: num
   air === 1 ? g : { ...g, padX: Math.round(g.padX * air), padY: Math.round(g.padY * air) };
 
 /** Zusammengelegte Stile (0.12): Gold glich Ruhig, Minimal glich Klar – alte Einstellungen laufen weiter */
-export const MERGED_THEMES: Record<string, string> = { gold: "ruhig", minimal: "klar", weissgold: "ruhig" };
+export const MERGED_THEMES: Record<string, string> = {
+  gold: "ruhig",
+  minimal: "klar",
+  weissgold: "ruhig",
+  // 0.x: ähnliche Stile zusammengelegt – wer sie gewählt hat, bekommt den nächsten Verwandten
+  pastell: "wohnapp",
+  tonal: "wohnapp",
+  kacheln: "daheim",
+  zeitung: "editorial",
+  weihnachten: "saisonal",
+  natur: "landhaus",
+  glanz: "glass",
+  millennium: "glass",
+  handheld: "pixel",
+  rgb: "arcade",
+};
+
+/** Der Stil der Marke – Standard für neue Einrichtungen und Rückfall für unbekannte Stile (wie DEFAULT_THEME in const.py) */
+export const DEFAULT_THEME: Theme = "signature";
 
 export const normalizeTheme = (theme?: string): { theme: Theme; light: boolean } => {
   const id = MERGED_THEMES[theme ?? ""] ?? theme;
-  return { theme: (THEME_DEFS.some((t) => t.id === id) ? id : "ruhig") as Theme, light: theme === "weissgold" };
+  return { theme: (THEME_DEFS.some((t) => t.id === id) ? id : DEFAULT_THEME) as Theme, light: theme === "weissgold" };
 };
 
 const decl = (t: Tokens) =>
@@ -2292,9 +2123,7 @@ export const themeTokens = [
       --af-ink-2: rgba(242, 224, 200, 0.64);
       --af-ink-3: rgba(242, 224, 200, 0.5);
     }
-    :host([evening][theme="gold"]:not([mode="light"])),
-    :host([evening][theme="glass"]:not([mode="light"])),
-    :host([evening][theme="minimal"]:not([mode="light"])) {
+    :host([evening][theme="glass"]:not([mode="light"])) {
       --af-ink: #fbf3e4;
       --af-ink-2: rgba(251, 243, 228, 0.68);
       --af-ink-3: rgba(251, 243, 228, 0.5);
@@ -2350,6 +2179,135 @@ export const stillStyles = css`
 `;
 
 export const widgetStyles = [stillStyles, css`
+  /* Bewegte Anzeigen (design.chart_motion / motion): Balken wachsen, Kurven zeichnen sich ein, Ringe laufen auf ihren Wert.
+     Die Anzeige setzt --af-*-anim (Art), --af-tempo (Dauer), --af-from (Deutlichkeit) und --af-motion-delay: Die Bewegung
+     beginnt erst, wenn der Seitenwechsel die Seite weitgehend eingeblendet hat – plus Versatz je Karte (--af-i) und Balken (--af-j). */
+  :host {
+    --af-motion-wait: calc(var(--af-motion-delay, 0s) + var(--af-i, 0) * var(--af-stagger, 0ms));
+  }
+  .bar > i,
+  .meter > i,
+  .pos > i,
+  .grow-y {
+    transform-origin: left;
+    animation: var(--af-bar-anim, af-grow 1.1s cubic-bezier(0.22, 0.8, 0.24, 1) both);
+    animation-duration: calc(1.1s * var(--af-tempo, 1));
+    animation-delay: calc(var(--af-motion-wait) + var(--af-j, 0) * 0.6s * var(--af-tempo, 1));
+    /* neuer Wert, während die Seite steht: gleiten statt springen */
+    transition-property: width, height, left, right, transform;
+    transition-duration: var(--af-glide, 0s);
+    transition-timing-function: cubic-bezier(0.22, 0.8, 0.24, 1);
+  }
+  /* Säulen wachsen von unten */
+  .grow-y,
+  .bar > i.grow-y {
+    transform-origin: bottom;
+    transform-box: fill-box;
+    --af-gx: 1;
+    --af-gy: var(--af-from, 0);
+  }
+  .chart-reveal {
+    animation: var(--af-curve-anim, af-reveal 1.1s cubic-bezier(0.22, 0.8, 0.24, 1) both);
+    animation-duration: calc(1.1s * var(--af-tempo, 1));
+    animation-delay: var(--af-motion-wait);
+  }
+  .ring-sweep {
+    animation: var(--af-ring-anim, af-sweep 1.1s cubic-bezier(0.22, 0.8, 0.24, 1) both);
+    animation-duration: calc(1.1s * var(--af-tempo, 1));
+    animation-delay: var(--af-motion-wait);
+    transition: stroke-dasharray var(--af-glide, 0s) cubic-bezier(0.22, 0.8, 0.24, 1);
+  }
+  /* Diagramm: erst die Linie, dann füllt sich die Fläche, zuletzt setzt sich ein Punkt auf den aktuellen Wert */
+  .chart-reveal .fill {
+    animation: af-show calc(0.8s * var(--af-tempo, 1)) ease both;
+    animation-delay: calc(var(--af-motion-wait) + 0.5s * var(--af-tempo, 1));
+  }
+  .chart-dot {
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--c, var(--af-accent));
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    animation: var(--af-dot-anim, af-pop 0.9s cubic-bezier(0.34, 1.56, 0.64, 1) both);
+    animation-duration: calc(0.9s * var(--af-tempo, 1));
+    animation-delay: calc(var(--af-motion-wait) + 1s * var(--af-tempo, 1));
+  }
+  /* Neuer Wert: Pfeil in Richtung der Änderung, blendet nach ein paar Sekunden aus */
+  .num[data-trend]::after {
+    content: "▲";
+    display: inline-block;
+    margin-left: 0.25em;
+    font-size: 0.4em;
+    vertical-align: 0.9em;
+    color: var(--af-accent);
+    animation: af-trend 6s ease both;
+  }
+  .num[data-trend="down"]::after {
+    content: "▼";
+    color: var(--af-cold, var(--af-accent));
+  }
+  @keyframes af-grow {
+    from {
+      transform: scale(var(--af-gx, var(--af-from, 0)), var(--af-gy, 1));
+    }
+  }
+  @keyframes af-fade {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+  }
+  @keyframes af-reveal {
+    from {
+      clip-path: inset(0 calc((1 - var(--af-from, 0)) * 100%) 0 0);
+    }
+  }
+  @keyframes af-sweep {
+    from {
+      stroke-dasharray: 0 100;
+    }
+  }
+  @keyframes af-pop {
+    0% {
+      transform: translate(-50%, -50%) scale(0);
+      box-shadow: 0 0 0 0 var(--c, var(--af-accent));
+    }
+    50% {
+      transform: translate(-50%, -50%) scale(1);
+    }
+    100% {
+      transform: translate(-50%, -50%) scale(1);
+      box-shadow: 0 0 0 14px transparent;
+    }
+  }
+  @keyframes af-show {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes af-trend {
+    0%, 70% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .bar > i,
+    .meter > i,
+    .pos > i,
+    .grow-y,
+    .chart-reveal,
+    .chart-reveal .fill,
+    .chart-dot,
+    .ring-sweep {
+      animation: none;
+      transition: none;
+    }
+  }
   /* Textgröße „aus der Ferne“ (--af-far: 1): Zweitzeilen und Details entfallen, der Rest wird groß */
   @container style(--af-far: 1) {
     .b,

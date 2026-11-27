@@ -1,10 +1,11 @@
 // Übersicht-Widgets: Termine, Läuft gerade, Geräte, Rollläden
 import { locale, t } from "../i18n";
-import { css, html, nothing } from "lit";
+import { css, html, nothing, svg } from "lit";
+import { keyed } from "lit/directives/keyed.js";
 import { anyIcon } from "../icons";
 import { widgetStyles } from "../styles";
 import type { HassEntity } from "../types";
-import { batteryOverview, dayDiff, fmt, fmtTime, numberOf, parseDate, relDay, stateOf, valueOf, type BatteryItem } from "../util";
+import { batteryOverview, dayDiff, duration, fmt, fmtTime, numberOf, parseDate, relDay, stateOf, valueOf, type BatteryItem } from "../util";
 import { AfTickingWidget, define } from "./base";
 
 const rowStyles = css`
@@ -267,7 +268,7 @@ class AfMedia extends AfTickingWidget {
         flex: none;
       }
       .full .glow,
-      .full .pic {
+      :is(.full, .side) .pic {
         position: absolute;
         inset: 0;
         border-radius: 26px;
@@ -278,7 +279,7 @@ class AfMedia extends AfTickingWidget {
         opacity: 0.6;
         transform: scale(1.08) translateY(22px);
       }
-      .full .pic {
+      :is(.full, .side) .pic {
         border: 1px solid var(--af-line);
         box-shadow: 0 30px 80px rgba(0, 0, 0, 0.3);
         display: grid;
@@ -293,46 +294,100 @@ class AfMedia extends AfTickingWidget {
           transform: scale(0.97);
         }
       }
+      /* Wie das Vollbild beim Liedwechsel: Cover links, Text rechts (hochkant: untereinander) – Hintergrund „Musik-Cover“ der Seite */
+      .side {
+        height: 100%;
+        container-type: size;
+        display: flex;
+        align-items: center;
+        gap: 6cqw;
+        padding: 0 4cqw;
+        box-sizing: border-box;
+      }
+      .side .pic {
+        position: relative;
+        width: min(72cqh, 40cqw);
+        aspect-ratio: 1;
+        flex: none;
+        border-radius: 30px;
+        border: 0;
+        box-shadow: 0 40px 110px rgba(0, 0, 0, 0.55);
+        background: var(--af-surface) center / cover;
+      }
+      .side .text {
+        flex: 1;
+        min-width: 0;
+      }
+      .side .title {
+        font-size: clamp(32px, 9cqh, 72px);
+        line-height: 1.04;
+        margin-top: 18px;
+        -webkit-line-clamp: 3;
+      }
+      .side .artist {
+        font-size: clamp(20px, 4.5cqh, 32px);
+        margin-top: 14px;
+      }
+      .side .prog {
+        margin-top: 44px;
+        max-width: 620px;
+      }
+      @container (aspect-ratio < 1) {
+        .side {
+          flex-direction: column;
+          justify-content: center;
+          align-items: flex-start;
+          gap: 6cqh;
+        }
+        .side .pic {
+          width: min(80cqw, 50cqh);
+          align-self: center;
+        }
+        .side .text {
+          width: 100%;
+          flex: none;
+        }
+      }
       .full .text {
         width: min(100%, 900px);
         display: flex;
         flex-direction: column;
         align-items: center;
       }
-      .full .title {
+      :is(.full, .side) .title {
         font-size: calc(46px * var(--af-fs, 1));
         line-height: 1.1;
         margin-top: 10px;
         -webkit-line-clamp: 2;
         text-wrap: balance;
       }
-      .full .artist {
+      :is(.full, .side) .artist {
         font-size: calc(24px * var(--af-fs, 1));
         margin-top: 8px;
       }
-      .full .album {
+      :is(.full, .side) .album {
         font-size: calc(17px * var(--af-fs, 1));
         color: var(--af-ink-3);
         margin-top: 4px;
       }
-      .full .prog {
+      :is(.full, .side) .prog {
         margin-top: 24px;
         width: min(100%, 560px);
       }
-      .full .bar {
+      :is(.full, .side) .bar {
         height: 4px;
         border-radius: 2px;
         background: var(--af-line);
         overflow: hidden;
       }
-      .full .bar i {
+      :is(.full, .side) .bar i {
         display: block;
         height: 100%;
         background: var(--af-accent);
         transform-origin: left;
         transition: transform 1s linear;
       }
-      .full .times {
+      :is(.full, .side) .times {
         display: flex;
         justify-content: space-between;
         margin-top: 8px;
@@ -362,7 +417,7 @@ class AfMedia extends AfTickingWidget {
     }
   }
 
-  private renderFull(s: HassEntity) {
+  private renderFull(s: HassEntity, side = false) {
     const a = s.attributes;
     const pic = a.entity_picture as string | undefined;
     const dur = Number(a.media_duration);
@@ -370,16 +425,19 @@ class AfMedia extends AfTickingWidget {
     const known = dur > 0 && pos != null;
     const share = known ? Math.min(1, Math.max(0, pos / dur)) : 0;
     const where = [a.friendly_name, s.state === "paused" ? t("pausiert") : ""].filter(Boolean).join(" · ");
-    return html`<div class="full">
-      <div class="art">
-        ${pic ? html`<div class="glow" style="background-image:url('${pic}')"></div>` : nothing}
-        <div class="pic" style=${pic ? `background-image:url('${pic}')` : ""}>${pic ? "" : anyIcon("mdi:music")}</div>
-      </div>
+    const art = html`<div class="pic" style=${pic ? `background-image:url('${pic}')` : ""}>${pic ? "" : anyIcon("mdi:music")}</div>`;
+    return html`<div class=${side ? "side" : "full"}>
+      ${side
+        ? keyed(pic ?? a.media_title, art)
+        : html`<div class="art">
+            ${pic ? html`<div class="glow" style="background-image:url('${pic}')"></div>` : nothing}
+            ${art}
+          </div>`}
       <div class="text">
         ${this.options.label === false ? nothing : html`<div class="label">${this.options.label ?? t("Läuft gerade")}${where ? ` · ${where}` : ""}</div>`}
         <div class="title display">${a.media_title ?? a.app_name ?? t("Musik")}</div>
         ${a.media_artist ? html`<div class="artist">${a.media_artist}</div>` : nothing}
-        ${a.media_album_name ? html`<div class="album">${a.media_album_name}</div>` : nothing}
+        ${a.media_album_name && a.media_album_name !== a.media_title ? html`<div class="album">${a.media_album_name}</div>` : nothing}
         ${known
           ? html`<div class="prog">
               <div class="bar"><i style="transform:scaleX(${share})"></i></div>
@@ -394,8 +452,9 @@ class AfMedia extends AfTickingWidget {
     const o = this.options;
     const players = ((o.entities ?? []) as string[]).map((id) => stateOf(this.hass, id)).filter((s): s is HassEntity => !!s);
     const playing = players.find((s) => s.state === "playing") ?? (o.show_paused ? players.find((s) => s.state === "paused") : undefined);
-    this.tickEverySecond(o.variant === "full" && playing?.state === "playing");
-    if (playing && o.variant === "full") return this.renderFull(playing);
+    const big = o.variant === "full" || o.variant === "side";
+    this.tickEverySecond(big && playing?.state === "playing");
+    if (playing && big) return this.renderFull(playing, o.variant === "side");
     const label = o.label === false ? nothing : html`<div class="label">${o.label ?? t("Läuft gerade")}</div>`;
     if (!playing) return html`${label}<div class="calm">${anyIcon("check")}${o.empty_text ?? t("Gerade läuft nichts")}</div>`;
     const a = playing.attributes;
@@ -422,14 +481,277 @@ interface ApplianceConfig {
   progress?: string;
   end?: string;
   cost?: string;
+  /** Laufendes Programm (z. B. „Schnell / Mix“) */
+  program?: string;
 }
 
-/** Laufende Haushaltsgeräte mit Details. Optionen: items [{name, running, icon, power, progress, end, cost}], label, empty_text. */
+/** Home-Connect-Programme (Bosch/Siemens), falls HA keine Übersetzung liefert */
+const PROGRAMS: Record<string, string> = {
+  cotton: "Baumwolle",
+  synthetic: "Pflegeleicht",
+  mix: "Mix",
+  super_40: "Super 40'",
+  outdoor: "Outdoor",
+  time_cold: "Zeitprogramm kalt",
+  time_warm: "Zeitprogramm warm",
+  jeans: "Jeans",
+  down_feathers: "Daunen",
+  pillow: "Kopfkissen",
+  business_shirts: "Hemden",
+  dessous: "Dessous",
+  hygiene: "Hygiene",
+  towels: "Handtücher",
+  wool: "Wolle",
+  delicate_silk: "Fein/Seide",
+  quick_15: "Super 15'",
+  sport_fitness: "Sport/Fitness",
+  easy_care: "Pflegeleicht",
+};
+
+/** Programmname lesbar: HA-Übersetzung, sonst Home-Connect-Schlüssel → Name, sonst „schnell_mix“ → „Schnell mix“ */
+export const programOf = (h: Parameters<typeof valueOf>[0], id?: string): string => {
+  const st = id ? stateOf(h, id) : undefined;
+  const v = String(st?.state ?? "");
+  if (!v || ["unknown", "unavailable", "none", "off", "idle"].includes(v.toLowerCase())) return "";
+  const shown = (h as { formatEntityState?: (s: unknown) => string } | undefined)?.formatEntityState?.(st);
+  if (shown && shown !== v) return shown;
+  const key = v.replace(/^.*_program_/, "");
+  if (PROGRAMS[key]) return t(PROGRAMS[key]);
+  const s = v.includes("_") && !v.includes(" ") ? key.replace(/_/g, " ") : v;
+  return s.charAt(0).toUpperCase() + s.slice(1);
+};
+
+/**
+ * Gezeichnete Maschine für die Karten: Waschmaschine (Wasser schwappt, Trommel dreht hin und her) oder Trockner
+ * (Trommel dreht gleichmäßig, Wärme steigt auf). Steht still auf E-Ink und bei „weniger Bewegung“.
+ */
+const machine = (dryer: boolean) => html`<svg class="mach ${dryer ? "dryer" : "washer"}" viewBox="0 0 100 120" aria-hidden="true">
+  <rect class="body" x="6" y="6" width="88" height="108" rx="12"></rect>
+  <path class="panel" d="M6 30h88"></path>
+  <circle class="knob" cx="78" cy="18" r="5"></circle>
+  <rect class="led" x="16" y="15" width="22" height="6" rx="3"></rect>
+  <circle class="door" cx="50" cy="72" r="30"></circle>
+  <clipPath id="glass-${dryer ? "d" : "w"}"><circle cx="50" cy="72" r="24"></circle></clipPath>
+  <g clip-path="url(#glass-${dryer ? "d" : "w"})">
+    <rect class="glass" x="20" y="42" width="60" height="60"></rect>
+    ${dryer ? nothing : svg`<path class="water" d="M2 78q9-5 18 0t18 0 18 0 18 0 18 0 18 0v40H2z"></path>`}
+    <g class="drum">
+      <circle class="cloth c1" cx="40" cy="62" r="7"></circle>
+      <circle class="cloth c2" cx="60" cy="68" r="6"></circle>
+      <circle class="cloth c3" cx="48" cy="84" r="8"></circle>
+      <circle class="bubble" cx="56" cy="56" r="2.5"></circle>
+    </g>
+  </g>
+  ${dryer ? svg`<path class="heat h1" d="M36 0q-4-5 0-10t0-10"></path><path class="heat h2" d="M50 0q-4-5 0-10t0-10"></path><path class="heat h3" d="M64 0q-4-5 0-10t0-10"></path>` : nothing}
+</svg>`;
+
+/** Laufende Haushaltsgeräte mit Details. Optionen: items [{name, running, icon, power, progress, end, cost}], label, empty_text, variant (cards = große Karten mit Animation). */
 class AfAppliances extends AfTickingWidget {
-  static styles = [widgetStyles, rowStyles];
+  static styles = [
+    widgetStyles,
+    rowStyles,
+    css`
+      /* Karten: je laufendem Gerät eine, nebeneinander (hochkant untereinander) – füllen die Kachel unter der Überschrift */
+      :host([variant="cards"]) {
+        display: flex;
+        flex-direction: column;
+      }
+      .cards {
+        flex: 1;
+        min-height: 0;
+        display: grid;
+        grid-auto-flow: column;
+        grid-auto-columns: minmax(0, 1fr);
+        gap: 18px;
+        container-type: size;
+      }
+      @container (aspect-ratio < 1) {
+        .cards {
+          grid-auto-flow: row;
+        }
+      }
+      .unit {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        /* oben ausgerichtet statt mittig: Maschinen und Namen stehen in allen Karten auf einer Höhe, auch wenn eine weniger Zeilen hat */
+        justify-content: flex-start;
+        text-align: center;
+        gap: 18px;
+        padding: max(24px, 14cqh) 20px 24px;
+        container-type: size;
+        border-radius: var(--af-card-radius, 24px);
+        background: var(--af-surface);
+        border: 1px solid var(--af-line);
+        min-width: 0;
+      }
+      .mach {
+        flex: none;
+        height: min(48cqh, 260px);
+        width: auto;
+        aspect-ratio: 100 / 120;
+        overflow: visible;
+        margin-top: 24px; /* Platz für die aufsteigende Wärme */
+      }
+      .mach .body {
+        fill: var(--af-card, var(--af-bg));
+        stroke: var(--af-ink-3);
+        stroke-width: 2;
+      }
+      .mach .panel,
+      .mach .knob {
+        fill: none;
+        stroke: var(--af-ink-3);
+        stroke-width: 2;
+      }
+      .mach .led {
+        fill: var(--af-accent);
+        animation: led 2s ease-in-out infinite;
+      }
+      .mach .door {
+        fill: none;
+        stroke: var(--af-ink-2);
+        stroke-width: 4;
+      }
+      .mach .glass {
+        fill: color-mix(in srgb, var(--af-ink) 8%, transparent);
+      }
+      .mach .water {
+        fill: rgba(90, 160, 216, 0.55);
+        animation: slosh 2.6s ease-in-out infinite;
+      }
+      .mach .drum {
+        transform-origin: 50px 72px;
+        animation: tumble 6s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+      }
+      .mach.dryer .drum {
+        animation: spin 2.8s linear infinite;
+      }
+      .mach .cloth {
+        fill: var(--af-accent);
+        opacity: 0.75;
+      }
+      .mach .c2 {
+        fill: var(--af-ink-2);
+      }
+      .mach .c3 {
+        opacity: 0.5;
+      }
+      .mach .bubble {
+        fill: #fff;
+        opacity: 0.6;
+      }
+      .mach.dryer .bubble {
+        display: none;
+      }
+      .mach .heat {
+        fill: none;
+        stroke: var(--af-alert, #e07a3c);
+        stroke-width: 2.5;
+        stroke-linecap: round;
+        opacity: 0;
+        animation: heat 2.4s ease-in-out infinite;
+      }
+      .mach .h2 {
+        animation-delay: 0.8s;
+      }
+      .mach .h3 {
+        animation-delay: 1.6s;
+      }
+      @keyframes tumble {
+        0% {
+          transform: rotate(0);
+        }
+        42% {
+          transform: rotate(540deg);
+        }
+        50% {
+          transform: rotate(540deg);
+        }
+        92% {
+          transform: rotate(0);
+        }
+      }
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      @keyframes slosh {
+        50% {
+          transform: translateX(-18px) translateY(2px);
+        }
+      }
+      @keyframes heat {
+        0% {
+          opacity: 0;
+          transform: translateY(6px);
+        }
+        40% {
+          opacity: 0.8;
+        }
+        100% {
+          opacity: 0;
+          transform: translateY(-10px);
+        }
+      }
+      @keyframes led {
+        50% {
+          opacity: 0.35;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .mach * {
+          animation: none !important;
+        }
+      }
+      .info {
+        min-width: 0;
+        width: 100%;
+      }
+      .info .meter {
+        max-width: 320px;
+        margin-left: auto;
+        margin-right: auto;
+      }
+      .info .name {
+        font-size: calc(22px * var(--af-fs, 1));
+        font-weight: 500;
+      }
+      .info .prog {
+        display: inline-block;
+        margin-top: 6px;
+        padding: 3px 12px;
+        border-radius: 999px;
+        font-size: calc(15px * var(--af-fs, 1));
+        color: var(--af-accent);
+        background: color-mix(in srgb, var(--af-accent) 14%, transparent);
+      }
+      .info .watt {
+        font-size: clamp(36px, 11cqh, 72px);
+        line-height: 1;
+        margin-top: 10px;
+      }
+      .info .watt small {
+        font-size: 0.4em;
+        color: var(--af-ink-3);
+        margin-left: 4px;
+      }
+      .info .facts {
+        margin-top: 10px;
+        font-size: calc(16px * var(--af-fs, 1));
+        color: var(--af-ink-2);
+        display: grid;
+        gap: 4px;
+      }
+      .info .meter {
+        margin-top: 12px;
+      }
+    `,
+  ];
 
   protected watched() {
-    return ((this.options.items ?? []) as ApplianceConfig[]).flatMap((i) => [i.running, i.power, i.progress, i.end, i.cost]);
+    return ((this.options.items ?? []) as ApplianceConfig[]).flatMap((i) => [i.running, i.power, i.progress, i.end, i.cost, i.program]);
   }
 
   render() {
@@ -438,6 +760,35 @@ class AfAppliances extends AfTickingWidget {
     const running = ((o.items ?? []) as ApplianceConfig[]).filter((i) => stateOf(h, i.running)?.state === "on");
     const label = o.label === false ? nothing : html`<div class="label">${o.label ?? t("Geräte")}</div>`;
     if (!running.length) return html`${label}<div class="calm">${anyIcon("check")}${o.empty_text ?? t("Nichts läuft gerade")}</div>`;
+    this.toggleAttribute("variant", false);
+    if (o.variant === "cards") this.setAttribute("variant", "cards");
+    if (o.variant === "cards")
+      return html`${label}
+        <div class="cards">
+          ${running.map((i) => {
+            const since = parseDate(stateOf(h, i.running)?.last_changed);
+            const watts = numberOf(h, i.power);
+            const progress = numberOf(h, i.progress);
+            const end = parseDate(valueOf(h, i.end));
+            const cost = numberOf(h, i.cost);
+            const dryer = (i.icon ?? "").includes("dryer") || /trockn|dryer/i.test(i.name);
+            const program = programOf(h, i.program);
+            return html`<div class="unit">
+              ${machine(dryer)}
+              <div class="info">
+                <div class="name">${i.name}</div>
+                ${program ? html`<div class="prog">${program}</div>` : nothing}
+                ${watts != null ? html`<div class="watt display num">${fmt(watts, 0)}<small>W</small></div>` : nothing}
+                <div class="facts num">
+                  ${since ? html`<span>${t("läuft seit {time}", { time: duration(Date.now() - since.getTime()) })}</span>` : nothing}
+                  ${end ? html`<span>${t("fertig um {time}", { time: fmtTime(end) })}</span>` : nothing}
+                  ${cost != null && cost > 0 ? html`<span>${t("bisher {cost}", { cost: `${fmt(cost, 2)} €` })}</span>` : nothing}
+                </div>
+                ${progress != null ? html`<div class="meter"><i style="width:${progress}%"></i></div>` : nothing}
+              </div>
+            </div>`;
+          })}
+        </div>`;
     return html`${label}
       ${running.map((i) => {
         const since = parseDate(stateOf(h, i.running)?.last_changed);
@@ -446,6 +797,7 @@ class AfAppliances extends AfTickingWidget {
         const end = parseDate(valueOf(h, i.end));
         const cost = numberOf(h, i.cost);
         const facts = [
+          programOf(h, i.program),
           since ? t("seit {time}", { time: fmtTime(since) }) : "",
           end ? t("fertig {time}", { time: fmtTime(end) }) : "",
           watts != null ? `${fmt(watts, 0)} W` : "",
@@ -669,8 +1021,8 @@ class AfBatteries extends AfTickingWidget {
       ${anyIcon(warn ? "battery" : b.kind === "other" ? "battery" : b.kind)}
       <div class="grow">
         <div class="a">${b.name}${b.charging ? anyIcon("bolt", "bolt") : nothing}</div>
-        ${b.level != null && !warn
-          ? html`<div class="meter"><i class=${b.charging ? "charging" : low ? "low" : ""} style="width:${Math.max(2, Math.min(100, b.level))}%"></i></div>`
+        ${b.level != null
+          ? html`<div class="meter"><i class=${b.charging ? "charging" : low || warn ? "low" : ""} style="width:${Math.max(2, Math.min(100, b.level))}%"></i></div>`
           : nothing}
       </div>
       <div class="end pct num">${b.level != null ? `${fmt(b.level, 0)} %` : t("schwach")}</div>

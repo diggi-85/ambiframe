@@ -175,7 +175,7 @@ def build_default_config(hass: HomeAssistant) -> dict[str, Any]:
         "version": CONFIG_VERSION,
         # Frisch angelegt: der Editor startet den Einrichtungsassistenten
         "setup_complete": False,
-        "design": {"theme": "ruhig", "evening": "sun"},
+        "design": {"theme": "signature", "evening": "sun"},
         "photos": {"folder": DEFAULT_PHOTO_FOLDER, "placeholder": "samples", "credit": True},
         "displays": [
             {

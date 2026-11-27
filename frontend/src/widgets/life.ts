@@ -1,10 +1,10 @@
 // Alltag: Auto, Personen, Saugroboter, Mülltonnen, Bewegung, Umwelt-Liste, Warnungen
 import { locale, t } from "../i18n";
 import { css, html, nothing } from "lit";
-import { anyIcon } from "../icons";
+import { anyIcon, binIcon } from "../icons";
 import { widgetStyles } from "../styles";
 import type { Hass, HassEntity } from "../types";
-import { ago, areaOf, binDays, distanceKm, fmt, fmtTime, nameOf, numberOf, parseDate, placeOf, relDay, stateOf, valueOf, warningLevel, warningSources, warningSpan, warningsOf, type WarningItem } from "../util";
+import { ago, areaOf, binDays, distanceKm, fmt, fmtTime, nameOf, numberOf, parseDate, placeOf, relDay, stateOf, valueOf, warningLevel, sourceLogo, warningSources, warningSpan, warningsOf, type WarningItem } from "../util";
 import { AfTickingWidget, define } from "./base";
 
 const listStyles = css`
@@ -484,7 +484,6 @@ interface BinConfig {
   out?: string;
 }
 
-const BIN_COLORS: Record<string, string> = { bio: "#8a6a3d", gelb: "#e3c03a", papier: "#4a86c5", grau: "#8d9196", rest: "#8d9196" };
 
 /** Tage bis zur Abholung: Zahl, „on Wed, 14.10.2026“ oder Datumsattribute. */
 
@@ -494,22 +493,10 @@ class AfWaste extends AfTickingWidget {
     widgetStyles,
     listStyles,
     css`
-      .bin {
-        width: 18px;
-        height: 22px;
-        border-radius: 4px 4px 6px 6px;
+      .binic {
+        width: calc(34px * var(--af-fs, 1));
+        height: calc(34px * var(--af-fs, 1));
         flex: none;
-        position: relative;
-      }
-      .bin::before {
-        content: "";
-        position: absolute;
-        left: -3px;
-        right: -3px;
-        top: -5px;
-        height: 4px;
-        border-radius: 2px;
-        background: inherit;
       }
       .soon .a {
         color: var(--af-accent);
@@ -540,10 +527,9 @@ class AfWaste extends AfTickingWidget {
         const d = b.days as number;
         const date = new Date();
         date.setDate(date.getDate() + d);
-        const color = b.color ?? BIN_COLORS[Object.keys(BIN_COLORS).find((k) => b.name.toLowerCase().includes(k)) ?? "rest"];
         const when = d <= 2 ? relDay(date) : t("in {n} Tagen", { n: fmt(d, 0) });
         return html`<div class="row ${d <= highlight ? "soon" : ""}">
-          <div class="bin" style="background:${color}"></div>
+          ${binIcon(b.name, b.color)}
           <div class="grow">
             <div class="a">${b.name}</div>
             ${b.out && this.hass?.states[b.out]?.state === "on"
@@ -822,11 +808,26 @@ class AfWarnings extends AfTickingWidget {
         color: var(--af-good);
         font-size: calc(24px * var(--af-fs, 1));
       }
+      .src-logo {
+        height: 1.1em;
+        width: auto;
+        max-width: 2.4em;
+        object-fit: contain;
+        vertical-align: -0.15em;
+        margin-right: 0.45em;
+        border-radius: 0.15em;
+      }
     `,
   ];
 
   protected watched() {
     return warningSources(this.hass, this.options.entities as string[] | undefined);
+  }
+
+  /** Logo der Quelle (DWD, NINA) vor der Überschrift – fehlt das Bild, verschwindet es */
+  private logo(w: WarningItem) {
+    const src = sourceLogo(w.source);
+    return src ? html`<img class="src-logo" src=${src} alt=${w.sender ?? ""} @error=${(e: Event) => ((e.target as HTMLElement).hidden = true)} />` : nothing;
   }
 
   /** Eine Warnung mit allem, was ihre Quelle liefert */
@@ -835,7 +836,7 @@ class AfWarnings extends AfTickingWidget {
     const span = warningSpan(w);
     const host = w.url ? w.url.replace(/^https?:\/\//, "").replace(/\/$/, "") : "";
     return html`<div class="wc ${cls}" style=${w.color ? `--wc:${w.color}` : ""}>
-      <div class="h">${w.headline}</div>
+      <div class="h">${this.logo(w)}${w.headline}</div>
       <div class="m">${[html`<span class="lvl">${sev}${w.event ? ` · ${w.event}` : ""}</span>`, span, w.sender].filter(Boolean).map((x, i) => html`${i ? " · " : ""}${x}`)}</div>
       ${w.description ? html`<p>${w.description}</p>` : nothing}
       ${w.instruction ? html`<p><span class="k">${t("Empfehlung")}</span>${w.instruction}</p>` : nothing}
@@ -859,7 +860,7 @@ class AfWarnings extends AfTickingWidget {
             return html`<div class="row">
               <span class=${cls}>${anyIcon("warning")}</span>
               <div class="grow">
-                <div class="a">${w.headline}</div>
+                <div class="a">${this.logo(w)}${w.headline}</div>
                 <div class="b ${cls}">${[sev, span, w.sender].filter(Boolean).join(" · ")}</div>
                 ${w.description ? html`<div class="desc">${w.description}</div>` : nothing}
               </div>

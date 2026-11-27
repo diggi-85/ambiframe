@@ -10,6 +10,7 @@ import logging
 import re
 import time
 from typing import Any
+from urllib.parse import urljoin, urlsplit
 import xml.etree.ElementTree as ET
 
 import aiohttp
@@ -157,12 +158,31 @@ def parse_feed(data: bytes, source: str) -> list[dict[str, Any]]:
 
 
 # Videos „tagesschau in 100 Sekunden“: die Seite bettet die Player-Daten als JSON in data-v ein (Stand 11/2026)
+MAX_BYTES = 5_000_000
 VIDEO_SOURCES: dict[str, tuple[str, str]] = {
     "tagesschau100": ("tagesschau in 100 Sekunden", "https://www.tagesschau.de/tagesschau_in_100_sekunden"),
 }
-VIDEO_CACHE_SECONDS = 300
+VIDEO_CACHE_SECONDS = 900  # neue Folgen erscheinen nur einige Male am Tag – 4 Abrufe pro Stunde reichen (erlaubt: 60)
 _DATA_V = re.compile(r'data-v="([^"]+)"')
 _EDITION = re.compile(r"TV-(\d{8})-(\d{4})")
+
+
+_LINK_TAG = re.compile(r"<link\b[^>]*>", re.I)
+
+
+def parse_icon(page: str, base: str) -> str:
+    """Logo einer Webseite: großes apple-touch-icon vor icon, sonst /favicon.ico."""
+    best, rank = "", 0
+    for tag in _LINK_TAG.findall(page):
+        rel = re.search(r"""rel=["']([^"']+)""", tag, re.I)
+        href = re.search(r"""href=["']([^"']+)""", tag, re.I)
+        if not rel or not href:
+            continue
+        rels = rel.group(1).lower().split()
+        level = 2 if "apple-touch-icon" in rels else 1 if "icon" in rels else 0
+        if level > rank:
+            best, rank = html.unescape(href.group(1)), level
+    return urljoin(base, best or "/favicon.ico")
 
 
 def parse_video_page(page: str, title: str) -> dict[str, Any] | None:
@@ -207,6 +227,7 @@ class NewsService:
         self.hass = hass
         self._feeds: dict[str, tuple[float, list[dict[str, Any]]]] = {}
         self._og: dict[str, str] = {}
+        self._icons: dict[str, str] = {}
         self._lock = asyncio.Lock()
         self._videos: dict[str, tuple[float, dict[str, Any] | None]] = {}
 
@@ -233,15 +254,44 @@ class NewsService:
         host = re.sub(r"^https?://(www\.)?", "", feed).split("/")[0]
         return host, feed
 
+    async def _get(self, url: str) -> bytes:
+        session = async_get_clientsession(self.hass)
+        async with session.get(url, headers=_HEADERS, timeout=aiohttp.ClientTimeout(total=15)) as resp:
+            resp.raise_for_status()
+            # Feeds und Webseiten sind klein – ein versehentlicher Download-Link soll HA nicht füllen
+            data = bytearray()
+            async for chunk in resp.content.iter_chunked(65536):
+                data += chunk
+                if len(data) >= MAX_BYTES:
+                    break
+            return bytes(data[:MAX_BYTES])
+
     async def _fetch(self, url: str) -> bytes | None:
         try:
-            session = async_get_clientsession(self.hass)
-            async with session.get(url, headers=_HEADERS, timeout=aiohttp.ClientTimeout(total=15)) as resp:
-                resp.raise_for_status()
-                return await resp.read()
+            return await self._get(url)
         except (aiohttp.ClientError, TimeoutError) as err:
             _LOGGER.debug("Ambiframe: %s nicht abrufbar: %s", url, err)
             return None
+
+    async def async_check(self, feed: str) -> dict[str, Any]:
+        """Probeabruf für den Editor: erreichbar? gültiger Feed? wie viele Meldungen, welche ist die neueste?"""
+        name, url = self.resolve(feed.strip())
+        if not url.startswith(("http://", "https://")):
+            return {"ok": False, "error": "address"}
+        try:
+            data = await self._get(url)
+        except aiohttp.ClientResponseError as err:
+            return {"ok": False, "error": "http", "status": err.status}
+        except (aiohttp.ClientError, TimeoutError):
+            return {"ok": False, "error": "unreachable"}
+        try:
+            items = await self.hass.async_add_executor_job(parse_feed, data, name)
+        except ET.ParseError:
+            return {"ok": False, "error": "not_feed"}
+        if not items:
+            return {"ok": False, "error": "empty"}
+        latest = max(items, key=lambda i: i["published"] or "")
+        return {"ok": True, "name": name, "count": len(items), "latest": latest["title"]}
 
     async def _og_image(self, link: str) -> str:
         if link in self._og:
@@ -275,9 +325,31 @@ class NewsService:
         self._feeds[url] = (time.monotonic(), items)
         return items
 
+    async def _icon(self, link: str) -> str:
+        """Logo der Seite hinter einer Meldung – einmal je Website."""
+        parts = urlsplit(link)
+        if parts.scheme not in ("http", "https") or not parts.netloc:
+            return ""
+        origin = f"{parts.scheme}://{parts.netloc}/"
+        if origin not in self._icons:
+            page = await self._fetch(origin)
+            if not page:  # nicht merken – beim nächsten Abruf des Feeds noch einmal versuchen
+                return urljoin(origin, "/favicon.ico")
+            self._icons[origin] = parse_icon(page[:300_000].decode("utf-8", "replace"), origin)
+        return self._icons[origin]
+
+    async def _add_icon(self, items: list[dict[str, Any]]) -> None:
+        """Logo an die Meldungen eines Feeds hängen (einmal je zwischengespeicherter Liste)."""
+        if items and "icon" not in items[0]:
+            icon = await self._icon(next((i["link"] for i in items if i["link"]), ""))
+            for item in items:
+                item["icon"] = icon
+
     async def async_items(self, feeds: list[str], limit: int = 30) -> list[dict[str, Any]]:
         async with self._lock:
             results = await asyncio.gather(*(self._feed(f) for f in feeds))
+        # Logos außerhalb der Sperre: eine langsame Startseite hält die Meldungen anderer Displays nicht auf
+        await asyncio.gather(*(self._add_icon(r) for r in results))
         seen: set[str] = set()
         merged: list[dict[str, Any]] = []
         for item in sorted((i for r in results for i in r), key=lambda i: i["published"] or "", reverse=True):

@@ -3,19 +3,19 @@ import { locale, resolveLang, setLang, t } from "../i18n";
 import { LitElement, css, html, nothing, type PropertyValues } from "lit";
 import { keyed } from "lit/directives/keyed.js";
 import { repeat } from "lit/directives/repeat.js";
-import { ForecastStore, PhotoProvider, preload, type DisplayContext } from "../data";
+import { ForecastStore, PhotoProvider, preload, tallPhoto, type DisplayContext } from "../data";
 import { fontStack } from "../fonts";
-import { MDI_MAP, anyIcon, iconSvg } from "../icons";
-import { THEME_DEFS, digitFace, normalizeTheme, seasonTheme, stillStyles, themeTokens, PALETTES, dayHue, airOf, withAir } from "../styles";
-import type { CardStyle, DisplayConfig, EventConfig, Hass, HassEntity, PageConfig, Photo, TapAction, TransitionConfig, AmbiframeConfig } from "../types";
+import { MDI_MAP, iconSvg } from "../icons";
+import { THEME_DEFS, digitFace, normalizeTheme, seasonTheme, stillStyles, themeTokens, PALETTES, dayHue, airOf, withAir, motionOf, motionVars, tickerLookOf } from "../styles";
+import type { CardStyle, DisplayConfig, EventConfig, Hass, HassEntity, PageConfig, Photo, TapAction, TransitionConfig, AmbiframeConfig, WidgetConfig } from "../types";
 import { triggered } from "../events";
 import { playSound, stopSound } from "../sound";
-import { checkCondition, checkConditions, customStyle, duration, effectiveConfig, fmt, fmtTime, tickerLines, type TickerDetail, type TickerMemory } from "../util";
+import { checkCondition, checkConditions, customStyle, duration, effectiveConfig, fmt, fmtTime, type TickerDetail } from "../util";
 import { define } from "../widgets/base";
 import "../widgets/media";
-import { BASE, gridFor, type Grid, type Orientation } from "./grid";
-import "./page";
+import { BASE, gridFor, layoutOf, type Grid, type Orientation, type Pos } from "./grid";
 import "./ambient";
+import { TickerDock, dockStyles } from "./dock";
 import { leaveToDashboard } from "./leave";
 import { coverTokens, loadPalette, registerCoverProperties, type Hsl } from "./cover";
 
@@ -26,6 +26,14 @@ interface Layer {
   leaving: boolean;
   /** Übergang: beim Erscheinen der eigene, beim Verschwinden der der nachfolgenden Seite */
   trans: TransitionConfig;
+  /** Sekunden bis Zahlen und Diagramme loslaufen (Großteil des Seitenwechsels); 0, sobald alles steht */
+  delay: number;
+  /** performance.now() dazu – für das Hochzählen */
+  at: number;
+  /** zurückgeblättert: Schieben, Würfel, Umklappen und Blättern laufen gespiegelt */
+  back?: boolean;
+  /** Widgets, die beim Wechsel stehen bleiben (auf alter und neuer Seite gleich) – nur beim Überblenden */
+  keep?: Set<string>;
 }
 
 /** Sanfter Standard: erst ausblenden, dann einblenden, zusammen 2,4 s */
@@ -72,6 +80,10 @@ interface Overlay {
 }
 interface PipOverlay extends Overlay {
   text: string;
+  /** Kamera im Vollbild (angetippt oder „gleich im Vollbild“); secs 0 = bis man sie schließt */
+  full?: boolean;
+  /** Zweite Kamera meldet gleichzeitig: beide Streams nebeneinander */
+  also?: EventConfig;
 }
 interface NoticeOverlay extends Overlay {
   duration?: number;
@@ -185,14 +197,61 @@ const wakeScreen = () => {
   }
 };
 
-// Farbton als animierbare Eigenschaft anmelden – sonst springt er, statt zu wandern (nur global möglich, nicht im Shadow-DOM)
-try {
-  (CSS as unknown as { registerProperty?: (d: object) => void }).registerProperty?.({ name: "--af-rgb-hue", syntax: "<angle>", inherits: true, initialValue: "280deg" });
-} catch {
-  /* schon angemeldet oder nicht unterstützt – dann steht die Farbe still */
-}
 
 /** Einblendungen, die sich wegwischen lassen, und ab welcher Strecke (px) */
+/** Dauer der Hell/Dunkel-Überblendung (View Transition) – die Regeln gelten nur im Dokument, nicht im Shadow DOM */
+const fadeStyle = (): void => {
+  if (document.getElementById("af-fade")) return;
+  const st = document.createElement("style");
+  st.id = "af-fade";
+  st.textContent = "::view-transition-old(root),::view-transition-new(root){animation-duration:1.6s;animation-timing-function:ease}";
+  document.head.append(st);
+};
+
+/** „Zufällig“: jedes Mal ein anderer ruhiger Wechsel (ohne Würfel/Blättern – die wirken in Folge unruhig) */
+const RANDOM_TRANSITIONS: TransitionConfig["type"][] = ["fade", "blur", "slide", "zoom", "flip", "curtain", "circle", "rise"];
+
+/**
+ * Bleibende Widgets: gleiches Widget (Art, Optionen, Darstellung) an gleicher Stelle auf alter und neuer Seite.
+ * Nur bei gleichem Hintergrund – sonst wechselt er ohnehin sichtbar. Dieselbe Seite noch einmal: alles neu (Bewegung abspielen).
+ */
+export const staying = (a: PageConfig, b: PageConfig, o: Orientation): { prev: Set<string>; next: Set<string> } | undefined => {
+  const ba = a.background ?? { type: "none" };
+  const bb = b.background ?? { type: "none" };
+  if (a.id === b.id || ba.type !== bb.type || ba.color !== bb.color || ba.type === "camera" || a.palette !== b.palette) return undefined;
+  const la = layoutOf(a.widgets ?? [], o);
+  const lb = layoutOf(b.widgets ?? [], o);
+  const sig = (w: WidgetConfig, l: Record<string, Pos>) => (l[w.id] ? JSON.stringify([w.type, w.options ?? {}, w.look ?? {}, l[w.id]]) : "");
+  const old = new Map((a.widgets ?? []).map((w) => [sig(w, la), w.id] as const).filter(([k]) => k));
+  const prev = new Set<string>();
+  const next = new Set<string>();
+  for (const w of b.widgets ?? []) {
+    const id = old.get(sig(w, lb));
+    if (!id) continue;
+    prev.add(id);
+    next.add(w.id);
+    old.delete(sig(w, lb));
+  }
+  return next.size ? { prev, next } : undefined;
+};
+
+/** Bild-im-Bild mit zwei Kameras: eine weitere Kamera kommt dazu, bei einer dritten macht die älteste Platz */
+export const pipCameras = (cur: { ev: EventConfig; also?: EventConfig }, ev: EventConfig): { ev: EventConfig; also?: EventConfig } =>
+  !cur.also ? { ev: cur.ev, also: ev } : cur.also.id === ev.id ? { ev: cur.ev, also: cur.also } : { ev: cur.also, also: ev };
+
+/** Schwaches Gerät? Wenig Speicher (Chrome/Android) – oder ohne diese Angabe wenige Kerne (Safari, Firefox) */
+const lowEnd = (): boolean => {
+  const mem = (navigator as Navigator & { deviceMemory?: number }).deviceMemory;
+  return mem !== undefined ? mem <= 2 : (navigator.hardwareConcurrency || 8) <= 4;
+};
+
+/** Einblendungen, die beim Schließen hinausgleiten statt zu verschwinden (Bedienfeld mit Dashboard nicht – es würde neu laden) */
+const EXITS = ".effect, .ov:not(.control), .camfull, .pip, .mcard, .mmini, .chips > .chip:not(.clear), .toast";
+
+/** Optik des Musik-Banners (Karte und Mini-Karte): Ecke, Größe, Hintergrund, Form */
+const bannerLook = (ev: EventConfig): string =>
+  [`pos-${ev.mini_position ?? "bottom-right"}`, ev.mini_size ? `size-${ev.mini_size}` : "", ev.mini_background === "none" ? "bare" : "", ev.mini_layout && ev.mini_layout !== "card" ? `lay-${ev.mini_layout}` : ""].join(" ");
+
 const SWIPEABLE = ["pip", "mcard", "notice", "alarm", "chip"];
 const SWIPE_AWAY = 90;
 
@@ -414,6 +473,24 @@ export class AfDisplay extends LitElement {
 
   /* ───────── Lebenszyklus ───────── */
 
+  /**
+   * Geschlossene Einblendungen gleiten hinaus: Lit hat sie schon entfernt – wir hängen das alte Element kurz wieder ein
+   * (vorn im selben Elternteil, außerhalb der Bereiche, die Lit verwaltet) und entfernen es nach der Animation.
+   */
+  protected update(changed: PropertyValues): void {
+    const root = this.shadowRoot;
+    const before = root && this.started && !this.preview ? [...root.querySelectorAll<HTMLElement>(EXITS)].filter((el) => !el.classList.contains("leaving")).map((el) => [el, el.parentElement] as const) : [];
+    super.update(changed);
+    for (const [el, parent] of before) {
+      if (el.isConnected || !parent?.isConnected) continue;
+      // Kamera nicht neu verbinden (manche schaffen nur zwei Verbindungen) – die Karte gleitet ohne Bild hinaus
+      el.querySelectorAll("af-camera-view").forEach((c) => c.remove());
+      el.classList.add("leaving");
+      parent.prepend(el);
+      window.setTimeout(() => el.remove(), 500);
+    }
+  }
+
   protected willUpdate(changed: PropertyValues): void {
     if (changed.has("displayId") && this.effFor !== `${this.displayId}`) {
       // Display-ID kam nach der Konfiguration: dessen Vorgaben (Design, Fotos) jetzt einrechnen
@@ -447,7 +524,7 @@ export class AfDisplay extends LitElement {
       const ticker = !this.streamMode && !this.eink && (d?.ticker ?? d?.profile !== "tv");
       const def = THEME_DEFS.find((t) => t.id === resolved.theme);
       this.ctx = this.config
-        ? { forecasts: this.forecasts, config: this.config, preview: this.preview, ambient, displayId: d?.id, ticker, tiles: !!def?.tiles, flap: !!def?.flap, still: this.still || this.eink, gap: this.config.design?.gap }
+        ? { forecasts: this.forecasts, config: this.config, preview: this.preview, ambient, displayId: d?.id, ticker, tiles: !!def?.tiles, flap: !!def?.flap, still: this.still || this.eink, gap: this.config.design?.gap, theme: this.theme }
         : undefined;
       if (changed.has("config")) this.photos.reload();
     }
@@ -490,6 +567,19 @@ export class AfDisplay extends LitElement {
       return;
     }
     if (this.modeTimer) return; // Wechsel läuft schon
+    // Wo der Browser es kann: alte und neue Farben weich ineinander überblenden statt über Schwarz
+    const doc = document as Document & { startViewTransition?: (cb: () => Promise<unknown>) => unknown };
+    if (doc.startViewTransition && !this.eink && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      fadeStyle();
+      this.modeTimer = -1;
+      doc.startViewTransition(async () => {
+        this.mode = next;
+        this.evening = evening;
+        await this.updateComplete;
+      });
+      window.setTimeout(() => (this.modeTimer = undefined), 2000);
+      return;
+    }
     this.dimming = true;
     this.modeTimer = window.setTimeout(() => {
       this.modeTimer = undefined;
@@ -523,7 +613,9 @@ export class AfDisplay extends LitElement {
 
   protected updated(): void {
     this.updateScreenOff();
-    this.measureTicker();
+    // Höhe der Laufbänder unten – Bildunterschriften der Seite rücken darüber
+    const look = this.eink ? "bar" : tickerLookOf(this.theme, this.display?.design?.ticker_look ?? this.config?.design.ticker_look);
+    this.dock.afterUpdate(look);
     // Akzentfarbe und Schriften aus dem Design direkt am Host – so gelten sie auch für abgeleitete Werte
     const design = this.config?.design;
     const set = (name: string, value?: string) => (value ? this.style.setProperty(name, value) : this.style.removeProperty(name));
@@ -535,7 +627,8 @@ export class AfDisplay extends LitElement {
     set("--af-fs", size === "large" ? "1.15" : size === "xlarge" ? "1.3" : size === "far" ? "1.6" : undefined);
     // aus der Ferne: Kleingedrucktes entfällt (widgetStyles) · Zahlen und Balken ohne Bewegung, wenn abgeschaltet
     set("--af-far", size === "far" ? "1" : undefined);
-    set("--af-grow", design?.count_up === false ? "none" : undefined);
+    // Bewegung von Balken, Kurven und Ringen: eigene Wahl oder passend zum Stil dieses Displays
+    for (const [k, v] of Object.entries(motionVars(motionOf(design, undefined, this.theme)))) set(k, v);
     const high = (this.display?.contrast ?? design?.contrast) === "high";
     set("--af-c2", high ? "0.9" : undefined);
     set("--af-c3", high ? "0.72" : undefined);
@@ -616,6 +709,9 @@ export class AfDisplay extends LitElement {
     const duration = Math.max(0.2, Math.min(10, Number(t.duration) || DEFAULT_TRANSITION.duration));
     // E-Ink: Seitenwechsel ohne Übergang – jedes Zwischenbild wäre ein eigenes Neuzeichnen des Bildschirms
     if (this.eink) return { type: "fade", duration: 0 };
+    // Unschärfe über die ganze Seite ist teuer – schwache Geräte und Videostream blenden stattdessen über
+    if (t.type === "random") t.type = RANDOM_TRANSITIONS[Math.floor(Math.random() * RANDOM_TRANSITIONS.length)];
+    if (t.type === "blur" && (lowEnd() || this.streamMode)) t.type = "fade";
     return { type: t.type ?? "fade", duration: this.preview ? Math.min(0.5, duration) : duration };
   }
 
@@ -627,6 +723,33 @@ export class AfDisplay extends LitElement {
     this.takeover = undefined;
     this.idx = -1;
     this.next();
+  }
+
+  /** Wartet die Seite auf das Ende ihres Videos? (Video-Nachrichten mit „Weiter erst nach dem Video“, nicht auf E-Ink) */
+  private waitsForVideo(page?: PageConfig): boolean {
+    return !!page && !this.ctx?.still && page.widgets.some((w) => w.type === "newsvideo" && w.options?.until_end);
+  }
+
+  /** Höchstens so lange auf ein Video warten – falls es hängt oder nie endet */
+  private static readonly VIDEO_MAX_MS = 5 * 60e3;
+
+  /** Dauer einer Seite in ms: ihre Dauer – oder bis zum Ende ihres Videos (mit Obergrenze) */
+  private pageMs(page: PageConfig, seconds?: number): number {
+    return this.waitsForVideo(page) ? AfDisplay.VIDEO_MAX_MS * this.speed : (seconds ?? page.duration ?? 30) * 1000 * this.speed;
+  }
+
+  /** Das Video der sichtbaren Seite ist zu Ende: weiter zur nächsten Seite */
+  private onVideoEnd = (e: Event): void => {
+    const page = (e.composedPath() as HTMLElement[]).find((el) => el.tagName === "AF-PAGE") as (HTMLElement & { page?: PageConfig }) | undefined;
+    if (this.paused || this.takeover || this.fixedPage || page?.page?.id !== this.currentPageId || !this.waitsForVideo(page?.page)) return;
+    clearTimeout(this.rotationTimer);
+    this.next();
+  };
+
+  /** Aktuelle Seite noch einmal erscheinen lassen – Studio-Knopf „Bewegung abspielen“ */
+  replay(): void {
+    const page = this.layers.filter((l) => !l.leaving).at(-1)?.page;
+    if (page) void this.show(page);
   }
 
   /** Nächste sichtbare Seite der Wiedergabeliste – Seiten mit unerfüllter Bedingung werden übersprungen. */
@@ -664,9 +787,9 @@ export class AfDisplay extends LitElement {
       const item = list[this.idx];
       const page = this.pageById(item.page);
       if (page && checkConditions(this.hass, item.show_if, where) && checkConditions(this.hass, page.show_if, where)) {
-        void this.show(page);
+        void this.show(page, dir < 0);
         if (this.paused) this.pausedPage = page.id;
-        else this.rotationTimer = window.setTimeout(() => this.next(), (hold ?? item.duration ?? page.duration ?? 30) * 1000 * this.speed);
+        else this.rotationTimer = window.setTimeout(() => this.next(), hold !== undefined ? hold * 1000 * this.speed : this.pageMs(page, item.duration));
         return;
       }
     }
@@ -698,7 +821,7 @@ export class AfDisplay extends LitElement {
     if (i >= 0) this.idx = i;
     void this.show(page);
     if (this.paused) this.pausedPage = id;
-    else this.rotationTimer = window.setTimeout(() => this.next(), ((i >= 0 ? list[i].duration : undefined) ?? page.duration ?? 30) * 1000 * this.speed);
+    else this.rotationTimer = window.setTimeout(() => this.next(), this.pageMs(page, i >= 0 ? list[i].duration : undefined));
   }
 
   /** Pause: aktuelle Seite bleibt. Beim Fortsetzen läuft sie noch einmal ihre Dauer, dann geht es weiter. */
@@ -717,24 +840,58 @@ export class AfDisplay extends LitElement {
     this.rotationTimer = window.setTimeout(() => this.next(), (page?.duration ?? 30) * 1000 * this.speed);
   }
 
-  private async show(page: PageConfig): Promise<void> {
+  private pendingPhoto?: { photo: Photo; size: { w: number; h: number }; at: number };
+
+  /** Nächstes Foto samt Größe; abgelaufene Adressen (z. B. iCloud) → Liste neu holen und einmal neu versuchen */
+  private async loadPhoto(): Promise<{ photo: Photo; size: { w: number; h: number } } | null> {
+    let photo = await this.photos.next();
+    let size = photo ? await preload(photo.url) : null;
+    if (photo && !size) {
+      this.photos.reload();
+      photo = await this.photos.next();
+      size = photo ? await preload(photo.url) : null;
+    }
+    return photo && size ? { photo, size } : null;
+  }
+
+  private async show(page: PageConfig, back = false): Promise<void> {
     const key = ++this.layerSeq;
     let photo: Photo | null = null;
     if (page.background?.type === "photo") {
-      photo = await this.photos.next();
-      if (photo && !(await preload(photo.url))) {
-        // z. B. abgelaufene iCloud-Adresse – Liste neu holen und einmal neu versuchen
-        this.photos.reload();
-        photo = await this.photos.next();
-        if (photo && !(await preload(photo.url))) photo = null;
+      // zurückgelegtes Foto nur kurz gültig (iCloud-Adressen laufen ab)
+      const pending = this.pendingPhoto && Date.now() - this.pendingPhoto.at < 5 * 60e3 ? this.pendingPhoto : undefined;
+      const got = pending ?? (await this.loadPhoto());
+      this.pendingPhoto = undefined;
+      photo = got?.photo ?? null;
+      const mode = this.config?.photos?.portrait ?? "pair";
+      const r = this.getBoundingClientRect();
+      if (got && photo && mode !== "fill" && tallPhoto(got.size) && r.width > r.height) {
+        const second = mode === "pair" ? await this.loadPhoto() : null;
+        if (second && tallPhoto(second.size) && second.photo.url !== photo.url) {
+          photo = { ...photo, pair: second.photo.url, credit: [photo.credit, second.photo.credit].filter(Boolean).join(" · ") };
+        } else {
+          // Querformat-Foto kommt beim nächsten Mal dran, statt verloren zu gehen
+          this.pendingPhoto = second && second.photo.url !== photo.url ? { ...second, at: Date.now() } : undefined;
+          photo = { ...photo, fit: true };
+        }
       }
     }
     if (key !== this.layerSeq) return; // inzwischen überholt
     const trans = this.transitionFor(page);
-    this.layers = [...this.layers.filter((l) => !l.leaving).map((l) => ({ ...l, leaving: true, trans })), { key, page, photo, leaving: false, trans }];
+    const prev = this.layers.filter((l) => !l.leaving).at(-1);
+    const same = prev && (trans.type === "fade" || trans.type === "blur") && trans.duration ? staying(prev.page, page, this.orient) : undefined;
+    // Bewegung erst, wenn die neue Seite weitgehend zu sehen ist – sonst ist sie vorbei, bevor man sie sieht
+    // die neue Seite blendet von 38 % bis 100 % des Wechsels ein – bei 62 % ist sie etwa zur Hälfte da
+    const delay = Math.round(trans.duration * 0.62 * 100) / 100;
+    const layer = { key, page, photo, leaving: false, trans, delay, at: performance.now() + delay * 1000, back, keep: same?.next };
+    this.layers = [...this.layers.filter((l) => !l.leaving).map((l) => ({ ...l, leaving: true, trans, back, keep: l === prev ? same?.prev : undefined })), layer];
     window.setTimeout(() => {
       this.layers = this.layers.filter((l) => !l.leaving || l.key > key);
     }, trans.duration * 1000 + 150);
+    // Wenn alles steht: später erscheinende Balken (Daten kommen nach) warten nicht mehr auf den Seitenwechsel
+    window.setTimeout(() => {
+      this.layers = this.layers.map((l) => (l.key === key ? { ...l, delay: 0 } : l));
+    }, delay * 1000 + 8000);
     // Für HA (Entität „Seite“) und den Herzschlag
     this.dispatchEvent(new CustomEvent("af-page", { detail: page.id, bubbles: true, composed: true }));
   }
@@ -805,9 +962,10 @@ export class AfDisplay extends LitElement {
     if (ev.sound && ev.kind !== "media" && !quiet && !this.displayMuted()) this.ring(ev);
     if (ev.kind === "media") {
       // Liedwechsel weckt den Bildschirm nicht; die Mini-Karte steht ohnehin, solange etwas läuft
-      if (n && ev.style !== "mini") this.queueMedia(ev, n.entity_id);
+      if (n && (ev.style !== "mini" || ev.mini_full)) this.queueMedia(ev, n.entity_id);
       return;
     }
+    if ((ev.kind === "alarm" || ev.kind === "live") && ev.camera && !(this.pip?.ev.id === ev.id || this.alarm?.ev.id === ev.id)) this.fetchPoster(ev);
     if (ev.kind === "alarm") {
       this.openAlarm(ev);
     } else if (ev.kind === "live") {
@@ -927,6 +1085,32 @@ export class AfDisplay extends LitElement {
     return Math.max(3, base * this.speed);
   }
 
+  /** Vorschaubild je Moment: das eine Standbild, das HA für „Wer war an der Tür?“ holt – alle Displays zeigen dasselbe */
+  private camPoster = new Map<string, string>();
+
+  /** Kamera nicht von jedem Display aus wecken: auf das Standbild von HA warten (entsteht kurz nach dem Auslösen) */
+  private fetchPoster(ev: EventConfig): void {
+    if (!ev.camera || !this.hass?.callWS) return;
+    this.camPoster.delete(ev.id);
+    const since = Date.now() - 70e3; // HA nimmt höchstens ein Bild je Minute – ein eben gemachtes gilt noch
+    const tries = [1500, 3500, 6000];
+    const look = async (i: number) => {
+      try {
+        const list = await this.hass!.callWS<{ event: string; at: string; url: string }[]>({ type: "ambiframe/doorlog" });
+        const hit = list.find((e) => e.event === ev.id && Date.parse(e.at) >= since);
+        if (hit) {
+          this.camPoster.set(ev.id, hit.url);
+          this.requestUpdate();
+          return;
+        }
+      } catch {
+        return; // ohne Verlauf (ältere Version, keine Rechte): ohne Vorschaubild, der Stream kommt trotzdem
+      }
+      if (i + 1 < tries.length) window.setTimeout(() => void look(i + 1), tries[i + 1] - tries[i]);
+    };
+    window.setTimeout(() => void look(0), tries[0]);
+  }
+
   private openAlarm(ev: EventConfig): void {
     this.closePip();
     this.closeMedia();
@@ -959,9 +1143,37 @@ export class AfDisplay extends LitElement {
     if (this.media?.style === "card") this.closeMedia(); // gleicher Platz – die Kamera gewinnt
     const secs = this.secs(ev.duration ?? 30);
     const keepText = this.pip?.ev.id === ev.id ? this.pip.text : (ev.text_attribute && this.eventText(ev)) || t("Bewegung erkannt");
-    this.pip = { ev, at: new Date(), secs, seq: ++this.seq, text: keepText };
+    // Läuft dieselbe Kamera schon im Vollbild, bleibt sie dort (mit ihrer eigenen Dauer)
+    // Andere Kamera läuft schon: nicht umspringen – beide Streams nebeneinander, Zeit neu ab der letzten Meldung
+    if (this.pip && this.pip.ev.id !== ev.id && this.pip.ev.kind === "live") {
+      this.pip = { ...this.pip, ...pipCameras(this.pip, ev) };
+      if (!this.pip.full && (ev.both_full || this.pip.ev.both_full)) return this.fullPip(ev.duration ?? 30);
+      if (!this.pip.full) {
+        clearTimeout(this.pipTimer);
+        this.pipTimer = window.setTimeout(() => this.closePip(), secs * 1000);
+      }
+      return;
+    }
+    if (this.pip?.full && this.pip.ev.id === ev.id) {
+      this.pip = { ...this.pip, text: keepText };
+      return;
+    }
+    this.pip = { ev, at: new Date(), secs, seq: ++this.seq, text: keepText, also: this.pip?.ev.id === ev.id ? this.pip.also : undefined };
     clearTimeout(this.pipTimer);
+    if (ev.open_full) return this.fullPip();
     this.pipTimer = window.setTimeout(() => this.closePip(), secs * 1000);
+  }
+
+  /** Kamera im Vollbild – bis full_duration abläuft oder man sie schließt; danach zurück zu Ambiframe */
+  private fullPip(fallback = 0): void {
+    const p = this.pip;
+    if (!p) return;
+    // Von selbst geöffnet (zwei Kameras): ohne eigene Vollbild-Dauer nach der normalen Dauer zurück, nicht endlos
+    const limit = Number(p.ev.full_duration) || fallback;
+    const secs = limit > 0 ? this.secs(limit) : 0;
+    this.pip = { ...p, full: true, secs, seq: ++this.seq };
+    clearTimeout(this.pipTimer);
+    if (secs) this.pipTimer = window.setTimeout(() => this.closePip(), secs * 1000);
   }
 
   private closePip(): void {
@@ -1049,7 +1261,8 @@ export class AfDisplay extends LitElement {
   private async openMedia(ev: EventConfig, entity: string, opts: { force?: boolean; demo?: boolean } = {}): Promise<void> {
     if (!opts.force && (this.alarm || this.notice || this.controlOpen)) return;
     // Mini-Karte im Editor-Test: als normale Karte zeigen
-    const style = ev.style === "fullscreen" ? "fullscreen" : "card";
+    // Mini mit „zusätzlich Vollbild“: beim Liedwechsel kurz das Cover groß, danach wieder die Mini-Ansicht
+    const style = ev.style === "fullscreen" || (ev.style === "mini" && ev.mini_full) ? "fullscreen" : "card";
     if (style === "card" && this.pip && !opts.force) return; // Kamera hat Vorrang auf demselben Platz
     const demo = opts.demo ? DEMO_TRACK(entity) : undefined;
     // In einer Gruppe den ersten eingetragenen Player nehmen, der dasselbe spielt (dessen Name erscheint)
@@ -1085,7 +1298,7 @@ export class AfDisplay extends LitElement {
   private mediaTick(): void {
     if (!this.started || this.fixedPage) return;
     for (const ev of this.eventsForDisplay()) {
-      if (ev.kind !== "media" || !ev.interval || ev.style === "mini") continue;
+      if (ev.kind !== "media" || !ev.interval || (ev.style === "mini" && !ev.mini_full)) continue;
       const s = triggersOf(ev)
         .map((id) => this.hass?.states[id])
         .find((x) => mediaKey(x));
@@ -1107,51 +1320,24 @@ export class AfDisplay extends LitElement {
    * Erinnerungen oben rechts. Ab `reminders_stack` (Standard 3, 0 = nie) liegen sie als Stapel mit Zahl übereinander –
    * wie Mitteilungen bei iOS; Antippen klappt ihn auf (nach 20 s wieder zu), dort auch „Alle entfernen“.
    */
-  /**
-   * Laufband für Zuhause: unten über allen Seiten, nur solange eine Zeile zutrifft; nachts aus. Es läuft erst ab drei
-   * Zeilen und nur, wo ein Laufband flüssig ist (nicht im Videostream, auf E-Ink, am Fernseher) – sonst steht es.
-   */
-  private renderTicker() {
-    // gemischt laufen die Zeilen im Nachrichten-Band vorweg (renderNewsBand)
-    if (this.mixedBand) return nothing;
-    const lines = this.homeLines();
-    if (!lines.length) return nothing;
-    const run = lines.map((l) => html`<span class="${l.tone ?? ""} ${l.detail && this.detailOn ? "tap" : ""}" @click=${(e: Event) => this.openTickerDetail(e, l.detail)}>${l.icon ? anyIcon(l.icon) : nothing}${l.text}</span><i>•</i>`);
-    // läuft, wenn der Text nicht ins Band passt (gemessen in updated); ohne Messung ab drei Zeilen
-    const move = this.ctx?.ticker !== false && (this.tickerRuns ?? lines.length > 2);
-    const up = this.config?.design.news_band?.enabled && this.ctx?.ticker !== false;
-    return html`<div class="hticker ${move ? "run" : ""} ${up ? "up" : ""}"><div class="track">${run}${move ? run : nothing}</div></div>`;
+  /** Laufbänder unten (Zuhause und Nachrichten) – eigenes Modul, hier nur, was es vom Display wissen muss */
+  private dock = new TickerDock(this, () => ({
+    hass: this.hass,
+    config: this.config,
+    ctx: this.ctx,
+    displayId: this.display?.id,
+    homeOn: this.display?.home_ticker !== false,
+    night: this.night,
+    tickers: this.pageTickers,
+    detailOn: this.detailOn,
+    openDetail: (e, d) => this.openTickerDetail(e, d),
+  }));
+
+  /** Laufbänder, die die gerade sichtbare Seite ausblendet (page.tickers) */
+  private get pageTickers(): { news: boolean; home: boolean } {
+    const off = this.pageById(this.currentPageId)?.tickers;
+    return { news: off !== "no_news" && off !== "none", home: off !== "no_home" && off !== "none" };
   }
-
-  /** Zeilen des Laufbands für Zuhause für dieses Display (nachts und abgeschaltet: keine) */
-  private homeLines() {
-    if (this.night || this.display?.home_ticker === false) return [];
-    return tickerLines(this.hass, this.config?.design.home_ticker, Date.now(), this.display?.id, this.tickerMemory);
-  }
-
-  /** Passt das Laufband für Zuhause nicht ins Band? (undefined = noch nicht gemessen) */
-  private tickerRuns?: boolean;
-
-  /**
-   * Laufband für Zuhause wie das Nachrichten-Laufband: läuft nur, wenn der Text nicht ins Band passt, und dann mit
-   * gleichmäßigem Tempo (design.home_ticker_speed, px/s) – egal wie lang die Zeilen sind.
-   */
-  private measureTicker(): void {
-    const band = this.shadowRoot?.querySelector<HTMLElement>(".hticker");
-    const track = band?.querySelector<HTMLElement>(".track");
-    if (!band || !track || !band.clientWidth) return;
-    const width = this.tickerRuns ? track.scrollWidth / 2 : track.scrollWidth;
-    const runs = width > band.clientWidth - 24;
-    if (runs !== this.tickerRuns) {
-      this.tickerRuns = runs;
-      this.requestUpdate();
-      return;
-    }
-    if (runs) track.style.animationDuration = `${Math.max(4, Math.round(width / (Number(this.config?.design.home_ticker_speed) || 45)))}s`;
-  }
-
-  /** Zuletzt gezeigte Zeilen – Ereignisse bleiben nach ihrem Ende noch `hold` Minuten stehen */
-  private tickerMemory: TickerMemory = new Map();
   private tickerDetail?: TickerDetail;
   private tickerDetailTimer?: number;
 
@@ -1187,37 +1373,12 @@ export class AfDisplay extends LitElement {
     </div>`;
   }
 
-  /** Beide Laufbänder in einem – nur wo das Nachrichten-Band überhaupt läuft */
-  private get mixedBand(): boolean {
-    const band = this.config?.design.news_band;
-    return !!band?.enabled && !!band.mix && !this.night && this.ctx?.ticker !== false;
-  }
-
-  private bandKey = "";
-  private bandOptions: Record<string, unknown> = {};
-
-  /**
-   * Nachrichten-Laufband über allen Seiten (design.news_band) – dasselbe Widget wie auf einer Seite, nur am unteren
-   * Rand. Aus, wo ein Laufband nicht flüssig läuft oder abgeschaltet ist (ctx.ticker), und nachts.
-   */
-  private renderNewsBand() {
-    const band = this.config?.design.news_band;
-    if (!band?.enabled || this.night || this.ctx?.ticker === false) return nothing;
-    // Optionen nur bei Änderung neu – sonst lädt das Widget bei jedem Neuzeichnen die Meldungen neu
-    const key = JSON.stringify(band);
-    if (key !== this.bandKey) {
-      this.bandKey = key;
-      this.bandOptions = { ...band, variant: "ticker" };
-    }
-    return html`<af-news class="newsband" .hass=${this.hass} .ctx=${this.ctx} .options=${this.bandOptions} .lead=${band.mix ? this.homeLines() : []} @af-ticker=${(e: CustomEvent<TickerDetail>) => this.openTickerDetail(e, e.detail)}></af-news>`;
-  }
-
   private renderChips() {
     if (!this.chips.length || this.alarm) return nothing;
     const chip = (c: Chip) => html`<div class="chip" data-id=${c.id}>${icon(c.icon)}<span>${c.text}</span><span class="faint num">${fmtTime(c.at)}</span></div>`;
     const limit = this.display?.reminders_stack ?? 3;
     const newest = [...this.chips].reverse();
-    if (!limit || this.chips.length < limit) return html`<div class="chips">${this.chips.map(chip)}</div>`;
+    if (!limit || this.chips.length < limit) return html`<div class="chips">${repeat(this.chips, (c) => c.id, chip)}</div>`;
     if (!this.chipsOpen) {
       return html`<div class="chips stack" data-open="1">
         ${chip(newest[0])}
@@ -1226,7 +1387,7 @@ export class AfDisplay extends LitElement {
       </div>`;
     }
     return html`<div class="chips open">
-      ${newest.map(chip)}
+      ${repeat(newest, (c) => c.id, chip)}
       <div class="chip clear" data-clear="1">${icon("close")}<span>${t("Alle entfernen")}</span></div>
       ${this.display?.history === false ? nothing : html`<div class="chip clear" data-history="1">${icon("bell")}<span>${t("Verlauf")}</span></div>`}
     </div>`;
@@ -1249,7 +1410,7 @@ export class AfDisplay extends LitElement {
     }
   }
 
-  private snooze(ev: EventConfig, minutes: number): void {
+  private snooze(evs: EventConfig[], minutes: number): void {
     const key = `ambiframe-snooze-${this.display?.id ?? ""}`;
     let all: Record<string, number> = {};
     try {
@@ -1259,10 +1420,10 @@ export class AfDisplay extends LitElement {
     }
     // Abgelaufene gleich aufräumen
     all = Object.fromEntries(Object.entries(all).filter(([, until]) => until > Date.now()));
-    all[ev.id] = Date.now() + minutes * 60e3;
+    for (const ev of evs) all[ev.id] = Date.now() + minutes * 60e3;
     writeLocal(key, JSON.stringify(all));
     this.closePip();
-    this.showToast(t("{name} bis {time} ausgeblendet", { name: ev.title, time: fmtTime(new Date(all[ev.id])) }));
+    this.showToast(t("{name} bis {time} ausgeblendet", { name: evs.map((e) => e.title).join(" · "), time: fmtTime(new Date(all[evs[0].id])) }));
   }
 
   private get historyKey(): string {
@@ -1536,8 +1697,9 @@ export class AfDisplay extends LitElement {
     if (this.notice) return this.closeNotice();
     if (this.media && (this.media.style === "fullscreen" || hit("mcard"))) return this.closeMedia();
     const snz = path.find((el) => el.dataset?.snooze);
-    if (snz && this.pip) return this.snooze(this.pip.ev, Number(snz.dataset.snooze));
-    if (hit("pip")) return this.closePip();
+    if (snz && this.pip) return this.snooze(this.pip.also ? [this.pip.ev, this.pip.also] : [this.pip.ev], Number(snz.dataset.snooze));
+    if (hit("camfull")) return this.closePip();
+    if (hit("pip")) return this.pip?.ev.pip_tap === "close" ? this.closePip() : this.fullPip();
     const mini = path.find((el) => el.classList?.contains("mmini"));
     if (mini?.dataset.entity) {
       this.dispatchEvent(new CustomEvent("hass-more-info", { detail: { entityId: mini.dataset.entity }, bubbles: true, composed: true }));
@@ -1559,7 +1721,7 @@ export class AfDisplay extends LitElement {
     if (!a) return nothing;
     return html`<div class="ov alarm">
       ${a.ev.camera
-        ? html`<af-camera-view .hass=${this.hass} .entity=${a.ev.camera} .osd=${`DEMO · ${a.ev.where.toUpperCase()}`}></af-camera-view>
+        ? html`<af-camera-view .hass=${this.hass} .entity=${a.ev.camera} .poster=${this.camPoster.get(a.ev.id) ?? ""} .osd=${`DEMO · ${a.ev.where.toUpperCase()}`}></af-camera-view>
             <div class="shade"></div>
             <div class="live"><i></i>${t("Live")}${a.ev.where ? ` · ${a.ev.where}` : ""}</div>`
         : html`<div class="plain"></div>`}
@@ -1575,20 +1737,42 @@ export class AfDisplay extends LitElement {
   private renderPip() {
     const p = this.pip;
     if (!p) return nothing;
-    return html`<div class="pip">
-      <div class="v">
-        <af-camera-view .hass=${this.hass} .entity=${p.ev.camera} .osd=${`DEMO · ${p.ev.title.toUpperCase()}`}></af-camera-view>
-        <div class="live small"><i></i>${t("Live")}</div>
+    const ev = p.ev;
+    const quote = p.text === t("Bewegung erkannt") ? p.text : `„${p.text}“`;
+    const snooze =
+      ev.pip_snooze === false
+        ? nothing
+        : html`<div class="snz">
+            <button data-snooze="30">${t("30 min ausblenden")}</button>
+            <button data-snooze="60">${t("1 h ausblenden")}</button>
+          </div>`;
+    // Ein Kamera-Element für Bild-im-Bild und Vollbild: Antippen vergrößert, ohne den Stream neu aufzubauen
+    const video = ev.pip_layout === "video";
+    const look = p.full ? "camfull" : ["pip", `pos-${ev.pip_position ?? "bottom-right"}`, ev.pip_size ? `size-${ev.pip_size}` : "", video ? "lay-video" : "", p.also ? "two" : ""].join(" ");
+    const cams = p.also ? [ev, p.also] : [ev];
+    return html`<div class=${`${look}${p.full && p.also ? " two" : ""}`}>
+      <div class=${p.also ? "v two" : "v"}>
+        ${cams.map((c) => html`<af-camera-view ?contain=${p.full} .hass=${this.hass} .entity=${c.camera} .poster=${this.camPoster.get(c.id) ?? ""} .osd=${`DEMO · ${c.title.toUpperCase()}`}></af-camera-view>`)}
+        ${p.full ? nothing : html`<div class="live small"><i></i>${t("Live")}</div>`}
+        ${!p.full && video ? html`<div class="vt">${icon(ev.icon ?? "cam")}<span>${ev.title}</span><span class="tm num">${fmtTime(p.at)}</span></div>` : nothing}
       </div>
-      <div class="m">
-        <div class="r">${icon(p.ev.icon ?? "cam")}<span>${p.ev.title}</span><span class="tm num">${fmtTime(p.at)}</span></div>
-        <div class="q">${p.text === t("Bewegung erkannt") ? p.text : `„${p.text}“`}</div>
-        <div class="snz">
-          <button data-snooze="30">${t("30 min ausblenden")}</button>
-          <button data-snooze="60">${t("1 h ausblenden")}</button>
-        </div>
-      </div>
-      ${this.renderTimer(p, "var(--af-accent)")}
+      ${p.full
+        ? html`<div class="cf-top">
+              <div class="live small"><i></i>${t("Live")}</div>
+              <div class="cf-t">${icon(ev.icon ?? "cam")}<span>${ev.title}</span><span class="tm num">${[ev.where, fmtTime(p.at)].filter(Boolean).join(" · ")}</span></div>
+              <div class="cf-x" title=${t("Schließen")}>✕</div>
+            </div>
+            <div class="cf-bottom"><div class="q">${quote}</div>${snooze}<div class="hint">${t("Tippen zum Schließen")}</div></div>`
+        : video
+          ? ev.pip_snooze === false
+            ? nothing
+            : html`<div class="m">${snooze}</div>`
+          : html`<div class="m">
+              <div class="r">${icon(ev.icon ?? "cam")}<span>${cams.map((c) => c.title).join(" · ")}</span><span class="tm num">${fmtTime(p.at)}</span></div>
+              <div class="q">${quote}</div>
+              ${snooze}
+            </div>`}
+      ${!p.full || p.secs ? this.renderTimer(p, "var(--af-accent)") : nothing}
     </div>`;
   }
 
@@ -1613,6 +1797,8 @@ export class AfDisplay extends LitElement {
   private renderMedia() {
     const m = this.media;
     if (!m) return nothing;
+    // Die Musik-Seite zeigt dasselbe schon groß – keine Einblendung obendrauf (wie bei der Mini-Karte)
+    if (this.pageById(this.currentPageId)?.widgets.some((w) => w.type === "media")) return nothing;
     const s = m.demo ?? this.hass?.states[m.entity];
     const a = s?.attributes ?? {};
     const pic = a.entity_picture as string | undefined;
@@ -1622,7 +1808,7 @@ export class AfDisplay extends LitElement {
     let pos = Number(a.media_position);
     if (s?.state === "playing" && a.media_position_updated_at) pos += (Date.now() - new Date(a.media_position_updated_at).getTime()) / 1000;
     const prog =
-      dur > 0 && Number.isFinite(pos)
+      m.ev.mini_progress !== false && dur > 0 && Number.isFinite(pos)
         ? html`<div class="prog">
             <div class="bar"><i style="transform:scaleX(${Math.min(1, Math.max(0, pos / dur))})"></i></div>
             <div class="times num"><span>${clock(Math.min(pos, dur))}</span><span>${clock(dur)}</span></div>
@@ -1649,7 +1835,7 @@ export class AfDisplay extends LitElement {
         <div class="mwrap">${art}${text}</div>
       </div>`;
     }
-    return html`<div class="mcard">${art}${text}</div>`;
+    return html`<div class="mcard ${bannerLook(m.ev)}">${m.ev.mini_cover === false ? nothing : art}${text}</div>`;
   }
 
   /** Mini-Karte: Player, der gerade spielt (oder vor weniger als 2 min pausiert wurde), für ein Ereignis mit style „mini“ */
@@ -1692,7 +1878,7 @@ export class AfDisplay extends LitElement {
 
   private renderMini() {
     // Größere Einblendungen haben Vorrang; die Kamera nutzt denselben Platz
-    if (this.media || this.alarm || this.pip || this.takeover || this.controlOpen) return nothing;
+    if (this.media || this.alarm || this.pip?.full || this.takeover || this.controlOpen) return nothing;
     // Die Seite „Läuft gerade“ zeigt dasselbe groß – dann kein Pop-up obendrauf
     if (this.pageById(this.currentPageId)?.widgets.some((w) => w.type === "media")) return nothing;
     const np = this.nowPlaying();
@@ -1705,8 +1891,11 @@ export class AfDisplay extends LitElement {
     let pos = Number(a.media_position);
     if (s.state === "playing" && a.media_position_updated_at) pos += (Date.now() - new Date(a.media_position_updated_at).getTime()) / 1000;
     const key = `${a.media_title}|${a.media_artist ?? ""}`;
-    const look = [`pos-${ev.mini_position ?? "bottom-right"}`, ev.mini_size ? `size-${ev.mini_size}` : "", ev.mini_background === "none" ? "bare" : ""].join(" ");
-    return html`<div class="mmini ${s.state} ${look}" data-entity=${s.entity_id}>
+    // Kamera in derselben Ecke: die Musik weicht als Pille an den anderen Rand aus und kommt danach zurück
+    const corner = ev.mini_position ?? "bottom-right";
+    const dodge = !!this.pip && (this.pip.ev.pip_position ?? "bottom-right") === corner;
+    const look = dodge ? bannerLook({ ...ev, mini_position: (corner.startsWith("bottom") ? corner.replace("bottom", "top") : corner.replace("top", "bottom")) as EventConfig["mini_position"], mini_layout: "pill" }) : bannerLook(ev);
+    return keyed(dodge, html`<div class="mmini ${s.state} ${look}" data-entity=${s.entity_id}>
       ${ev.mini_cover === false
         ? nothing
         : keyed(key, html`<div class="art" style=${pic ? `background-image:url('${pic}')` : ""}>${pic ? nothing : icon("music")}</div>`)}
@@ -1721,7 +1910,7 @@ export class AfDisplay extends LitElement {
             : nothing}
         </div>`,
       )}
-    </div>`;
+    </div>`);
   }
 
   /** Wird dieses Display von Hand bedient (Tablet) – oder nur angeschaut (Fernseher)? */
@@ -1762,7 +1951,7 @@ export class AfDisplay extends LitElement {
     if (!this.touchable || this.menu || this.alarm || this.controlOpen || this.popup || this.tickerDetail || this.ask) return;
     const path = e.composedPath() as HTMLElement[];
     // Widgets mit eigener Aktion, Pfeile, Karten und Einblendungen behalten ihr Verhalten
-    if (path.some((el) => el.classList && ["act", "nav", "mmini", "mcard", "pip", "chip", "ov"].some((c) => el.classList.contains(c)))) return;
+    if (path.some((el) => el.classList && ["act", "nav", "mmini", "mcard", "pip", "camfull", "chip", "ov"].some((c) => el.classList.contains(c)))) return;
     this.pressAt = { x: e.clientX, y: e.clientY };
     this.pressTimer = window.setTimeout(() => {
       this.swallowTap = true;
@@ -1942,14 +2131,17 @@ export class AfDisplay extends LitElement {
       @pointerleave=${this.onPressEnd}
       @contextmenu=${(e: Event) => e.preventDefault()}
       @af-action=${this.onAction}
+      @af-video-end=${this.onVideoEnd}
     >
       ${repeat(
         this.layers,
         (l) => l.key,
         (l) =>
           html`<af-page
-            class="layer t-${l.trans.type} ${l.leaving ? "out" : ""}"
-            style="--t:${l.trans.duration}s"
+            class="layer t-${l.trans.type} ${l.leaving ? "out" : ""} ${l.back ? "back" : ""} ${l.keep ? "keep" : ""}"
+            .keep=${l.keep}
+            style="--t:${l.trans.duration}s;--af-motion-delay:${l.delay}s"
+            .motionAt=${l.at}
             .hass=${this.hass}
             .page=${l.page}
             .ctx=${this.ctx}
@@ -1958,7 +2150,7 @@ export class AfDisplay extends LitElement {
             .orientation=${this.orient}
           ></af-page>`,
       )}
-      ${this.renderChips()} ${this.renderNewsBand()} ${this.renderTicker()}
+      ${this.renderChips()} ${this.dock.render()}
       ${this.renderEffect()} ${this.renderMini()} ${this.renderMedia()} ${this.renderPip()} ${this.renderPopup()} ${this.renderTickerDetail()} ${this.renderNotice()} ${this.renderAlarm()}
       ${this.renderAsk()} ${this.renderToast()} ${this.renderNav()} ${this.renderMenu()} ${this.renderHistory()}
     </div>
@@ -1968,6 +2160,7 @@ export class AfDisplay extends LitElement {
   static styles = [
     themeTokens,
     stillStyles,
+    dockStyles,
     css`
       /* E-Ink: die alte Seite sofort weg – sonst stünden kurz zwei Seiten übereinander */
       :host([asleep])::after {
@@ -1976,23 +2169,6 @@ export class AfDisplay extends LitElement {
         inset: 0;
         z-index: 2147483647;
         background: #000;
-      }
-      /* RGB: der Farbton wandert einmal in 14 s durch den Farbkreis (nicht bei „Bewegung reduzieren“) */
-      @keyframes af-rgb {
-        from {
-          --af-rgb-hue: 280deg;
-        }
-        to {
-          --af-rgb-hue: 640deg;
-        }
-      }
-      :host([theme="rgb"]) {
-        animation: af-rgb 14s linear infinite;
-      }
-      @media (prefers-reduced-motion: reduce) {
-        :host([theme="rgb"]) {
-          animation: none;
-        }
       }
       :host([eink]) .layer.out {
         display: none;
@@ -2112,6 +2288,58 @@ export class AfDisplay extends LitElement {
         --out: page-out;
         transform-origin: 0 50%;
       }
+      /* Vorhang: die neue Seite wird von links aufgedeckt · Kreis: öffnet sich aus der Mitte · Aufsteigen: Karten gehen nacheinander */
+      .t-curtain {
+        --in: curtain-in;
+        --out: hold;
+      }
+      .t-curtain.back {
+        --in: curtain-in-back;
+      }
+      .t-circle {
+        --in: circle-in;
+        --out: hold;
+      }
+      .t-rise {
+        --in: fade-in;
+        --out: rise-out;
+      }
+      /* Bleibende Widgets: die Seite selbst bewegt sich nicht – af-page blendet alles außer ihnen über */
+      .layer.keep,
+      .layer.keep.out {
+        animation: none;
+      }
+      @keyframes curtain-in {
+        from {
+          clip-path: inset(0 100% 0 0);
+        }
+      }
+      @keyframes curtain-in-back {
+        from {
+          clip-path: inset(0 0 0 100%);
+        }
+      }
+      @keyframes circle-in {
+        from {
+          clip-path: circle(0% at 50% 50%);
+        }
+        to {
+          clip-path: circle(75% at 50% 50%);
+        }
+      }
+      @keyframes hold {
+        to {
+          opacity: 1;
+        }
+      }
+      @keyframes rise-out {
+        70% {
+          opacity: 1;
+        }
+        to {
+          opacity: 0;
+        }
+      }
       @keyframes cube-in {
         from {
           transform: rotateY(-90deg);
@@ -2164,7 +2392,17 @@ export class AfDisplay extends LitElement {
         line-height: 1.05;
         color: var(--af-ink);
         text-shadow: 0 4px 30px var(--af-bg);
-        animation: fade-in 1.2s var(--af-ease-soft) both;
+        animation: title-pop 1s cubic-bezier(0.34, 1.56, 0.64, 1) 0.3s both;
+      }
+      @keyframes title-pop {
+        from {
+          opacity: 0;
+          transform: scale(0.85);
+        }
+      }
+      /* Anlass klingt aus, statt abzubrechen */
+      .effect.leaving {
+        animation-duration: 1.4s !important;
       }
       .effect-title small {
         display: block;
@@ -2193,6 +2431,93 @@ export class AfDisplay extends LitElement {
         to {
           opacity: 0;
           filter: blur(16px);
+        }
+      }
+      /* Zurückgeblättert: gespiegelt */
+      .t-slide.back {
+        --in: slide-in-back;
+        --out: slide-out-back;
+      }
+      .t-cube.back {
+        --in: cube-in-back;
+        --out: cube-out-back;
+      }
+      .t-flip.back {
+        --in: flip-in-back;
+        --out: flip-out-back;
+      }
+      .t-page.back {
+        --in: page-in-back;
+        --out: fade-out;
+      }
+      @keyframes slide-in-back {
+        from {
+          opacity: 0;
+          transform: translateX(-4%);
+        }
+      }
+      @keyframes slide-out-back {
+        to {
+          opacity: 0;
+          transform: translateX(4%);
+        }
+      }
+      @keyframes cube-in-back {
+        from {
+          transform: rotateY(90deg);
+        }
+      }
+      @keyframes cube-out-back {
+        to {
+          transform: rotateY(-90deg);
+          opacity: 0.4;
+        }
+      }
+      @keyframes flip-in-back {
+        from {
+          opacity: 0;
+          transform: rotateY(90deg) scale(0.92);
+        }
+      }
+      @keyframes flip-out-back {
+        to {
+          opacity: 0;
+          transform: rotateY(-90deg) scale(0.92);
+        }
+      }
+      @keyframes page-in-back {
+        from {
+          transform: rotateY(-115deg);
+          opacity: 0.2;
+        }
+      }
+      /* Geschlossene Einblendungen gleiten dorthin zurück, woher sie kamen */
+      .leaving {
+        pointer-events: none;
+        animation: ov-out 0.4s var(--af-ease) forwards !important;
+      }
+      :is(.pip, .mcard, .mmini).leaving {
+        animation-name: pip-out !important;
+      }
+      :is(.pip, .mcard, .mmini).leaving:is(.pos-bottom-left, .pos-top-left) {
+        animation-name: pip-out-left !important;
+      }
+      :is(.mcard, .mmini).leaving:is(.lay-bar, .lay-pill, .lay-cover) {
+        animation-name: ov-out !important;
+      }
+      @keyframes ov-out {
+        to {
+          opacity: 0;
+        }
+      }
+      @keyframes pip-out {
+        to {
+          transform: translateX(calc(100% + 64px));
+        }
+      }
+      @keyframes pip-out-left {
+        to {
+          transform: translateX(calc(-100% - 64px));
         }
       }
       @keyframes slide-in {
@@ -2407,97 +2732,6 @@ export class AfDisplay extends LitElement {
         display: flex;
         gap: 10px;
         z-index: 20;
-      }
-      /* Laufband für Zuhause: liegt im unteren Seitenrand, verdeckt also keine Widgets */
-      .hticker {
-        position: absolute;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        height: 38px;
-        z-index: 19;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        overflow: hidden;
-        white-space: nowrap;
-        background: var(--af-chip);
-        border-top: 1px solid var(--af-line);
-        /* Schrift genau wie das Nachrichten-Laufband: 21 px × 0,82, normales Gewicht, Zweittext-Farbe */
-        color: var(--af-ink-2);
-        font: 400 calc(21px * 0.82) / 1 var(--af-sans);
-      }
-      /* Nachrichten-Laufband über allen Seiten; das Laufband für Zuhause rückt dann eine Zeile höher */
-      .newsband {
-        position: absolute;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        height: 38px;
-        z-index: 18;
-        background: var(--af-chip);
-        border-top: 1px solid var(--af-line);
-        --af-fs: 0.82;
-      }
-      .hticker.up {
-        bottom: 38px;
-      }
-      .hticker .track {
-        display: flex;
-        align-items: center;
-        gap: 22px;
-        padding: 0 22px;
-      }
-      .hticker span {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-      }
-      .hticker svg,
-      .hticker ha-icon {
-        width: 1.1em;
-        height: 1.1em;
-        color: var(--af-accent);
-      }
-      /* Warnungen (DWD, NINA): in Warnfarbe */
-      .hticker span.warn,
-      .hticker span.bad {
-        color: var(--af-alert);
-      }
-      .hticker span.bad {
-        font-weight: 700;
-      }
-      .hticker span.warn svg,
-      .hticker span.bad svg,
-      .hticker span.warn ha-icon,
-      .hticker span.bad ha-icon {
-        color: inherit;
-      }
-      .hticker i {
-        font-style: normal;
-        color: var(--af-ink-3);
-      }
-      .hticker:not(.run) i:last-child {
-        display: none;
-      }
-      /* läuft es, blendet es an den Rändern weich aus – wie das Nachrichten-Laufband */
-      .hticker.run {
-        justify-content: flex-start;
-        -webkit-mask-image: linear-gradient(to right, transparent, #000 4%, #000 96%, transparent);
-        mask-image: linear-gradient(to right, transparent, #000 4%, #000 96%, transparent);
-      }
-      .hticker.run .track {
-        animation: hticker 30s linear infinite;
-      }
-      @keyframes hticker {
-        to {
-          transform: translateX(-50%);
-        }
-      }
-      @media (prefers-reduced-motion: reduce) {
-        .hticker.run .track {
-          animation: none;
-        }
       }
       .chip {
         display: flex;
@@ -2806,6 +3040,124 @@ export class AfDisplay extends LitElement {
         margin-top: 8px;
       }
 
+      /* Bild-im-Bild nur als Bild: Titel liegt unten auf dem Video */
+      .pip.lay-video .vt {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 40px 20px 16px;
+        background: linear-gradient(transparent, rgba(0, 0, 0, 0.6));
+        color: #fff;
+        font-size: calc(20px * var(--af-fs, 1));
+        font-weight: 500;
+      }
+      .pip.lay-video .vt .tm {
+        margin-left: auto;
+        color: rgba(255, 255, 255, 0.75);
+        font-weight: 400;
+      }
+      .pip.lay-video .m {
+        padding: 4px 20px 14px;
+      }
+      /* Kamera im Vollbild: angetippt oder „gleich im Vollbild“ – bis zur eingestellten Zeit oder bis man schließt */
+      .camfull {
+        position: absolute;
+        inset: 0;
+        z-index: 26;
+        background-color: var(--af-bg);
+        background-image: var(--af-bg-art, none);
+        background-size: var(--af-bg-size, auto);
+        color: #fff;
+        cursor: pointer;
+        animation: ov-in 0.5s var(--af-ease) backwards;
+      }
+      .camfull .v,
+      .camfull af-camera-view {
+        position: absolute;
+        inset: 0;
+      }
+      /* Zwei Kameras gleichzeitig: Streams nebeneinander */
+      .v.two {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 4px;
+      }
+      .pip.pip.two {
+        width: min(1080px, calc(100% - 80px));
+      }
+      .v.two af-camera-view {
+        position: relative;
+        inset: auto;
+        min-width: 0;
+        height: 100%;
+      }
+      .cf-top,
+      .cf-bottom {
+        position: absolute;
+        left: 0;
+        right: 0;
+        display: flex;
+        align-items: center;
+        gap: 18px;
+        padding: 28px 36px;
+        z-index: 2;
+      }
+      .cf-top {
+        top: 0;
+        background: linear-gradient(rgba(0, 0, 0, 0.55), transparent);
+      }
+      .cf-bottom {
+        bottom: 0;
+        padding-top: 60px;
+        background: linear-gradient(transparent, rgba(0, 0, 0, 0.55));
+      }
+      .cf-top .live {
+        position: static;
+      }
+      .cf-t {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex: 1;
+        min-width: 0;
+        font-size: calc(26px * var(--af-fs, 1));
+        font-weight: 500;
+      }
+      .cf-t .tm {
+        color: rgba(255, 255, 255, 0.75);
+        font-size: calc(18px * var(--af-fs, 1));
+        font-weight: 400;
+      }
+      .cf-x {
+        width: 56px;
+        height: 56px;
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+        font-size: 24px;
+        background: rgba(0, 0, 0, 0.42);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+      }
+      .cf-bottom .q {
+        flex: 1;
+        font-size: calc(20px * var(--af-fs, 1));
+      }
+      .cf-bottom .hint {
+        font-size: calc(16px * var(--af-fs, 1));
+        color: rgba(255, 255, 255, 0.7);
+      }
+      .cf-bottom .snz {
+        margin: 0;
+      }
+      .camfull .timer {
+        z-index: 3;
+      }
+
       .notice {
         z-index: 30;
         display: grid;
@@ -2857,9 +3209,6 @@ export class AfDisplay extends LitElement {
         font-weight: 500;
         color: var(--af-ink);
         text-align: right;
-      }
-      .hticker span.tap {
-        cursor: pointer;
       }
       .ask {
         z-index: 45;
@@ -3069,33 +3418,145 @@ export class AfDisplay extends LitElement {
       .mmini.paused {
         opacity: 0.7;
       }
-      /* Optik pro Ereignis: Ecke, Größe, ohne Hintergrund */
-      .mmini.pos-bottom-left {
-        right: auto;
-        left: 32px;
+      /* Optik pro Ereignis (Musik-Banner und Kamera-Bild-im-Bild): Ecke, Größe, ohne Hintergrund, Form */
+      .mmini {
+        --edge: 32px;
       }
-      .mmini.pos-top-right,
-      .mmini.pos-top-left {
+      .mcard,
+      .pip {
+        --edge: 40px;
+      }
+      :is(.mmini, .mcard, .pip).pos-bottom-left {
+        right: auto;
+        left: var(--edge);
+      }
+      :is(.mmini, .mcard, .pip).pos-top-right,
+      :is(.mmini, .mcard, .pip).pos-top-left {
         bottom: auto;
-        top: 32px;
+        top: var(--edge);
       }
-      .mmini.pos-top-left {
+      :is(.mmini, .mcard, .pip).pos-top-left {
         right: auto;
-        left: 32px;
+        left: var(--edge);
       }
-      .mmini.size-small {
+      :is(.mmini, .mcard, .pip):is(.pos-bottom-left, .pos-top-left) {
+        animation-name: pip-in-left;
+      }
+      @keyframes pip-in-left {
+        from {
+          transform: translateX(calc(-100% - 64px));
+        }
+      }
+      :is(.mmini, .mcard, .pip).size-small {
         zoom: 0.8;
       }
-      .mmini.size-large {
+      :is(.mmini, .mcard, .pip).size-large {
         zoom: 1.3;
       }
-      .mmini.bare {
+      :is(.mmini, .mcard).bare {
         background: none;
         border-color: transparent;
         box-shadow: none;
         backdrop-filter: none;
         -webkit-backdrop-filter: none;
         text-shadow: 0 1px 12px rgba(0, 0, 0, 0.45);
+      }
+      /* Leiste über die ganze Breite */
+      :is(.mmini, .mcard).lay-bar {
+        left: var(--edge);
+        right: var(--edge);
+        width: auto;
+        padding: 10px 26px 10px 10px;
+        border-radius: 20px;
+        animation-name: ov-in;
+      }
+      :is(.mmini, .mcard).lay-bar .art {
+        width: 64px;
+        height: 64px;
+        border-radius: 12px;
+        font-size: 28px;
+      }
+      :is(.mmini, .mcard).lay-bar .mtitle {
+        font-size: 24px;
+        margin-top: 4px;
+        -webkit-line-clamp: 1;
+      }
+      :is(.mmini, .mcard).lay-bar .martist {
+        margin-top: 2px;
+      }
+      :is(.mmini, .mcard).lay-bar .prog .times {
+        display: none;
+      }
+      /* Pille: klein, eine Zeile – rundes Cover, Titel · Künstler */
+      .mmini.lay-pill,
+      .mcard.lay-pill {
+        width: auto;
+        /* wächst mit Titel und Künstler – höchstens bis an den anderen Rand */
+        max-width: calc(100% - 2 * var(--edge));
+        box-sizing: border-box;
+        gap: 12px;
+        padding: 6px 22px 6px 6px;
+        border-radius: 999px;
+        /* leicht durchscheinend wie Milchglas – das Bild dahinter bleibt zu ahnen */
+        background: color-mix(in srgb, var(--af-panel) 58%, transparent);
+        -webkit-backdrop-filter: blur(20px) saturate(1.4);
+        backdrop-filter: blur(20px) saturate(1.4);
+      }
+      :is(.mmini, .mcard).lay-pill .art {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        font-size: 22px;
+      }
+      :is(.mmini, .mcard).lay-pill .mtext {
+        display: flex;
+        align-items: baseline;
+        gap: 10px;
+        min-width: 0;
+        white-space: nowrap;
+      }
+      :is(.mmini, .mcard).lay-pill :is(.mlabel, .bar, .prog, .malbum) {
+        display: none;
+      }
+      :is(.mmini, .mcard).lay-pill .mtitle {
+        font-size: 19px;
+        margin: 0;
+        flex: 0 1 auto;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        -webkit-line-clamp: 1;
+      }
+      :is(.mmini, .mcard).lay-pill .martist {
+        font-size: calc(15px * var(--af-fs, 1));
+        margin: 0;
+        flex: 0 1 auto;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      :host([orient="portrait"]) :is(.mmini, .mcard).lay-pill {
+        width: auto;
+        max-width: calc(100% - 64px);
+      }
+      :host([orient="portrait"]) :is(.mmini, .mcard).lay-pill:is(.pos-bottom-right, .pos-top-right) {
+        left: auto;
+      }
+      /* Großes Cover, Text darunter */
+      :is(.mmini, .mcard).lay-cover {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 14px;
+        width: 300px;
+        padding: 14px 14px 18px;
+      }
+      .mcard.lay-cover {
+        width: 380px;
+      }
+      :is(.mmini, .mcard).lay-cover .art {
+        width: 100%;
+        height: auto;
+        aspect-ratio: 1;
       }
       .mmini .art {
         width: 84px;
@@ -3331,6 +3792,12 @@ export class AfDisplay extends LitElement {
         width: auto;
         bottom: 40px;
       }
+      :host([orient="portrait"]) :is(.mmini, .mcard).lay-cover {
+        width: 340px;
+      }
+      :host([orient="portrait"]) :is(.mmini, .mcard).lay-cover:is(.pos-bottom-right, .pos-top-right) {
+        left: auto;
+      }
       :host([orient="portrait"]) .pip .v {
         height: 420px;
       }
@@ -3355,8 +3822,16 @@ export class AfDisplay extends LitElement {
       }
 
       @media (prefers-reduced-motion: reduce) {
-        .layer,
-        .layer.out,
+        /* Seitenwechsel: kurz überblenden statt hart umschalten */
+        .layer {
+          animation: fade-in 0.3s ease backwards;
+        }
+        .layer.out {
+          animation: fade-out 0.3s ease both;
+        }
+        .leaving.leaving.leaving.leaving {
+          animation: ov-out 0.2s linear forwards !important;
+        }
         .pip,
         .mcard,
         .mbg,

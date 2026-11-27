@@ -277,7 +277,7 @@ class AfMap extends AfTickingWidget {
       </div>
       ${zone ? html`<div class="zone" style="left:${zone.x}px;top:${zone.y}px;width:${2 * zone.r}px;height:${2 * zone.r}px"></div>` : nothing}
       ${lines.length
-        ? svg`<svg>${lines.map((line) => {
+        ? svg`<svg class="chart-reveal">${lines.map((line) => {
             const xy = line.map(([lat, lon]) => px(lat, lon));
             const d = xy.map((p) => `${Math.round(p.x)},${Math.round(p.y)}`).join(" ");
             const end = xy[xy.length - 1];

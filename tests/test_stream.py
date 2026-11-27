@@ -162,3 +162,33 @@ async def test_tv_switch_only_with_stream_and_apple_tv(hass: HomeAssistant, hass
     assert (await client.receive_json())["success"]
     await hass.async_block_till_done()
     assert f"{display_id}_tv" not in switches()
+
+
+async def test_stream_survives_noisy_ffmpeg(hass: HomeAssistant, hass_ws_client: Any, hass_client_no_auth: Any, tmp_path: Any, monkeypatch: Any) -> None:
+    """ffmpeg schreibt viel Fehlertext: der Stream darf nicht hängen (voller stderr-Puffer)."""
+    import asyncio
+    import sys
+    import os
+
+    # Ersatz-ffmpeg: 300 KB auf stderr, dann Videodaten auf stdout
+    fake = tmp_path / "ffmpeg"
+    fake.write_text(f"#!{sys.executable}\nimport sys\nsys.stderr.write('x' * 300_000)\nsys.stderr.flush()\nsys.stdout.write('TSDATA')\n")
+    fake.chmod(0o755)
+    monkeypatch.setenv("PATH", f"{tmp_path}{os.pathsep}{os.environ['PATH']}")  # ohne HAs ffmpeg-Modul: „ffmpeg“ aus dem Pfad
+    entry = await _setup(hass)
+    ws = await hass_ws_client(hass)
+    config = minimal_config()
+    config["displays"][0]["stream"] = {"enabled": True}
+    await ws.send_json_auto_id({"type": "ambiframe/config/save", "config": config})
+    assert (await ws.receive_json())["success"]
+    streams = hass.data[DOMAIN].streams
+    url = streams.stream_url("kueche", "4k").split("127.0.0.1:")[1].split("/", 1)[1]
+    http = await hass_client_no_auth()
+    from unittest.mock import AsyncMock, patch
+
+    with patch("custom_components.ambiframe.stream.FrameSource.async_frame", AsyncMock(return_value=None)):  # kein Puppet nötig
+        resp = await asyncio.wait_for(http.get(f"/{url}"), 10)
+        assert resp.status == 200
+        assert await asyncio.wait_for(resp.read(), 10) == b"TSDATA"
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    await hass.async_block_till_done()

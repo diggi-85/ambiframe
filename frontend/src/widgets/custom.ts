@@ -175,7 +175,6 @@ class AfChart extends AfWidget {
         max-width: 48px;
         border-radius: 6px 6px 2px 2px;
         min-height: 2px;
-        transition: height 0.6s var(--af-ease, ease);
       }
       .bar.dim {
         opacity: 0.55;
@@ -368,12 +367,17 @@ class AfChart extends AfWidget {
     const unit = this.options.unit ?? unitOf(stateOf(this.hass, this.series[0]?.id));
     const dec = this.options.decimals;
     return html`<div class="plot">
-        <svg viewBox="0 0 1000 300" preserveAspectRatio="none">
+        <svg class="chart-reveal" viewBox="0 0 1000 300" preserveAspectRatio="none">
           <line class="grid" x1="0" x2="1000" y1="0" y2="0"></line>
           <line class="grid" x1="0" x2="1000" y1="150" y2="150"></line>
           <line class="grid" x1="0" x2="1000" y1="300" y2="300"></line>
           ${paths}
         </svg>
+        ${series.map((s) => {
+          const last = s.pts[s.pts.length - 1];
+          // Punkt auf dem aktuellen Wert (rechtes Ende der Linie) – setzt sich nach dem Einzeichnen
+          return last ? html`<span class="chart-dot" style="left:100%;top:${(Y(last[1]) / 3).toFixed(2)}%;--c:${s.color}"></span>` : nothing;
+        })}
         <span class="ylab num" style="top:0;transform:translateY(-130%)">${fmtNum(hi, dec)} ${unit}</span>
         <span class="ylab num" style="top:100%;transform:translateY(-130%)">${fmtNum(lo, dec)} ${unit}</span>
       </div>
@@ -420,7 +424,7 @@ class AfChart extends AfWidget {
               ${this.series.map((s) => {
                 const v = value(s, t);
                 const h = v === undefined ? 0 : ((Math.max(lo, v) - lo) / (hi - lo)) * 100;
-                return html`<div class="bar ${i === count - 1 ? "dim" : ""}" style="height:${h}%;background:${s.color}"></div>`;
+                return html`<div class="bar grow-y ${i === count - 1 ? "dim" : ""}" style="--af-j:${(i / count).toFixed(3)};height:${h}%;background:${s.color}"></div>`;
               })}
             </div>`,
           )}
@@ -584,7 +588,7 @@ class AfGauge extends AfWidget {
       <div class="dial">
         <svg viewBox=${half ? "0 0 200 108" : "0 0 200 200"} preserveAspectRatio="xMidYMid meet">
           <path class="track" d=${d} pathLength="100" stroke-width="12"></path>
-          <path class="val" d=${d} pathLength="100" stroke-width="12" style="stroke:${color};stroke-dasharray:${pct} 100;${pct ? "" : "opacity:0"}"></path>
+          <path class="val ring-sweep" d=${d} pathLength="100" stroke-width="12" style="stroke:${color};stroke-dasharray:${pct} 100;${pct ? "" : "opacity:0"}"></path>
         </svg>
         <div class="center">
           <div class="v display num">${ok ? fmtNum(v, o.decimals) : "–"}${unit ? html`<small>${unit}</small>` : nothing}</div>

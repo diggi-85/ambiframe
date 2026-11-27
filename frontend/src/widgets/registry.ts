@@ -17,6 +17,7 @@ import "./clocks";
 import "./summary";
 import "./today";
 import "./weather";
+import "./hometiles";
 
 export interface WidgetType {
   tag: string;
@@ -78,5 +79,7 @@ export const WIDGETS: Record<string, WidgetType> = {
   analog: { tag: "af-analog", name: "Analoge Uhr", icon: "mdi:clock-time-four-outline", size: [4, 4] },
   wordclock: { tag: "af-wordclock", name: "Wortuhr", icon: "mdi:clock-digital", size: [8, 8] },
   pixel: { tag: "af-pixel", name: "Pixel-Anzeige", icon: "mdi:dots-grid", size: [5, 2] },
+  hometiles: { tag: "af-hometiles", name: "Geräte-Kacheln", icon: "mdi:lightbulb-group", size: [6, 3] },
+  pills: { tag: "af-pills", name: "Übersicht-Pillen", icon: "mdi:pill", size: [12, 1] },
   card: { tag: "af-card", name: "HA-Karte", icon: "mdi:card-outline", size: [4, 4] },
 };

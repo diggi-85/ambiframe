@@ -217,16 +217,28 @@ class StreamView(HomeAssistantView):
             # Fünfmal pro Sekunde das letzte Bild – sofort, auch wenn Puppet noch rendert (erst ein dunkler Platzhalter);
             # neu gerendert wird im Hintergrund im eingestellten Intervall
             nonlocal refresh
-            while True:
-                if refresh is None or refresh.done():
-                    refresh = asyncio.create_task(source.async_frame())
-                proc.stdin.write(source.frame or placeholder)
-                await proc.stdin.drain()
-                await asyncio.sleep(1 / FEED_FPS)
+            try:
+                while True:
+                    if refresh is None or refresh.done():
+                        refresh = asyncio.create_task(source.async_frame())
+                    proc.stdin.write(source.frame or placeholder)
+                    await proc.stdin.drain()
+                    await asyncio.sleep(1 / FEED_FPS)
+            except (BrokenPipeError, ConnectionResetError):
+                return  # ffmpeg ist beendet – der Stream endet unten
+
+        # Fehlerausgabe laufend lesen (nur das Ende behalten) – ein voller Puffer würde ffmpeg anhalten
+        err_tail = bytearray()
+
+        async def drain_errors() -> None:
+            while chunk := await proc.stderr.read(4096):
+                err_tail.extend(chunk)
+                del err_tail[:-2000]
 
         response = web.StreamResponse(headers={"Content-Type": "video/mp2t", "Cache-Control": "no-store"})
         await response.prepare(request)
         feeder = asyncio.create_task(feed())
+        errors = asyncio.create_task(drain_errors())
         _LOGGER.debug("Ambiframe: Videostream für „%s“ gestartet", display_id)
         try:
             while chunk := await proc.stdout.read(65536):
@@ -239,8 +251,10 @@ class StreamView(HomeAssistantView):
                 refresh.cancel()
             with contextlib.suppress(ProcessLookupError):
                 proc.kill()
-            err = (await proc.stderr.read()).decode(errors="replace").strip()
             await proc.wait()
+            with contextlib.suppress(asyncio.CancelledError):
+                await errors
+            err = err_tail.decode(errors="replace").strip()
             if err:
                 _LOGGER.warning("Ambiframe: ffmpeg meldet für „%s“: %s", display_id, err[-500:])
             _LOGGER.debug("Ambiframe: Videostream für „%s“ beendet", display_id)

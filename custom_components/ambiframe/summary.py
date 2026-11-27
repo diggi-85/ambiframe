@@ -295,7 +295,13 @@ class SummaryService:
 
     def _car(self) -> list[dict[str, Any]]:
         cars = []
+        seen: set[str] = set()
         for options in self._widgets("car"):
+            # Dasselbe Auto steht oft auf mehreren Seiten – sonst liest die KI „beide Autos“
+            key = options.get("battery") or options.get("range") or options.get("name") or ""
+            if key and key in seen:
+                continue
+            seen.add(key)
             car = {
                 "name": options.get("name"),
                 "akku_prozent": self._state(options.get("battery")),

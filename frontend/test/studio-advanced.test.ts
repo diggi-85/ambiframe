@@ -45,14 +45,14 @@ const mount = async () => {
 describe("Studio: YAML", () => {
   it("übernimmt gültiges YAML in den Entwurf, ohne zu speichern", async () => {
     const { el, saved } = await mount();
-    el.yaml = dump({ ...config(), design: { theme: "zeitung" } });
+    el.yaml = dump({ ...config(), design: { theme: "editorial" } });
     el.setAdvanced(true);
     el.openDisplay("__all");
     el.step = "technik";
     await el.updateComplete;
     const btn = [...el.shadowRoot!.querySelectorAll("button")].find((b: HTMLButtonElement) => b.textContent!.includes("In den Editor übernehmen")) as HTMLButtonElement;
     btn.click();
-    expect(el.draft.design.theme).toBe("zeitung");
+    expect(el.draft.design.theme).toBe("editorial");
     expect(el.dirty).toBe(true);
     expect(saved).toEqual([]);
   });
@@ -148,8 +148,8 @@ describe("Studio: Änderungen von anderswo", () => {
     const { el, push } = await withPush();
     push({ config: config() }); // derselbe Stand (z. B. Echo des eigenen Speicherns) → nichts tun
     expect(el.draft.design.theme).toBe("ruhig");
-    push({ config: { ...config(), design: { theme: "zeitung" } } });
-    expect(el.draft.design.theme).toBe("zeitung");
+    push({ config: { ...config(), design: { theme: "editorial" } } });
+    expect(el.draft.design.theme).toBe("editorial");
     expect(el.dirty).toBe(false);
   });
 
@@ -302,13 +302,15 @@ describe("Studio: Einstellung suchen", () => {
     expect(hits.length).toBeGreaterThan(0);
     // beide Laufband-Tempos – und das Tempo der Animation unter „Aussehen“ ebenso
     expect(hits.filter((h: { step: string }) => h.step === "laufband").map((h: { key: string }) => h.key).sort()).toEqual(["design.home_ticker_speed", "design.news_band.speed"]);
-    el.settingQuery = "Bewegung"; // Feinschliff unter „Aussehen“ – nur mit „Erweitert“
+    el.settingQuery = "Bewegung"; // Feinschliff unter „Aussehen“ – liegt in einer zugeklappten Gruppe
     const motion = el.settingMatches().find((h: { step: string }) => h.step === "aussehen");
     expect(motion).toBeDefined();
     el.goToSetting(motion);
     await el.updateComplete;
     expect(el.step).toBe("aussehen");
-    expect(el.advanced).toBe(true);
+    // die Gruppe mit der Einstellung steht offen; „Erweitert“ nur, wenn die Einstellung selbst erweitert ist
+    expect([...el.openFolds].some((f: string) => f.startsWith("look:"))).toBe(true);
+    expect(el.advanced).toBe(motion.advanced);
     expect(el.findKey).toBe(motion.key);
     expect(el.settingQuery).toBe("");
     el.settingQuery = "x";

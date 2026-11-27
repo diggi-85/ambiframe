@@ -8,8 +8,8 @@ import { LitElement, css, html, nothing, type PropertyValues } from "lit";
 import "../display/display";
 import type { AfDisplay } from "../display/display";
 import { lang, locale, t } from "../i18n";
-import { anyIcon, iconSvg } from "../icons";
-import { PALETTES, THEME_DEFS, seasonTheme } from "../styles";
+import { anyIcon, brandMark, iconSvg } from "../icons";
+import { PALETTES, THEME_DEFS, normalizeTheme, seasonTheme } from "../styles";
 import type { AmbiframeConfig, AmbientKind, Condition, DisplayConfig, EventConfig, Hass, HassEntity, PageConfig, SoundConfig } from "../types";
 import { formContext, isAdvanced, type Field } from "../editor/form";
 import "../editor/form";
@@ -20,6 +20,27 @@ import type { Note } from "../editor/page-editor";
 import { checkHealth, type HealthGo, type PhotoHealth } from "../editor/health";
 import { PROFILES, displayFromProfile, profilePlaylist } from "../editor/profiles";
 import { AMBIENT_OPTIONS, colorFields, dashboardsOf, DESIGN_FIELDS, DISPLAY_DESIGN_FIELDS, HOME_TICKER_FIELDS, NEWS_BAND_FIELDS, DISPLAY_PHOTO_FIELDS, DISPLAY_SOUND_FIELDS, DISPLAY_STREAM_FIELDS, displayFields, eventFields, LOOK_FIELDS, MOTION_FIELDS, PAGE_TEMPLATES, SHAPE_FIELDS, slug, SUMMARY_FIELDS, uniqueId } from "../editor/schemas";
+import { HOUSE_KEYS, lookOnly, pickFile, saveFile } from "../share";
+import {
+  applyEventMood,
+  CAMERA_KEYS,
+  changedKeys,
+  clearOverrides,
+  CAMERA_MOODS,
+  EVENT_GROUPS,
+  eventGroupOf,
+  eventGroupSummary,
+  eventMood,
+  LOOK_GROUPS,
+  lookGroupOf,
+  MOTION_MOODS,
+  motionMood,
+  motionSummary,
+  MUSIC_KEYS,
+  MUSIC_MOODS,
+  type EventMood,
+  type MotionState,
+} from "./studio-guide";
 import { define } from "../widgets/base";
 import { WIDGETS } from "../widgets/registry";
 
@@ -64,7 +85,7 @@ const ALL_STEPS: [Step, string, string][] = [
 ];
 
 /** Technik → Display: ohne Name (Ort & Gerät), Stil und Hell/Dunkel (Aussehen) – Nacht steht bei den Inhalten */
-const ELSEWHERE = new Set(["name", "theme", "mode"]);
+const ELSEWHERE = new Set(["name", "theme", "mode", "transition.type", "transition.duration"]);
 
 /** Feinschliff ohne das, was oben schon als Karten/Knöpfe steht (Palette, Animation, Cover-Farben, Kacheln) */
 const SHOWN_ABOVE = new Set(["design.palette", "design.ambient.type", "design.cover_colors", "design.card_style", "design.gap", "design.radius"]);
@@ -166,12 +187,14 @@ const WEATHER_SIM: [string, string][] = [
   ["clear-night", "klare Nacht"],
 ];
 
-/** Stile nach Wirkung gruppiert – 36 in einer Reihe findet niemand; Unbekanntes landet unter „Weitere“ */
+/** Stile nach Wirkung gruppiert: vorne eine kleine Auswahl, der Rest unter „Mehr Stile“; Unbekanntes landet unter „Weitere“ */
+export const RECOMMENDED = "Empfohlen";
 const THEME_GROUPS: [string, string[]][] = [
-  ["Ruhig", ["ruhig", "klar", "editorial", "galerie", "lobby", "landhaus", "natur", "rams", "tonal", "softui"]],
-  ["Kräftig", ["glass", "aurora", "cockpit", "kacheln", "klartext", "bauhaus", "swiss", "leitsystem", "glanz", "rgb"]],
-  ["Verspielt", ["verspielt", "bilderbuch", "boho", "weihnachten", "saisonal"]],
-  ["Retro", ["pixel", "arcade", "fallblatt", "millennium", "handheld", "terminal", "zeitung", "artdeco"]],
+  [RECOMMENDED, ["signature", "ruhig", "klar", "glass", "daheim", "wohnapp", "editorial", "bauhaus", "rams", "saisonal"]],
+  ["Ruhig", ["galerie", "lobby", "landhaus", "softui", "boho"]],
+  ["Kräftig", ["aurora", "cockpit", "axel", "klartext", "swiss", "leitsystem"]],
+  ["Verspielt", ["verspielt", "bilderbuch"]],
+  ["Retro", ["pixel", "arcade", "fallblatt", "terminal", "artdeco"]],
   ["Spezial", ["papier", "eink"]],
 ];
 
@@ -494,8 +517,9 @@ export class AmbiframeStudio extends LitElement {
       fields.filter((f) => f.label).map((f) => ({ step, label: t(f.label), key: f.key, advanced: advanced || isAdvanced(f), help: f.help ? t(f.help) : "" }));
     const list = this.all
       ? [
-          ...of("aussehen", notShownAbove(LOOK_FIELDS.filter((f) => f.key !== "design.mode")), true),
-          ...of("aussehen", notShownAbove(MOTION_FIELDS), true),
+          ...of("aussehen", notShownAbove(LOOK_FIELDS.filter((f) => f.key !== "design.mode"))),
+          ...of("aussehen", notShownAbove(MOTION_FIELDS)),
+          ...of("momente", eventFields(c).filter((f) => !["name", "enabled", "kind"].includes(f.key))),
           ...of("laufband", HOME_TICKER_FIELDS),
           ...of("laufband", NEWS_BAND_FIELDS),
           ...of("technik", DESIGN_FIELDS),
@@ -503,13 +527,52 @@ export class AmbiframeStudio extends LitElement {
         ]
       : [
           ...of("inhalte", displayFields(c).filter((f) => f.key.startsWith("night."))),
-          ...of("aussehen", notShownAbove(DISPLAY_DESIGN_FIELDS.filter((f) => f.key !== "design.css")), true),
+          ...of("aussehen", notShownAbove(DISPLAY_DESIGN_FIELDS.filter((f) => f.key !== "design.css"))),
+          ...of("aussehen", this.displayMotionFields(c)),
+          ...of("momente", eventFields(c).filter((f) => !["name", "enabled", "kind"].includes(f.key))),
           ...of("technik", displayFields(c).filter((f) => !ELSEWHERE.has(f.key) && !f.key.startsWith("night."))),
           ...of("technik", DISPLAY_SOUND_FIELDS),
           ...of("technik", DISPLAY_STREAM_FIELDS),
           ...of("technik", DISPLAY_PHOTO_FIELDS),
         ];
-    return list;
+    // gleiche Einstellung mehrfach (z. B. „Dauer“ je Art eines Moments): einmal zeigen
+    const seen = new Set<string>();
+    return list.filter((e) => !seen.has(`${e.step}|${e.key}|${e.label}`) && !!seen.add(`${e.step}|${e.key}|${e.label}`));
+  }
+
+  /** Bewegung auf einem Display: Art und Feinheiten (im Design des Displays) plus sein eigener Seitenwechsel */
+  private displayMotionFields(c: AmbiframeConfig): Field[] {
+    return [
+      ...MOTION_FIELDS.filter((f) => f.key === "design.chart_motion" || f.key.startsWith("design.motion.")),
+      ...displayFields(c).filter((f) => f.key.startsWith("transition.")),
+    ];
+  }
+
+  /** Zugeklappte Gruppe mit einer Zeile, was eingestellt ist – bleibt offen, bis man sie schließt */
+  openFolds = new Set<string>();
+
+  private fold(id: string, title: string, summary: string, body: unknown) {
+    return html`<details
+      class="fold"
+      ?open=${this.openFolds.has(id)}
+      @toggle=${(e: Event) => ((e.target as HTMLDetailsElement).open ? this.openFolds.add(id) : this.openFolds.delete(id))}
+    >
+      <summary><b>${t(title)}</b><span>${summary}</span></summary>
+      <div class="fold-body">${body}</div>
+    </details>`;
+  }
+
+  /** Fertige Stimmungen: eine Wahl setzt mehrere Einstellungen, „Anpassen“ darunter zeigt die Details */
+  private moods(list: { id: string; name: string; hint: string }[], current: string | undefined, pick: (id: string) => void, extra?: unknown) {
+    return html`<div class="moods">
+        ${list.map(
+          (m) => html`<button class="mood ${current === m.id ? "on" : ""}" aria-pressed=${current === m.id ? "true" : "false"} @click=${() => pick(m.id)}>
+            <b>${t(m.name)}</b><small>${t(m.hint)}</small>
+          </button>`,
+        )}
+        ${extra ?? nothing}
+      </div>
+      ${current ? nothing : html`<p class="muted small">${t("Eigene Mischung – unter „Anpassen“ eingestellt.")}</p>`}`;
   }
 
   /** Treffer zum Suchtext – in Name und Hilfetext, höchstens acht */
@@ -525,6 +588,19 @@ export class AmbiframeStudio extends LitElement {
   goToSetting(e: { step: Step; key: string; advanced: boolean }): void {
     if (e.advanced && !this.advanced) this.setAdvanced(true);
     this.step = e.step;
+    // Gruppe öffnen, in der die Einstellung liegt – bei Momenten im ersten Moment, zu dem sie passt
+    if (e.step === "aussehen") {
+      const g = lookGroupOf(e.key);
+      if (g) this.openFolds.add(`look:${g}`);
+    } else if (e.step === "momente") {
+      const field = eventFields(this.draft!).find((f) => f.key === e.key);
+      const ev = this.draft!.events.find((x) => !field?.when || field.when(x as unknown as Record<string, any>)) ?? this.draft!.events[0];
+      const g = eventGroupOf(e.key);
+      if (ev) {
+        this.openEvent = ev.id;
+        if (g) this.openFolds.add(`${ev.id}:${g}`);
+      }
+    }
     this.settingQuery = "";
     this.findKey = e.key;
     this.requestUpdate();
@@ -696,6 +772,7 @@ export class AmbiframeStudio extends LitElement {
           <button class="icon" title=${t("Vorherige Seite")} @click=${() => this.pageIdx--}>${iconSvg("back")}</button>
           <span>${page?.name ?? t("keine Seite")}</span>
           <button class="icon" title=${t("Nächste Seite")} @click=${() => this.pageIdx++}>${iconSvg("forward")}</button>
+          <button class="icon" title=${t("Bewegung abspielen")} @click=${() => this.renderRoot.querySelector<AfDisplay>(".preview af-display")?.replay()}>${iconSvg("play")}</button>
         </div>
         <div class="seg">
           ${(
@@ -730,7 +807,7 @@ export class AmbiframeStudio extends LitElement {
     return html`<div class="overview">
       <header class="top">
         <div>
-          <h1>${t("Deine Displays")}</h1>
+          <h1>${brandMark(30)}${t("Deine Displays")}</h1>
           <p class="muted">${t("Jedes Display beantwortet dieselben Fragen: Wo hängt es, was zeigt es, wie sieht es aus und wann passiert etwas.")}</p>
         </div>
         <button class="primary" @click=${this.addDisplay}>+ ${t("Display hinzufügen")}</button>
@@ -1052,7 +1129,7 @@ export class AmbiframeStudio extends LitElement {
   private renderAussehen() {
     const c = this.draft!;
     const d = this.all ? undefined : this.display;
-    const theme = d?.theme ?? c.design.theme;
+    const theme: string = normalizeTheme(d?.theme ?? c.design.theme).theme; // gelöschter Stil → sein Nachfolger ist markiert
     const amb = d?.design?.ambient?.type ?? c.design.ambient?.type;
     const palette = d?.design?.palette ?? c.design.palette;
     const cover = d?.design?.cover_colors ?? c.design.cover_colors;
@@ -1065,7 +1142,12 @@ export class AmbiframeStudio extends LitElement {
         <h3>${t("Stil")}</h3>
         ${this.origin(d?.theme, () => this.mutateDisplay((x) => delete x.theme))}
       </div>
-      <p class="muted">${t("Mit der Maus über einen Stil fahren zeigt ihn rechts mit deinen Inhalten – Klicken übernimmt ihn.")}</p>
+      <p class="muted">${t("Mit der Maus über einen Stil fahren zeigt ihn in der Vorschau mit deinen Inhalten – Klicken oder Antippen übernimmt ihn (↶ macht es rückgängig).")}</p>
+      ${this.all && c.displays.some((x) => x.theme && normalizeTheme(x.theme).theme !== normalizeTheme(c.design.theme).theme)
+        ? html`<p class="hint">${t("Eigener Stil bisher: {list}. Wählst du hier einen Stil, gilt er für alle Displays.", {
+            list: c.displays.filter((x) => x.theme && normalizeTheme(x.theme).theme !== normalizeTheme(c.design.theme).theme).map((x) => x.name).join(", "),
+          })}</p>`
+        : nothing}
       <div class="seg">
         ${(
           [
@@ -1076,27 +1158,21 @@ export class AmbiframeStudio extends LitElement {
         ).map(([id, name]) => html`<button class=${this.themeFilter === id ? "on" : ""} @click=${() => (this.themeFilter = id)}>${t(name)}</button>`)}
       </div>
       <div @mouseleave=${() => (this.hoverTheme = "")}>
-        ${themeGroups(this.themeFilter).map(([group, ids]) => html`<span class="glabel">${t(group)}</span>
-        <div class="themes">
-        ${ids.map((id) => THEME_DEFS.find((x) => x.id === id)!).map((td) => {
-          // „Jahreszeiten“ zeigt die Farben von heute
-          const look = td.id === "saisonal" ? (THEME_DEFS.find((x) => x.id === seasonTheme(new Date())) ?? td) : td;
-          const tok = look.dark;
-          return html`<button
-            class="theme ${theme === td.id ? "on" : ""}"
-            style="--bg:${tok.bg};--ink:${tok.ink};--acc:${tok.accent};--font:${look.shared.display};--af-bg:${tok.bg};--af-ink:${tok.ink};--af-accent:${tok.accent};--art:${tok["bg-art"] ?? "none"};--bs:${look.shared["bg-size"] ?? "auto"};--card:${tok.card ?? "transparent"};--cb:${tok["card-border"] ?? "1px solid transparent"};--cr:${look.shared["card-radius"] ?? "8px"}"
-            @mouseenter=${() => (this.hoverTheme = td.id)}
-            @focus=${() => (this.hoverTheme = td.id)}
-            @click=${() => {
-              this.hoverTheme = "";
-              this.setTop("theme", td.id);
-            }}
-          >
-            <span class="sample"><span class="clock">12<i>:</i>34</span><span class="tile"></span></span>
-            <b>${t(td.name)}</b>
-          </button>`;
-        })}
-        </div>`)}
+        ${(() => {
+          const groups = themeGroups(this.themeFilter);
+          const front = groups.filter(([g]) => g === RECOMMENDED);
+          const more = groups.filter(([g]) => g !== RECOMMENDED);
+          const count = more.reduce((n, [, ids]) => n + ids.length, 0);
+          // Ist der gewählte Stil unter „Mehr Stile“, steht die Liste offen – sonst fände man ihn nicht
+          const open = !front.length || more.some(([, ids]) => ids.includes(theme));
+          return html`${front.map((g) => this.themeGroup(g, theme))}
+            ${count
+              ? html`<details class="more-themes" ?open=${open}>
+                  <summary>${t("Mehr Stile ({n})", { n: count })}</summary>
+                  ${more.map((g) => this.themeGroup(g, theme))}
+                </details>`
+              : nothing}`;
+        })()}
       </div>
 
       <div class="row-head">
@@ -1172,21 +1248,110 @@ export class AmbiframeStudio extends LitElement {
           </div>
         </div>`,
       )}
-      ${this.advanced
-        ? html`<h3>${t("Feinschliff")}</h3>
-            ${this.all
-              ? html`${this.form(notShownAbove(LOOK_FIELDS.filter((f) => f.key !== "design.mode")), c, (v) => this.mutate((cc) => (cc.design = (v as AmbiframeConfig).design)))}
-                  ${this.form(notShownAbove(MOTION_FIELDS), c, (v) => this.mutate((cc) => (cc.design = (v as AmbiframeConfig).design)))}`
-              : this.form(notShownAbove(DISPLAY_DESIGN_FIELDS.filter((f) => f.key !== "design.css")), d!, (v) => this.replaceDisplay(v))}
-            ${this.renderOwnColors()}
-            ${this.all ? html`<h3>${t("Eigene Stile")}</h3>${this.renderPresets()}` : nothing}`
-        : nothing}
+      ${this.renderMotion()}
+
+      <h3>${t("Feinschliff")}</h3>
+      <p class="muted">${t("Alles Weitere – zugeklappt. Jede Zeile sagt, was gerade eingestellt ist.")}</p>
+      ${this.renderLookFolds()}
     `;
+  }
+
+  /** Bewegung: Stimmung wählen, Details unter „Anpassen“ */
+  private renderMotion() {
+    const c = this.draft!;
+    const d = this.all ? undefined : this.display;
+    const state: MotionState = d
+      ? { chart_motion: d.design?.chart_motion, motion: d.design?.motion, transition: d.transition }
+      : { chart_motion: c.design.chart_motion, motion: c.design.motion, transition: c.design.transition };
+    const pick = (id: string) => {
+      const set = MOTION_MOODS.find((m) => m.id === id)!.set;
+      const apply = (design: Record<string, unknown>, target: Record<string, unknown>) => {
+        for (const k of ["chart_motion", "motion"]) {
+          if (set[k as keyof MotionState] === undefined) delete design[k];
+          else design[k] = structuredClone(set[k as keyof MotionState]);
+        }
+        if (set.transition) target.transition = { ...set.transition };
+        else delete target.transition;
+      };
+      if (d)
+        this.mutateDisplay((x) => {
+          x.design = { ...(x.design ?? {}) };
+          apply(x.design as Record<string, unknown>, x as unknown as Record<string, unknown>);
+        });
+      else this.forAll(["chart_motion", "motion", "transition"], (cc) => apply(cc.design as Record<string, unknown>, cc.design as Record<string, unknown>));
+      // gleich zeigen, wie es wirkt
+      window.setTimeout(() => this.renderRoot.querySelector<AfDisplay>(".preview af-display")?.replay(), 50);
+    };
+    const fields = d ? this.displayMotionFields(c) : MOTION_FIELDS.filter((f) => f.key === "design.chart_motion" || f.key.startsWith("design.motion.") || f.key.startsWith("design.transition."));
+    return html`<div class="row-head">
+        <h3>${t("Bewegung")}</h3>
+        ${this.origin(d?.design?.chart_motion ?? d?.design?.motion ?? d?.transition, () =>
+          this.mutateDisplay((x) => (delete x.design?.chart_motion, delete x.design?.motion, delete x.transition)),
+        )}
+      </div>
+      <p class="muted">${t("Wie lebhaft Zahlen, Diagramme, Karten und Seitenwechsel sind. Die Vorschau spielt die Wahl gleich ab.")}</p>
+      ${this.moods(MOTION_MOODS, motionMood(state), pick)}
+      ${this.fold("look:motion", "Anpassen …", motionSummary(state), d ? this.form(fields, d, (v) => this.replaceDisplay(v)) : this.form(fields, c, (v) => this.setAllDesign(v)))}`;
+  }
+
+  /** Feinschliff im Aussehen: Gruppen mit Zusammenfassung statt einer langen Liste */
+  private renderLookFolds() {
+    const c = this.draft!;
+    const d = this.all ? undefined : this.display;
+    const design = (d ? d.design : c.design) ?? {};
+    const fields = d ? notShownAbove(DISPLAY_DESIGN_FIELDS.filter((f) => f.key !== "design.css")) : notShownAbove([...LOOK_FIELDS.filter((f) => f.key !== "design.mode"), ...MOTION_FIELDS]);
+    const value = (d ?? c) as object;
+    const set = (v: Record<string, any>) => (d ? this.replaceDisplay(v) : this.setAllDesign(v));
+    const amb = design.ambient ?? {};
+    const summary: Record<string, string> = {
+      type: [
+        design.fonts?.display ? t("eigene Schrift") : t("Schrift des Stils"),
+        ((d ? d.text_size : c.design.text_size) ?? "normal") !== "normal" ? t("Text größer") : "",
+        (d ? d.contrast : c.design.contrast) === "high" ? t("hoher Kontrast") : "",
+      ]
+        .filter(Boolean)
+        .join(" · "),
+      color: [design.accent ? t("eigene Akzentfarbe") : t("Akzent des Stils"), design.evening === "off" ? t("ohne Abendstimmung") : t("Abendstimmung")].join(" · "),
+      ambient: [t(amb.strength === 3 ? "deutlich" : amb.strength === 2 ? "mittel" : "dezent"), t(amb.speed === "normal" ? "normal" : "langsam"), amb.color ? t("eigene Farbe") : ""].filter(Boolean).join(" · "),
+    };
+    return html`${LOOK_GROUPS.map((g) => {
+        const fs = fields.filter((f) => g.keys.includes(f.key));
+        return fs.length ? this.fold(`look:${g.id}`, g.title, summary[g.id], this.form(fs, value, set)) : nothing;
+      })}
+      ${this.fold("look:own", "Eigene Farben und CSS", d?.design?.colors || c.design.colors ? t("eigene Farben gesetzt") : t("keine"), this.renderOwnColors())}
+      ${this.all ? this.fold("look:presets", "Eigene Stile", t("{n} gespeichert", { n: (c.design.presets ?? []).length }), this.renderPresets()) : nothing}`;
+  }
+
+  /**
+   * Änderung unter „Alle Displays“: gilt für alle – eigene Werte der Displays für dieselben Einstellungen fallen weg,
+   * und eine Meldung sagt, welche Displays bisher abwichen (mit ↶ rückgängig).
+   */
+  private forAll(keys: string[], change: (c: AmbiframeConfig) => void): void {
+    let touched: string[] = [];
+    this.mutate((c) => {
+      change(c);
+      touched = clearOverrides(c, keys);
+    });
+    if (touched.length)
+      this.showNote({
+        kind: "ok",
+        text:
+          touched.length === 1
+            ? t("Für alle Displays übernommen – {list} hatte eigene Werte (↶ macht es rückgängig).", { list: touched[0] })
+            : t("Für alle Displays übernommen – {list} hatten eigene Werte (↶ macht es rückgängig).", { list: touched.join(", ") }),
+      });
+  }
+
+  /** Formular unter „Alle Displays“: geänderte Werte gelten für alle Displays */
+  private setAllDesign(v: Record<string, any>): void {
+    const next = (v as AmbiframeConfig).design;
+    const keys = changedKeys(this.draft!.design, next);
+    this.forAll(keys, (cc) => (cc.design = next));
   }
 
   /** Stil oder Hell/Dunkel: auf „Alle Displays“ global, sonst nur dieses Display */
   private setTop(key: "theme" | "mode", value: string): void {
-    if (this.all) this.mutate((c) => ((c.design as Record<string, unknown>)[key] = value));
+    if (this.all) this.forAll([key], (c) => ((c.design as Record<string, unknown>)[key] = value));
     else this.mutateDisplay((x) => ((x as unknown as Record<string, unknown>)[key] = value));
   }
 
@@ -1195,7 +1360,7 @@ export class AmbiframeStudio extends LitElement {
       if (value === undefined) delete design[key];
       else design[key] = value;
     };
-    if (this.all) this.mutate((c) => apply(c.design as Record<string, unknown>));
+    if (this.all) this.forAll([key], (c) => apply(c.design as Record<string, unknown>));
     else
       this.mutateDisplay((x) => {
         x.design = { ...(x.design ?? {}) };
@@ -1211,7 +1376,7 @@ export class AmbiframeStudio extends LitElement {
     const d = this.all ? undefined : this.display;
     const target = (d ?? c) as object;
     const set = (v: Record<string, any>) =>
-      d ? this.replaceDisplay(v) : this.mutate((cc) => (cc.design = (v as AmbiframeConfig).design));
+      d ? this.replaceDisplay(v) : this.setAllDesign(v);
     const own = d ? d.design?.colors : c.design.colors;
     return html`<details>
         <summary>${t("Eigene Farben · Dunkel")}</summary>
@@ -1240,15 +1405,26 @@ export class AmbiframeStudio extends LitElement {
   private renderPresets() {
     const c = this.draft!;
     const presets = c.design.presets ?? [];
-    const snapshot = () => {
-      const { presets: _skip, ...rest } = structuredClone(c.design);
-      return rest as Record<string, unknown>;
-    };
+    // nur das Aussehen – Laufbänder, Sprache und gespeicherte Stile gehören zum Haus und bleiben beim Anwenden erhalten
+    const snapshot = () => lookOnly(structuredClone(c.design) as unknown as Record<string, unknown>);
     const apply = (design: Record<string, unknown>) =>
       this.mutate((cc) => {
-        const { presets: _skip, ...rest } = design as Record<string, unknown> & { presets?: unknown };
-        cc.design = { ...(structuredClone(rest) as unknown as AmbiframeConfig["design"]), presets: cc.design.presets };
+        const house = Object.fromEntries(Object.entries(cc.design).filter(([k]) => HOUSE_KEYS.includes(k)));
+        cc.design = { ...(structuredClone(lookOnly(design)) as unknown as AmbiframeConfig["design"]), ...house };
       });
+    const styleText = () => dump({ ambiframe_style: snapshot() }, { lineWidth: 120 });
+    const importStyle = (text: string) => {
+      try {
+        const raw = load(text) as Record<string, unknown> | null;
+        const design = (raw?.ambiframe_style ?? raw?.design ?? raw) as Record<string, unknown> | null;
+        if (!design || typeof design !== "object" || Array.isArray(design)) throw new Error(t("kein Stil gefunden"));
+        apply(design);
+        this.importText = null;
+        this.showNote({ kind: "ok", text: t("Stil übernommen – mit „Speichern“ dauerhaft machen.") });
+      } catch (err) {
+        this.showNote({ kind: "error", text: t("Import fehlgeschlagen: {error}", { error: String((err as Error)?.message ?? err) }) });
+      }
+    };
     return html`${presets.length
         ? html`<div class="presets">
             ${presets.map(
@@ -1283,7 +1459,7 @@ export class AmbiframeStudio extends LitElement {
         <button
           class="small ghost"
           @click=${async () => {
-            const text = dump({ ambiframe_style: snapshot() }, { lineWidth: 120 });
+            const text = styleText();
             try {
               await navigator.clipboard.writeText(text);
               this.showNote({ kind: "ok", text: t("Stil als YAML in die Zwischenablage kopiert.") });
@@ -1295,7 +1471,9 @@ export class AmbiframeStudio extends LitElement {
         >
           ${t("Exportieren")}
         </button>
+        <button class="small ghost" @click=${() => saveFile("ambiframe-stil.yaml", styleText())}>${t("Als Datei speichern")}</button>
         <button class="small ghost" @click=${() => (this.importText = this.importText === null ? "" : null)}>${t("Importieren …")}</button>
+        <button class="small ghost" @click=${async () => { const text = await pickFile(); if (text !== null) importStyle(text); }}>${t("Datei laden …")}</button>
       </p>
       ${this.importText !== null
         ? html`<textarea
@@ -1308,18 +1486,7 @@ export class AmbiframeStudio extends LitElement {
             <p>
               <button
                 class="small"
-                @click=${() => {
-                  try {
-                    const raw = load(this.importText ?? "") as Record<string, unknown> | null;
-                    const design = (raw?.ambiframe_style ?? raw?.design ?? raw) as Record<string, unknown> | null;
-                    if (!design || typeof design !== "object" || Array.isArray(design)) throw new Error(t("kein Stil gefunden"));
-                    apply(design);
-                    this.importText = null;
-                    this.showNote({ kind: "ok", text: t("Stil übernommen – mit „Speichern“ dauerhaft machen.") });
-                  } catch (err) {
-                    this.showNote({ kind: "error", text: t("Import fehlgeschlagen: {error}", { error: String((err as Error)?.message ?? err) }) });
-                  }
-                }}
+                @click=${() => importStyle(this.importText ?? "")}
               >
                 ${t("Übernehmen")}
               </button>
@@ -1386,6 +1553,31 @@ export class AmbiframeStudio extends LitElement {
     }
   }
 
+  /** Eine Gruppe Stil-Kacheln (Name darüber) */
+  private themeGroup([group, ids]: [string, string[]], theme: string) {
+    return html`<span class="glabel">${t(group)}</span>
+      <div class="themes">
+        ${ids.map((id) => THEME_DEFS.find((x) => x.id === id)!).map((td) => {
+          // „Jahreszeiten“ zeigt die Farben von heute
+          const look = td.id === "saisonal" ? (THEME_DEFS.find((x) => x.id === seasonTheme(new Date())) ?? td) : td;
+          const tok = look.dark;
+          return html`<button
+            class="theme ${theme === td.id ? "on" : ""}"
+            style="--bg:${tok.bg};--ink:${tok.ink};--acc:${tok.accent};--font:${look.shared.display};--af-bg:${tok.bg};--af-ink:${tok.ink};--af-accent:${tok.accent};--art:${tok["bg-art"] ?? "none"};--bs:${look.shared["bg-size"] ?? "auto"};--card:${tok.card ?? "transparent"};--cb:${tok["card-border"] ?? "1px solid transparent"};--cr:${look.shared["card-radius"] ?? "8px"}"
+            @mouseenter=${() => (this.hoverTheme = td.id)}
+            @focus=${() => (this.hoverTheme = td.id)}
+            @click=${() => {
+              this.hoverTheme = "";
+              this.setTop("theme", td.id);
+            }}
+          >
+            <span class="sample"><span class="clock">12<i>:</i>34</span><span class="tile"></span></span>
+            <b>${t(td.name)}</b>
+          </button>`;
+        })}
+      </div>`;
+  }
+
   /** Alle Displays → Laufbänder: was am unteren Rand über allen Seiten läuft */
   private renderLaufband() {
     const c = this.draft!;
@@ -1438,7 +1630,7 @@ export class AmbiframeStudio extends LitElement {
               </div>
               <span class="btns">
                 <button class="small" @click=${() => this.testMoment(ev.id)}>${iconSvg("play")}${t("Testen")}</button>
-                <button class="small ghost" @click=${() => (this.openEvent = open ? "" : ev.id)}>${open ? t("Fertig") : t("Anpassen")}</button>
+                <button class="small ghost" @click=${() => this.toggleEventEditor(ev, open)}>${open ? t("Fertig") : t("Anpassen")}</button>
                 <button
                   class="small ghost danger"
                   title=${t("Löschen")}
@@ -1455,7 +1647,7 @@ export class AmbiframeStudio extends LitElement {
                 </button>
               </span>
             </div>
-            ${open ? this.form(eventFields(c), ev, (v) => this.mutate((cc) => (cc.events[cc.events.findIndex((x) => x.id === ev.id)] = v as EventConfig))) : nothing}
+            ${open ? this.renderEventEditor(ev) : nothing}
           </article>`;
         })}
       </div>
@@ -1473,6 +1665,73 @@ export class AmbiframeStudio extends LitElement {
         @sounds-changed=${(e: CustomEvent<{ sounds: SoundConfig[] }>) => this.mutate((cc) => void (cc.sounds = e.detail.sounds))}
       ></af-sound-library>
     `;
+  }
+
+  /** Moment öffnen: fehlt der Auslöser, steht seine Gruppe gleich offen */
+  private toggleEventEditor(ev: EventConfig, open: boolean): void {
+    this.openEvent = open ? "" : ev.id;
+    if (!open && needsTrigger(ev)) this.openFolds.add(`${ev.id}:trigger`);
+  }
+
+  /** Einen Moment bearbeiten: Grundlage, Stimmung (Kamera, Musik), dann zugeklappte Gruppen */
+  private renderEventEditor(ev: EventConfig) {
+    const c = this.draft!;
+    const save = (v: Record<string, any>) => this.mutate((cc) => (cc.events[cc.events.findIndex((x) => x.id === ev.id)] = v as EventConfig));
+    const all = eventFields(c);
+    const base = all.filter((f) => ["name", "enabled", "kind"].includes(f.key));
+    const visible = (f: Field) => !f.when || f.when(ev as unknown as Record<string, any>);
+    const grouped = new Set(EVENT_GROUPS.flatMap((g) => g.keys));
+    const rest = all.filter((f) => !base.includes(f) && !grouped.has(f.key) && visible(f));
+    const pick = (moods: EventMood[], keys: readonly string[]) => (id: string) => {
+      const mood = moods.find((m) => m.id === id)!;
+      this.mutate((cc) => {
+        const i = cc.events.findIndex((x) => x.id === ev.id);
+        cc.events[i] = { ...applyEventMood(cc.events[i], mood, keys), enabled: true };
+        // Musik nicht doppelt: wer eine Einblendung wählt, braucht die Laufband-Zeile nicht
+        if (ev.kind === "media") cc.design.home_ticker = cc.design.home_ticker?.filter((x) => x.kind !== "music");
+      });
+    };
+    const inTicker = ev.kind === "media" && ev.enabled === false && !!c.design.home_ticker?.some((x) => x.kind === "music" && x.enabled !== false);
+    const tickerMood = html`<button
+      class="mood ${inTicker ? "on" : ""}"
+      aria-pressed=${inTicker ? "true" : "false"}
+      @click=${() =>
+        this.mutate((cc) => {
+          cc.events.find((x) => x.id === ev.id)!.enabled = false;
+          const list = cc.design.home_ticker ?? [];
+          if (!list.some((x) => x.kind === "music")) cc.design.home_ticker = [...list, { kind: "music", entities: ev.entities }];
+        })}
+    >
+      <b>${t("Im Laufband")}</b><small>${t("Nur eine Zeile unten im Laufband für Zuhause, mit kleinem Cover")}</small>
+    </button>`;
+    return html`<div class="event-editor">
+      ${this.form(base, ev, save)}
+      ${ev.kind === "live"
+        ? html`<h4>${t("Wie soll die Kamera erscheinen?")}</h4>${this.moods(CAMERA_MOODS, eventMood(ev, CAMERA_MOODS, CAMERA_KEYS), pick(CAMERA_MOODS, CAMERA_KEYS))}`
+        : ev.kind === "media"
+          ? html`<h4>${t("Wie soll die Musik erscheinen?")}</h4>${this.moods(MUSIC_MOODS, inTicker ? "ticker" : eventMood(ev, MUSIC_MOODS, MUSIC_KEYS), pick(MUSIC_MOODS, MUSIC_KEYS), tickerMood)}
+              ${ev.style === "mini" && !inTicker
+                ? html`<label class="mood-extra"
+                    ><input
+                      type="checkbox"
+                      .checked=${!!ev.mini_full}
+                      @change=${(e: Event) =>
+                        this.mutate((cc) => {
+                          const x = cc.events.find((y) => y.id === ev.id)!;
+                          if ((e.target as HTMLInputElement).checked) x.mini_full = true;
+                          else delete x.mini_full;
+                        })}
+                    /><span>${t("Zusätzlich Vollbild beim Liedwechsel")}<small>${t("Bei jedem neuen Lied kurz das Cover über den ganzen Bildschirm, danach wieder die gewählte Form")}</small></span></label
+                  >`
+                : nothing}`
+          : nothing}
+      ${EVENT_GROUPS.map((g) => {
+        // „Zusätzlich Vollbild“ steht schon als Schalter unter den Stimmungen – nicht ein zweites Mal in der Gruppe
+        const fs = all.filter((f) => g.keys.includes(f.key) && visible(f) && f.key !== "mini_full");
+        return fs.length ? this.fold(`${ev.id}:${g.id}`, g.title, eventGroupSummary(g.id, ev, this.sentence(ev)), this.form(fs, ev, save)) : nothing;
+      })}
+      ${rest.length ? this.fold(`${ev.id}:rest`, "Weitere", "", this.form(rest, ev, save)) : nothing}
+    </div>`;
   }
 
   /** Zustand in Worten, wie HA ihn zeigt (übersetzt) – sonst der Rohwert */
@@ -1523,6 +1782,9 @@ export class AmbiframeStudio extends LitElement {
     for (const [k, v] of Object.entries(guess)) if (v !== undefined && !(Array.isArray(v) && !v.length)) (event as unknown as Record<string, unknown>)[k] = v;
     this.mutate((c) => c.events.push(event));
     this.openEvent = id;
+    // neuer Moment: Auslöser und Darstellung gleich offen
+    this.openFolds.add(`${id}:trigger`);
+    this.openFolds.add(`${id}:look`);
   }
 
   /* ───────── Technik (Display) bzw. Fotos & KI (alle) ───────── */
@@ -1697,7 +1959,9 @@ export class AmbiframeStudio extends LitElement {
   private renderHealth() {
     const issues = checkHealth(this.draft!, this.hass, this.status as never, this.photoHealth, __WB_VERSION__);
     const serious = issues.filter((i) => i.level !== "info").length;
-    const bad = issues.some((i) => i.level === "error");
+    const errors = issues.filter((i) => i.level === "error").length;
+    const warns = serious - errors;
+    const bad = errors > 0;
     const icons = { error: "warning", warn: "info", info: "info" } as const;
     return html`<span class="rel">
       <button
@@ -1708,7 +1972,11 @@ export class AmbiframeStudio extends LitElement {
           if (this.healthOpen) void this.checkPhotos();
         }}
       >
-        ${anyIcon(serious ? "warning" : "check")}<span>${serious ? (serious === 1 ? t("1 Hinweis") : t("{n} Hinweise", { n: serious })) : t("Alles gut")}</span>
+        ${anyIcon(bad ? "warning" : serious ? "info" : "check")}<span
+          >${serious
+            ? [errors ? (errors === 1 ? t("1 Fehler") : t("{n} Fehler", { n: errors })) : "", warns ? (warns === 1 ? t("1 Hinweis") : t("{n} Hinweise", { n: warns })) : ""].filter(Boolean).join(" · ")
+            : t("Alles gut")}</span
+        >
       </button>
       ${this.healthOpen
         ? html`<div class="healthpanel">
@@ -1808,12 +2076,12 @@ export class AmbiframeStudio extends LitElement {
         <label class="inline" title=${t("Weitere Einstellungen, eigene Bedingungen, Farben, CSS und YAML")}
           ><input type="checkbox" .checked=${this.advanced} @change=${(e: Event) => this.setAdvanced((e.target as HTMLInputElement).checked)} />${t("Erweitert")}</label
         >
-        <button class="icon" title=${t("Rückgängig (⌘Z)")} ?disabled=${!this.canUndo} @click=${() => this.undo()}>↶</button>
-        <button class="icon" title=${t("Wiederholen (⇧⌘Z)")} ?disabled=${!this.canRedo} @click=${() => this.redo()}>↷</button>
-        <button class="ghost" ?disabled=${!this.dirty} @click=${() => this.load()}>${t("Verwerfen")}</button>
-        <button class="primary" ?disabled=${!this.dirty || this.saving} @click=${() => this.save()}>
-          ${this.saving ? t("Speichert …") : this.dirty ? t("Speichern") : t("Gespeichert")}
-        </button>
+        <button class="icon hist" title=${t("Rückgängig (⌘Z)")} aria-label=${t("Rückgängig (⌘Z)")} ?disabled=${!this.canUndo} @click=${() => this.undo()}>${iconSvg("undo")}</button>
+        <button class="icon hist" title=${t("Wiederholen (⇧⌘Z)")} aria-label=${t("Wiederholen (⇧⌘Z)")} ?disabled=${!this.canRedo} @click=${() => this.redo()}>${iconSvg("redo")}</button>
+        ${this.dirty || this.saving
+          ? html`<button class="ghost" ?disabled=${this.saving} @click=${() => this.load()}>${t("Verwerfen")}</button>
+              <button class="primary" ?disabled=${this.saving} @click=${() => this.save()}>${this.saving ? t("Speichert …") : t("Speichern")}</button>`
+          : html`<span class="saved" role="status">${iconSvg("check")}${t("Gespeichert")}</span>`}
       </div>
       ${this.view === "overview" ? this.renderOverview() : this.view === "page" ? this.renderPageView() : this.renderDisplay()}
       ${this.renderWizard()}
@@ -1829,13 +2097,13 @@ export class AmbiframeStudio extends LitElement {
       --s-ink: var(--primary-text-color, #eceef2);
       --s-mute: var(--secondary-text-color, #9aa1ab);
       --s-line: var(--divider-color, rgba(255, 255, 255, 0.1));
-      /* Messing wie der Doppelpunkt der Uhr – gilt für alles im Studio, auch für eingebettete HA-Felder */
-      --primary-color: #c9a063;
-      --text-primary-color: #1f1810;
+      /* Bernstein wie der Lichtpunkt im Logo (docs/brand) – gilt für alles im Studio, auch für eingebettete HA-Felder */
+      --primary-color: #f4b14a;
+      --text-primary-color: #0f1012;
       --s-acc: var(--primary-color);
       --s-on-acc: var(--text-primary-color);
-      /* Messing als Schrift: zur Textfarbe hin gemischt, damit es hell wie dunkel lesbar bleibt */
-      --s-acc-ink: color-mix(in srgb, #a87b3c 70%, var(--s-ink));
+      /* Bernstein als Schrift: das kräftigere Bernstein für hellen Grund, zur Textfarbe hin gemischt – hell wie dunkel lesbar */
+      --s-acc-ink: color-mix(in srgb, #ee9a1f 70%, var(--s-ink));
       --s-ok: var(--success-color, #81c784);
       --s-bad: var(--error-color, #e57373);
       --s-warn: var(--warning-color, #ffb74d);
@@ -1864,6 +2132,10 @@ export class AmbiframeStudio extends LitElement {
     h1 {
       margin: 0 0 4px;
       font-size: 26px;
+    }
+    h1 .brand-mark {
+      vertical-align: -6px;
+      margin-right: 10px;
     }
     h2 {
       margin: 0;
@@ -1926,6 +2198,29 @@ export class AmbiframeStudio extends LitElement {
     button.icon {
       padding: 4px 8px;
       line-height: 1;
+    }
+    /* Rückgängig/Wiederholen: gut sichtbar, ausgegraut nur wenn nichts zu tun ist */
+    button.hist {
+      display: inline-flex;
+      padding: 6px;
+    }
+    button.hist .ic {
+      width: 22px;
+      height: 22px;
+    }
+    /* „Gespeichert“ ist ein Zustand, kein Knopf */
+    .saved {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      color: var(--s-mute);
+      padding: 0 6px;
+    }
+    .saved .ic {
+      width: 16px;
+      height: 16px;
+      color: var(--s-ok);
     }
     .ic {
       width: 20px;
@@ -2450,7 +2745,7 @@ export class AmbiframeStudio extends LitElement {
       background: #fff;
       transition: transform 0.2s;
     }
-    /* „an“ ist ein Zustand, keine Auswahl – neutral, damit Messing für Auswahl und Hauptaktion bleibt */
+    /* „an“ ist ein Zustand, keine Auswahl – neutral, damit Bernstein für Auswahl und Hauptaktion bleibt */
     .switch input:checked + span {
       background: color-mix(in srgb, var(--s-ink) 78%, transparent);
     }
@@ -2470,6 +2765,112 @@ export class AmbiframeStudio extends LitElement {
     summary {
       cursor: pointer;
       font-weight: 600;
+    }
+    /* Stimmungen: eine Wahl setzt mehrere Einstellungen */
+    .moods {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 8px;
+      margin: 8px 0 12px;
+    }
+    .mood {
+      display: grid;
+      gap: 4px;
+      align-content: start;
+      text-align: left;
+      padding: 12px 14px;
+      border-radius: 12px;
+      border: 1px solid var(--s-line);
+      background: var(--s-card);
+      cursor: pointer;
+      transition:
+        border-color 0.15s,
+        background 0.15s;
+    }
+    .mood small {
+      color: var(--s-mute);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+    .mood.on {
+      border-color: var(--s-acc);
+      background: color-mix(in srgb, var(--s-acc) 14%, var(--s-card));
+      box-shadow: inset 0 0 0 1px var(--s-acc);
+    }
+    .mood:focus-visible {
+      outline: 2px solid var(--s-acc);
+      outline-offset: 2px;
+    }
+    /* Zugeklappte Gruppe: Titel links, was eingestellt ist rechts daneben */
+    .mood-extra {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      margin: 12px 0 4px;
+      cursor: pointer;
+    }
+    .mood-extra input {
+      margin-top: 3px;
+    }
+    .mood-extra small {
+      display: block;
+      color: var(--secondary-text-color);
+      margin-top: 2px;
+    }
+    details.more-themes > summary {
+      cursor: pointer;
+      margin: 18px 0 4px;
+      color: var(--primary-color);
+      font-weight: 500;
+    }
+    details.fold {
+      padding: 0;
+    }
+    details.fold > summary {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      column-gap: 10px;
+      row-gap: 2px;
+      align-items: baseline;
+      padding: 12px 16px;
+      list-style: none;
+    }
+    details.fold > summary::-webkit-details-marker {
+      display: none;
+    }
+    details.fold > summary::before {
+      content: "▸";
+      color: var(--s-mute);
+      transition: transform 0.15s;
+    }
+    details.fold[open] > summary::before {
+      transform: rotate(90deg);
+    }
+    details.fold > summary b {
+      flex: none;
+    }
+    /* was eingestellt ist: unter dem Titel, höchstens zwei Zeilen */
+    details.fold > summary span {
+      grid-column: 2;
+      min-width: 0;
+      color: var(--s-mute);
+      font-weight: 400;
+      font-size: 13px;
+      line-height: 1.35;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    details.fold > summary span:empty {
+      display: none;
+    }
+    .fold-body {
+      padding: 0 16px 12px;
+    }
+    .event-editor h4 {
+      margin: 16px 0 0;
+      font-size: 14px;
     }
     .wiz {
       position: sticky;
@@ -2549,11 +2950,27 @@ export class AmbiframeStudio extends LitElement {
       .jump {
         display: none;
       }
-      /* Vorschau oben – das Ergebnis steht vor den Einstellungen */
+      /* Vorschau oben und beim Scrollen stehen bleibend, aber kompakt – Stile wählen und Ergebnis sehen zugleich */
       .preview {
         order: -1;
         border-left: 0;
         border-bottom: 1px solid var(--s-line);
+        position: sticky;
+        top: 0;
+        z-index: 5;
+        background: var(--s-bg);
+        padding: 10px 16px;
+        gap: 8px;
+      }
+      .preview .screen {
+        height: min(30vh, 260px);
+        width: auto;
+        max-width: 100%;
+        align-self: center;
+        border-width: 4px;
+      }
+      .preview .hint {
+        display: none;
       }
       /* Eintrag in zwei Zeilen: Name und „Wann?“, darunter Dauer und Knöpfe */
       .playlist li {
@@ -2613,6 +3030,9 @@ export class AmbiframeStudio extends LitElement {
       color: var(--s-bad);
     }
     .health.warn {
+      color: inherit;
+    }
+    .health.warn .ic {
       color: var(--s-warn);
     }
     .health.ok .ic {

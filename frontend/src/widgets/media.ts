@@ -3,7 +3,7 @@ import { t } from "../i18n";
 import { LitElement, css, html, nothing, type PropertyValues } from "lit";
 import { widgetStyles } from "../styles";
 import type { Hass } from "../types";
-import { stateOf } from "../util";
+import { stateOf, videoRatio } from "../util";
 import { AfWidget, define } from "./base";
 
 declare global {
@@ -95,6 +95,7 @@ export class AfCameraView extends LitElement {
     url: {},
     mode: {},
     osd: {},
+    poster: {},
     refresh: { type: Number },
     native: { state: true },
     shown: { state: true },
@@ -108,7 +109,6 @@ export class AfCameraView extends LitElement {
       width: 100%;
       height: 100%;
       overflow: hidden;
-      background: #000;
     }
     img,
     ha-camera-stream,
@@ -123,7 +123,12 @@ export class AfCameraView extends LitElement {
     ha-camera-stream {
       --video-max-height: 100%;
     }
-    /* YouTube füllt die Fläche wie object-fit: cover */
+    /* Vollbild-Kamera: ganzes Bild im Originalformat, Ränder zeigen den Hintergrund des Stils */
+    :host([contain]) img,
+    :host([contain]) .ph {
+      object-fit: contain;
+    }
+    /* Videos im Originalformat (wie object-fit: contain) – freie Ränder zeigen den Hintergrund des Stils */
     :host {
       container-type: size;
     }
@@ -131,18 +136,21 @@ export class AfCameraView extends LitElement {
       position: absolute;
       left: 50%;
       top: 50%;
-      width: max(100cqw, 177.78cqh);
-      height: max(100cqh, 56.25cqw);
+      width: min(100cqw, 177.78cqh);
+      height: min(100cqh, 56.25cqw);
       transform: translate(-50%, -50%);
       border: 0;
       pointer-events: none;
     }
+    /* Webcam-Video so groß wie möglich im eigenen Seitenverhältnis (--ar aus den Metadaten), mittig, Ecken am Bild selbst */
     video {
       position: absolute;
       inset: 0;
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
+      margin: auto;
+      width: min(100cqw, calc(100cqh * var(--ar, 1.7778)));
+      height: min(100cqh, calc(100cqw / var(--ar, 1.7778)));
+      object-fit: contain;
+      border-radius: var(--af-radius, 0);
     }
     .ph {
       background: radial-gradient(ellipse 34% 50% at 50% 58%, rgba(190, 205, 195, 0.16), transparent 70%),
@@ -175,6 +183,9 @@ export class AfCameraView extends LitElement {
   /** Webcam-Bild, das gerade angezeigt wird – das nächste wird erst vorgeladen */
   private shown?: string;
   mode: "live" | "snapshot" = "live";
+  /** Vorschaubild bis zum ersten Live-Bild: vorgegeben (z. B. das eine Standbild von „Wer war an der Tür?“), "" = keins –
+   *  sonst holt jede Ansicht ein eigenes Standbild von der Kamera (weckt Akku-Kameras jedes Mal) */
+  poster?: string;
   osd = "";
   refresh = 0;
   private refreshTimer?: number;
@@ -257,7 +268,7 @@ export class AfCameraView extends LitElement {
         return html`<iframe src=${src} allow="autoplay; encrypted-media" title="Webcam"></iframe>`;
       }
       case "hls":
-        return html`<video src=${url} autoplay muted playsinline loop></video>`;
+        return html`<video src=${url} autoplay muted playsinline loop @loadedmetadata=${videoRatio}></video>`;
       case "mjpeg":
         return this.broken ? this.renderBroken() : html`<img src=${url} alt="" @error=${this.onBroken} />`;
       default:
@@ -282,7 +293,7 @@ export class AfCameraView extends LitElement {
     }
     if (!s) return html`<div class="ph"><span>${this.osd}</span></div>`;
     // Standbild darunter, bis der Live-Player das erste Bild hat (Türklingel: Stream braucht oft Sekunden)
-    const still = s.attributes.entity_picture as string | undefined;
+    const still = this.poster ?? (s.attributes.entity_picture as string | undefined);
     const poster = still ? html`<img src=${still} alt="" />` : html`<div class="ph"><span>${this.osd || t("Kamera wird verbunden …")}</span></div>`;
     if (this.mode === "live" && this.native) {
       return html`${poster}<ha-camera-stream .hass=${this.hass} .stateObj=${s} .muted=${true} .controls=${false} .fitMode=${"cover"} allow-exoplayer></ha-camera-stream>`;

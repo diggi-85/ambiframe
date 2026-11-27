@@ -213,6 +213,7 @@ export const WIDGET_FIELDS: Record<string, Field[]> = {
         { key: "windows", label: "Fenster", type: "entities", domains: ["binary_sensor"] },
       ],
     },
+    { key: "advice", label: "Luftfeuchte bewerten (lüften, zu trocken)", type: "boolean" },
     { key: "cold", label: "Kalt unter °C", type: "number", placeholder: "16" },
     { key: "warm", label: "Warm über °C", type: "number", placeholder: "26" },
     { key: "columns", label: "Spalten", type: "number", min: 1, max: 6, placeholder: "3" },
@@ -367,6 +368,10 @@ export const WIDGET_FIELDS: Record<string, Field[]> = {
       type: "yaml",
       help: "- label: Strom\n  rows:\n    - {name: Wohnung, entity: sensor.…, price: 0.37}\n    - {name: Trockner, entity: sensor.…, cost: sensor.…, hide_zero: true}",
     },
+    { key: "period", label: "Zeitraum", type: "select", options: [[undefined, "Tag (gestern, ab „Heute ab“ der laufende)"], ["week", "Woche (Rückblick, sonntags ab „Heute ab“ die laufende)"]] },
+    { key: "profile.entity", label: "Stundenverlauf: Verbrauch", type: "entity", domains: ["sensor"], help: "Zähler (kWh) – zeigt, wann wie viel Strom lief" },
+    { key: "profile.solar", label: "Stundenverlauf: PV", type: "entity", domains: ["sensor"], help: "Erzeugung (kWh) – wird darübergelegt" },
+    { key: "compare", label: "Vergleich mit dem Durchschnitt", type: "boolean", default: true, help: "Tagesbilanz: Ø der 7 Tage davor, Wochenrückblick: Ø der 4 Wochen davor" },
     LABEL,
   ],
   qr: [
@@ -434,6 +439,12 @@ export const WIDGET_FIELDS: Record<string, Field[]> = {
     },
     { key: "headlines", label: "Schlagzeilen dazu", type: "boolean", default: true, when: (v) => v.layout !== "fullscreen" },
     {
+      key: "until_end",
+      label: "Weiter erst nach dem Video",
+      type: "boolean",
+      help: "Die Seite bleibt, bis das Video zu Ende ist – statt nach ihrer festen Dauer (höchstens 5 Minuten). Spielt das Gerät nicht ab, geht es gleich weiter.",
+    },
+    {
       key: "feeds",
       label: "Quellen der Schlagzeilen",
       type: "list",
@@ -441,7 +452,7 @@ export const WIDGET_FIELDS: Record<string, Field[]> = {
       help: "Leer = tagesschau.",
       itemLabel: (f) => NEWS_PRESETS.find(([id]) => id === f.value)?.[1] ?? f.value ?? "Quelle",
       newItem: () => ({ value: "tagesschau" }),
-      fields: [{ key: "value", label: "Quelle", type: "text", suggestions: NEWS_PRESETS, placeholder: "tagesschau … oder https://…" }],
+      fields: [{ key: "value", label: "Quelle", type: "text", check: "feed", suggestions: NEWS_PRESETS, placeholder: "tagesschau … oder https://…" }],
       when: (v) => v.headlines !== false && v.layout !== "fullscreen",
     },
     { key: "max", label: "Schlagzeilen", type: "number", min: 1, max: 12, placeholder: "5", when: (v) => v.headlines !== false && v.layout !== "fullscreen" },
@@ -461,7 +472,7 @@ export const WIDGET_FIELDS: Record<string, Field[]> = {
       help: "Vorschlag wählen (z. B. bbc, guardian, tagesschau) oder die Adresse eines beliebigen RSS-/Atom-Feeds eintragen. Leer = Quellen in der Sprache der Anzeige.",
       itemLabel: (f) => NEWS_PRESETS.find(([id]) => id === f.value)?.[1] ?? f.value ?? "Quelle",
       newItem: () => ({ value: defaultFeeds()[0] }),
-      fields: [{ key: "value", label: "Quelle", type: "text", suggestions: NEWS_PRESETS, placeholder: "bbc, tagesschau … oder https://…" }],
+      fields: [{ key: "value", label: "Quelle", type: "text", check: "feed", suggestions: NEWS_PRESETS, placeholder: "bbc, tagesschau … oder https://…" }],
     },
     { key: "interval", label: "Wechsel nach (s)", type: "number", min: 5, placeholder: "14", when: (v) => !v.variant },
     { key: "max", label: "Meldungen", type: "number", min: 1, max: 30, placeholder: "8" },
@@ -666,6 +677,11 @@ export const WIDGET_FIELDS: Record<string, Field[]> = {
     { key: "interval", label: "Wechsel nach (s)", type: "number", min: 2, max: 120, placeholder: "6" },
     { key: "frame", label: "Schwarzes Gehäuse", type: "boolean", default: true },
   ],
+  hometiles: [
+    { key: "label", label: "Überschrift", type: "text", placeholder: "z. B. Eingang" },
+    { key: "entities", label: "Geräte", type: "entities", domains: ["light", "switch", "fan", "lock", "cover", "climate", "media_player", "input_boolean", "sensor"], help: "Eingeschaltete erscheinen hell. Antippen schaltet Licht, Schalter und Ventilatoren um." },
+  ],
+  pills: [],
   card: [{ key: "card", label: "Lovelace-Karte (YAML)", type: "yaml", help: "Jede Karte aus dem Dashboard, z. B. type: entities …" }],
   price: [
     LABEL,
@@ -818,7 +834,7 @@ export const WIDGET_FIELDS: Record<string, Field[]> = {
   media: [
     LABEL,
     { key: "entities", label: "Player", type: "entities", domains: ["media_player"] },
-    { key: "variant", label: "Darstellung", type: "select", options: [[undefined, "Kompakt"], ["full", "Ganze Seite mit großem Cover"]] },
+    { key: "variant", label: "Darstellung", type: "select", options: [[undefined, "Kompakt"], ["full", "Ganze Seite mit großem Cover"], ["side", "Wie beim Liedwechsel: Cover links, Text rechts"]] },
     { key: "show_paused", label: "Auch pausiert zeigen", type: "boolean" },
   ],
   appliances: [
@@ -837,8 +853,10 @@ export const WIDGET_FIELDS: Record<string, Field[]> = {
         { key: "progress", label: "Fortschritt %", type: "entity", domains: ["sensor"] },
         { key: "end", label: "Endzeit", type: "entity", domains: ["sensor"] },
         { key: "cost", label: "Kosten", type: "entity", domains: ["sensor"] },
+        { key: "program", label: "Programm", type: "entity", domains: ["sensor", "select", "input_select", "input_text"] },
       ],
     },
+    { key: "variant", label: "Darstellung", type: "select", options: [[undefined, "Liste"], ["cards", "Karten mit Animation – je laufendem Gerät"]] },
     { key: "empty_text", label: "Text wenn nichts läuft", type: "text", placeholder: "Nichts läuft gerade" },
   ],
   consumers: [
@@ -962,6 +980,24 @@ export const AMBIENT_OPTIONS: [string, string][] = [
   ["fireworks", "Feuerwerk"],
   ["hearts", "Herzen"],
 ];
+const MOTION_STYLE_OPTIONS: [string, string][] = [
+  ["soft", "Ruhig – wachsen, einzeichnen, hochzählen"],
+  ["spring", "Federnd – mit leichtem Nachschwingen"],
+  ["fade", "Einblenden – nur sanft erscheinen"],
+  ["off", "Aus"],
+];
+const MOTION_STRENGTH_OPTIONS: [string, string][] = [
+  ["subtle", "dezent – kurzer Weg"],
+  ["normal", "normal"],
+  ["strong", "kräftig – voller Weg, Karten steigen weiter auf"],
+];
+const MOTION_STAGGER_OPTIONS: [string, string][] = [
+  ["off", "aus – alle zugleich"],
+  ["soft", "sanft"],
+  ["strong", "deutlich"],
+];
+const isMoving = (v: Record<string, any>) => v.design?.chart_motion !== "off";
+
 const TRANSITION_OPTIONS: [string, string][] = [
   ["fade", "Überblenden"],
   ["blur", "Weich (Unschärfe)"],
@@ -970,6 +1006,10 @@ const TRANSITION_OPTIONS: [string, string][] = [
   ["cube", "Würfel (3D)"],
   ["flip", "Umdrehen (3D)"],
   ["page", "Blättern"],
+  ["curtain", "Vorhang"],
+  ["circle", "Kreis aus der Mitte"],
+  ["rise", "Aufsteigen (Karten nacheinander)"],
+  ["random", "Zufällig – jedes Mal anders"],
 ];
 
 /** Aktion beim Antippen / langen Drücken eines Widgets */
@@ -1027,7 +1067,7 @@ export const WIDGET_LOOK_FIELDS: Field[] = [
     label: "Als Karte",
     type: "select",
     options: [[undefined, "automatisch (wie der Stil)"], [true, "ja"], [false, "nein"]],
-    help: "Fläche, Rand und Radius des Stils. Kachel-Stile (Kacheln, Tonal, Cockpit) zeigen Widgets automatisch als Karte.",
+    help: "Fläche, Rand und Radius des Stils. Kachel-Stile (Daheim, Wohn-App, Cockpit) zeigen Widgets automatisch als Karte.",
   },
   { key: "look.bg", label: "Kartenfarbe", type: "color", when: (v) => v.look?.card !== false },
   { key: "look.bg_opacity", label: "Karten-Deckkraft (%)", type: "number", min: 0, max: 100, step: 5, placeholder: "100", when: (v) => v.look?.card !== false },
@@ -1059,6 +1099,27 @@ export const WIDGET_LOOK_FIELDS: Field[] = [
   { key: "look.size", label: "Größe (%)", type: "number", min: 50, max: 200, step: 5, placeholder: "100" },
   { key: "look.opacity", label: "Deckkraft (%)", type: "number", min: 10, max: 100, step: 5, placeholder: "100" },
   { key: "look.padding", label: "Innenabstand (px)", type: "number", min: 0, max: 80, placeholder: "0" },
+  {
+    key: "look.motion",
+    label: "Bewegung",
+    type: "select",
+    options: [
+      [undefined, "wie die Seite"],
+      ["off", "aus – diese Kachel steht still"],
+    ],
+    help: "Wachsen, Hochzählen, Gleiten und Erscheinen nur dieser Kachel",
+  },
+  {
+    key: "look.motion_duration",
+    label: "Dauer der Bewegung (s)",
+    type: "number",
+    min: 0.2,
+    max: 5,
+    step: 0.1,
+    placeholder: "wie die Seite",
+    help: "z. B. 2.5: das Garagentor gleitet gemächlich, der Rest bleibt flott",
+    when: (v) => v.look?.motion !== "off",
+  },
 ];
 
 /** Eigene Farben für Hell bzw. Dunkel */
@@ -1113,7 +1174,7 @@ export const PAGE_FIELDS: Field[] = [
     key: "background.type",
     label: "Hintergrund",
     type: "select",
-    options: [["none", "Stil-Farbe"], ["photo", "Foto"], ["camera", "Kamera / Webcam"], ["color", "Eigene Farbe"]],
+    options: [["none", "Stil-Farbe"], ["photo", "Foto"], ["camera", "Kamera / Webcam"], ["color", "Eigene Farbe"], ["music", "Musik-Cover (unscharf, wie beim Liedwechsel)"]],
   },
   { key: "background.color", label: "Farbe", type: "color", when: (v) => v.background?.type === "color" },
   { key: "background.entity", label: "Kamera", type: "entity", domains: ["camera"], when: (v) => v.background?.type === "camera" && !v.background?.url },
@@ -1171,8 +1232,24 @@ export const PAGE_FIELDS: Field[] = [
     options: [[undefined, "wie das Display"], ...AMBIENT_OPTIONS],
     when: (v) => v.palette !== "night",
   },
+  {
+    key: "tickers",
+    label: "Laufbänder auf dieser Seite",
+    type: "select",
+    options: [
+      [undefined, "wie eingestellt"],
+      ["no_news", "ohne Nachrichten-Laufband"],
+      ["no_home", "ohne Laufband für Zuhause"],
+      ["none", "keine Laufbänder"],
+    ],
+    help: "Z. B. für Videos oder Fotos, bei denen die Bänder unten stören.",
+  },
   { key: "transition.type", label: "Übergang", type: "select", options: [[undefined, "wie das Display"], ...TRANSITION_OPTIONS], advanced: true },
   { key: "transition.duration", label: "Übergang (s)", type: "number", min: 0.2, max: 10, step: 0.1, placeholder: "wie das Display", advanced: true },
+  { key: "motion.style", label: "Zahlen und Diagramme", type: "select", options: [[undefined, "wie im Design"], ...MOTION_STYLE_OPTIONS], advanced: true },
+  { key: "motion.duration", label: "Bewegung (s)", type: "number", min: 0.2, max: 5, step: 0.1, placeholder: "wie im Design", advanced: true },
+  { key: "motion.strength", label: "Deutlichkeit", type: "select", options: [[undefined, "wie im Design"], ...MOTION_STRENGTH_OPTIONS], advanced: true },
+  { key: "motion.stagger", label: "Karten nacheinander", type: "select", options: [[undefined, "wie im Design"], ...MOTION_STAGGER_OPTIONS], advanced: true },
   { key: "show_if", label: "Nur anzeigen wenn …", type: "conditions" },
   {
     key: "css",
@@ -1192,6 +1269,14 @@ export const EVENT_KINDS: { id: EventConfig["kind"]; name: string; short: string
   { id: "effect", name: "Anlass (Konfetti, Feuerwerk, Herzen …)", short: "Anlass", icon: "sparkle" },
 ];
 
+/** Musik-Banner (Karte oder Mini-Karte) – nicht das Vollbild */
+const banner = (v: Record<string, any>) => v.kind === "media" && v.style !== "fullscreen";
+const corners: [string | undefined, string][] = [
+  [undefined, "unten rechts"],
+  ["bottom-left", "unten links"],
+  ["top-right", "oben rechts"],
+  ["top-left", "oben links"],
+];
 const titled = (v: Record<string, any>) => ["alarm", "live", "info"].includes(v.kind);
 const is = (...kinds: string[]) => (v: Record<string, any>) => kinds.includes(v.kind);
 
@@ -1263,7 +1348,7 @@ export const eventFields = (config: AmbiframeConfig): Field[] => [
       ["top-right", "oben rechts"],
       ["top-left", "oben links"],
     ],
-    when: (v) => v.kind === "media" && v.style === "mini",
+    when: banner,
   },
   {
     key: "mini_size",
@@ -1274,10 +1359,10 @@ export const eventFields = (config: AmbiframeConfig): Field[] => [
       [undefined, "normal"],
       ["large", "groß"],
     ],
-    when: (v) => v.kind === "media" && v.style === "mini",
+    when: banner,
   },
-  { key: "mini_cover", label: "Cover zeigen", type: "boolean", default: true, when: (v) => v.kind === "media" && v.style === "mini" },
-  { key: "mini_progress", label: "Fortschritt zeigen", type: "boolean", default: true, when: (v) => v.kind === "media" && v.style === "mini" },
+  { key: "mini_cover", label: "Cover zeigen", type: "boolean", default: true, when: banner },
+  { key: "mini_progress", label: "Fortschritt zeigen", type: "boolean", default: true, when: banner },
   {
     key: "mini_background",
     label: "Hintergrund",
@@ -1286,14 +1371,33 @@ export const eventFields = (config: AmbiframeConfig): Field[] => [
       [undefined, "Karte"],
       ["none", "ohne (nur Text und Cover)"],
     ],
+    when: banner,
+  },
+  {
+    key: "mini_layout",
+    label: "Form",
+    type: "select",
+    options: [
+      [undefined, "Karte – Cover links, Text rechts"],
+      ["bar", "Leiste über die ganze Breite"],
+      ["cover", "Großes Cover, Text darunter"],
+      ["pill", "Mini – eine Zeile mit rundem Cover"],
+    ],
+    when: banner,
+  },
+  {
+    key: "mini_full",
+    label: "Zusätzlich Vollbild beim Liedwechsel",
+    type: "boolean",
     when: (v) => v.kind === "media" && v.style === "mini",
+    help: "Bei jedem neuen Lied kurz das Cover über den ganzen Bildschirm, danach wieder die gewählte Form",
   },
   {
     key: "interval",
     label: "Zwischendurch alle (min)",
     type: "number",
     min: 0,
-    when: (v) => v.kind === "media" && v.style !== "mini",
+    when: (v) => v.kind === "media" && (v.style !== "mini" || !!v.mini_full),
     help: "Während der Wiedergabe erneut zeigen; leer oder 0 = nur beim Liedwechsel",
   },
   { key: "camera", label: "Kamera", type: "entity", domains: ["camera"], when: is("alarm", "live") },
@@ -1349,6 +1453,40 @@ export const eventFields = (config: AmbiframeConfig): Field[] => [
     help: "Z. B. die Waschmaschine läuft wieder an – dann ist die alte Erinnerung erledigt.",
   },
   { key: "duration", label: "Dauer (s)", type: "number", min: 3, placeholder: "30", when: is("live") },
+  { key: "open_full", label: "Gleich im Vollbild", type: "boolean", when: is("live"), help: "Statt klein in der Ecke sofort die ganze Fläche" },
+  { key: "both_full", label: "Zwei Kameras gleichzeitig: Vollbild", type: "boolean", when: (v) => v.kind === "live" && !v.open_full, help: "Melden zwei Kameras zugleich Bewegung, beide Streams bildschirmfüllend nebeneinander" },
+  {
+    key: "pip_tap",
+    label: "Antippen",
+    type: "select",
+    options: [
+      [undefined, "Kamera im Vollbild"],
+      ["close", "schließen"],
+    ],
+    when: (v) => v.kind === "live" && !v.open_full,
+  },
+  {
+    key: "full_duration",
+    label: "Vollbild endet nach (s)",
+    type: "number",
+    min: 0,
+    placeholder: "erst beim Schließen",
+    when: is("live"),
+    help: "Leer oder 0 = läuft, bis man sie antippt. Danach zurück zu Ambiframe.",
+  },
+  { key: "pip_position", label: "Ecke", type: "select", options: corners, when: (v) => v.kind === "live" && !v.open_full },
+  { key: "pip_size", label: "Größe", type: "select", options: [["small", "klein"], [undefined, "normal"], ["large", "groß"]], when: (v) => v.kind === "live" && !v.open_full },
+  {
+    key: "pip_layout",
+    label: "Form",
+    type: "select",
+    options: [
+      [undefined, "Bild mit Text darunter"],
+      ["video", "nur Bild, Titel darauf"],
+    ],
+    when: (v) => v.kind === "live" && !v.open_full,
+  },
+  { key: "pip_snooze", label: "Knöpfe „ausblenden“", type: "boolean", default: true, when: is("live") },
   { key: "duration", label: "Dauer (s)", type: "number", min: 3, placeholder: "60", when: is("info") },
   { key: "duration", label: "Dauer (s)", type: "number", min: 3, placeholder: "12 / Vollbild 15", when: is("media") },
   { key: "duration", label: "Mindestens (s)", type: "number", min: 3, placeholder: "60", when: is("page"), help: "Ab dem letzten Auslösen; solange ein Melder an ist, bleibt die Seite ohnehin." },
@@ -1620,6 +1758,17 @@ export const DISPLAY_DESIGN_FIELDS: Field[] = [
   { key: "design.card_style", label: "Karten", type: "select", options: [[undefined, "wie alle Displays"], ...CARD_STYLE_OPTIONS.slice(1)] },
   { key: "design.gap", label: "Abstand der Kacheln (px)", type: "number", min: 0, max: 64, placeholder: "wie alle Displays" },
   {
+    key: "design.ticker_look",
+    label: "Form der Laufbänder",
+    type: "select",
+    options: [
+      [undefined, "wie alle Displays"],
+      ["bar", "Leiste über die ganze Breite"],
+      ["float", "Schwebend – abgerundet, mit Abstand zum Rand"],
+      ["line", "Nur Linie – ohne Fläche, sanfter Verlauf"],
+    ],
+  },
+  {
     key: "design.css",
     label: "Eigenes CSS (nur dieses Display)",
     type: "textarea",
@@ -1809,7 +1958,33 @@ export const MOTION_FIELDS: Field[] = [
     help: "Läuft Musik, nehmen Hintergrund, Akzent und Karten die Farben des Album-Covers an – danach blendet es weich zurück.",
   },
   { key: "design.cover_players", label: "Nur diese Player", type: "entities", domains: ["media_player"], help: "Leer = alle", when: (v) => !!v.design?.cover_colors },
-  { key: "design.count_up", label: "Zahlen und Balken bewegen", type: "boolean", default: true, help: "Große Zahlen zählen zum neuen Wert, Balken wachsen beim Seitenwechsel. Auf E-Ink und bei „weniger Bewegung“ immer aus." },
+  {
+    key: "design.chart_motion",
+    label: "Zahlen, Balken und Diagramme",
+    type: "select",
+    options: [[undefined, "wie der Stil"], ...MOTION_STYLE_OPTIONS],
+    help: "Gilt für alle Balken, Kurven, Ringe und Zahlen. Beginnt erst, wenn der Seitenwechsel die Seite eingeblendet hat. Auf E-Ink und bei „weniger Bewegung“ immer still.",
+  },
+  { key: "design.motion.duration", label: "Dauer der Bewegung (s)", type: "number", min: 0.2, max: 5, step: 0.1, placeholder: "1.1", help: "z. B. 0.7 flott · 1.8 gemächlich", when: isMoving },
+  { key: "design.motion.strength", label: "Deutlichkeit", type: "select", options: [[undefined, "normal"], ...MOTION_STRENGTH_OPTIONS.filter(([k]) => k !== "normal")], when: isMoving },
+  { key: "design.motion.stagger", label: "Karten nacheinander", type: "select", options: [[undefined, "sanft"], ...MOTION_STAGGER_OPTIONS.filter(([k]) => k !== "soft")], when: isMoving },
+  {
+    key: "design.motion.highlight",
+    label: "Neue Werte hervorheben",
+    type: "select",
+    options: [[undefined, "kurz aufleuchten"], ["arrow", "Pfeil ▲▼"], ["both", "aufleuchten und Pfeil"], ["off", "aus"]],
+    help: "Wenn sich ein Wert ändert, während die Seite zu sehen ist – z. B. Strompreis oder Temperatur",
+    when: isMoving,
+  },
+  { key: "design.motion.count", label: "Hochzählen", type: "select", options: [[undefined, "alle Zahlen"], ["big", "nur große Zahlen"], ["none", "keine"]], when: isMoving, advanced: true },
+  {
+    key: "design.motion.when",
+    label: "Bewegen bei neuen Werten",
+    type: "select",
+    options: [[undefined, "ja – Zahlen und Balken gleiten zum neuen Wert"], ["page", "nein – nur beim Erscheinen der Seite"]],
+    when: isMoving,
+    advanced: true,
+  },
 ];
 
 /** Nachrichten-Laufband über allen Seiten (Alle Displays → Laufbänder) */
@@ -1823,7 +1998,14 @@ export const NEWS_BAND_FIELDS: Field[] = [
     help: "Leer = Quellen in der Sprache der Anzeige.",
     itemLabel: (f) => NEWS_PRESETS.find(([id]) => id === f.value)?.[1] ?? f.value ?? "Quelle",
     newItem: () => ({ value: defaultFeeds()[0] }),
-    fields: [{ key: "value", label: "Quelle", type: "text", suggestions: NEWS_PRESETS, placeholder: "bbc, tagesschau … oder https://…" }],
+    fields: [{ key: "value", label: "Quelle", type: "text", check: "feed", suggestions: NEWS_PRESETS, placeholder: "bbc, tagesschau … oder https://…" }],
+    when: (v) => !!v.design?.news_band?.enabled,
+  },
+  {
+    key: "design.news_band.interleave",
+    label: "Quellen abwechseln",
+    type: "boolean",
+    help: "Je eine Meldung jeder Quelle im Wechsel – sonst die neuesten zuerst, egal von wem.",
     when: (v) => !!v.design?.news_band?.enabled,
   },
   {
@@ -1838,6 +2020,18 @@ export const NEWS_BAND_FIELDS: Field[] = [
 
 /** Laufband für Zuhause (Alle Displays → Laufbänder) */
 export const HOME_TICKER_FIELDS: Field[] = [
+  {
+    key: "design.ticker_look",
+    label: "Form der Laufbänder",
+    type: "select",
+    options: [
+      [undefined, "Passend zum Stil"],
+      ["bar", "Leiste über die ganze Breite"],
+      ["float", "Schwebend – abgerundet, mit Abstand zum Rand"],
+      ["line", "Nur Linie – ohne Fläche, sanfter Verlauf"],
+    ],
+    help: "Gilt für beide Bänder. „Passend zum Stil“: schwebend bei Glas, Aurora, Verspielt …, nur Linie bei Editorial, Swiss …, sonst Leiste.",
+  },
   {
     key: "design.ticker_detail",
     label: "Antippen zeigt Einzelheiten",
@@ -1860,7 +2054,7 @@ export const HOME_TICKER_FIELDS: Field[] = [
     type: "list",
     addLabel: "Zeile",
     itemLabel: (it) =>
-      `${it.enabled === false ? "○ " : "● "}${it.text || (it.kind === "batteries" ? t("Schwache Akkus") : it.kind === "warnings" ? t("Warnungen") : it.kind === "group" ? t("Gruppe") : it.entity) || t("Zeile")}`,
+      `${it.enabled === false ? "○ " : "● "}${it.text || (it.kind === "batteries" ? t("Schwache Akkus") : it.kind === "warnings" ? t("Warnungen") : it.kind === "group" ? t("Gruppe") : it.kind === "music" ? t("Musik") : it.entity) || t("Zeile")}`,
     newItem: () => ({ entity: "", state: "on" }),
     fields: [
       { key: "enabled", label: "Zeigen", type: "boolean", default: true },
@@ -1868,8 +2062,11 @@ export const HOME_TICKER_FIELDS: Field[] = [
         key: "kind",
         label: "Art",
         type: "select",
-        options: [[undefined, "Eine Entität"], ["group", "Gruppe (z. B. alle offenen Fenster)"], ["batteries", "Alle schwachen Akkus"], ["warnings", "Warnungen (DWD, NINA …)"]],
+        options: [[undefined, "Eine Entität"], ["group", "Gruppe (z. B. alle offenen Fenster)"], ["batteries", "Alle schwachen Akkus"], ["warnings", "Warnungen (DWD, NINA …)"], ["music", "Musik – was gerade läuft"]],
       },
+      { key: "entities", label: "Player", type: "entities", domains: ["media_player"], help: "Leer = alle Player. Gruppen zeigen jeden Titel nur einmal.", when: (v) => v.kind === "music" },
+      { key: "text", label: "Text", type: "text", placeholder: "{title} – {artist} · {where}", help: "{title}, {artist}, {album}, {where} (Raum)", when: (v) => v.kind === "music" },
+      { key: "cover", label: "Cover zeigen", type: "boolean", default: true, when: (v) => v.kind === "music" },
       { key: "entity", label: "Entität", type: "entity", when: (v) => !v.kind },
       { key: "entities", label: "Entitäten der Gruppe", type: "entities", help: "Treffen mehrere zu, steht eine Zeile statt vieler – ein Tipp zeigt die einzelnen.", when: (v) => v.kind === "group" },
       {
@@ -1909,7 +2106,7 @@ export const HOME_TICKER_FIELDS: Field[] = [
         min: 0,
         placeholder: "0",
         help: "Die Zeile bleibt so lange stehen, auch wenn der Zustand schon vorbei ist – z. B. 2 bei „Bewegung erkannt“ oder der Klingel.",
-        when: (v) => v.kind !== "warnings",
+        when: (v) => v.kind !== "warnings" && v.kind !== "music",
       },
       { key: "below", label: "Melden unter (%)", type: "number", min: 1, max: 100, placeholder: "15", when: (v) => v.kind === "batteries" },
       { key: "exclude", label: "Nicht melden", type: "entities", domains: ["sensor", "binary_sensor"], when: (v) => v.kind === "batteries" },
@@ -1985,6 +2182,29 @@ export const DESIGN_FIELDS: Field[] = [
     advanced: true,
   },
   { key: "photos.credit", label: "Bildunterschrift", type: "boolean", help: "Ort oder Titel und Urheber, soweit die Quelle sie liefert" },
+  {
+    key: "photos.portrait",
+    label: "Hochkant-Fotos",
+    type: "select",
+    options: [
+      [undefined, "zwei nebeneinander"],
+      ["fit", "ganz zeigen, unscharf hinterlegt"],
+      ["fill", "füllend zuschneiden"],
+    ],
+    help: "Wie Hochkant-Fotos auf einem Display im Querformat erscheinen",
+  },
+  {
+    key: "photos.motion",
+    label: "Foto-Bewegung",
+    type: "select",
+    options: [
+      ["off", "aus – Foto steht"],
+      ["soft", "sanft"],
+      [undefined, "normal"],
+      ["strong", "deutlich"],
+    ],
+    help: "Langsames Zoomen und Schwenken – die Richtung wechselt von Foto zu Foto",
+  },
 ];
 
 /* ───────── Vorlagen und Standardwerte ───────── */
@@ -2188,6 +2408,36 @@ export const PAGE_TEMPLATES: { id: string; name: string; build: (hass?: Hass) =>
         palette: "normal",
         show_if: [{ condition: "or", conditions: players.map((entity) => ({ condition: "state", entity, state: "playing" })) }],
         widgets: [w("musik", "media", 0, 0, 12, 8, { entities: players, variant: "full" })],
+      };
+    },
+  },
+  {
+    id: "mein-zuhause",
+    name: "Mein Zuhause (wie eine Smart-Home-App)",
+    // Pillen oben, darunter die Lichter und Schalter als Kacheln – am schönsten mit dem Stil „Daheim“
+    build: (hass) => {
+      const devices = [...allOf(hass, "light"), ...allOf(hass, "lock"), ...allOf(hass, "switch")].slice(0, 12);
+      return {
+        duration: 30,
+        background: { type: "none" },
+        palette: "normal",
+        widgets: [w("pillen", "pills", 0, 0, 12, 1, {}), w("geraete", "hometiles", 0, 1, 12, 7, { entities: devices, label: t("Geräte") })],
+      };
+    },
+  },
+  {
+    id: "musik-vollbild",
+    name: "Musik im Vollbild (wie beim Liedwechsel)",
+    // Unscharfes Cover als Hintergrund, Cover links, Titel rechts – nur solange einer der Player spielt
+    build: (hass) => {
+      const players = allOf(hass, "media_player");
+      return {
+        duration: 30,
+        background: { type: "music" },
+        palette: "normal",
+        tickers: "no_home",
+        show_if: [{ condition: "or", conditions: players.map((entity) => ({ condition: "state", entity, state: "playing" })) }],
+        widgets: [w("musik", "media", 0, 0, 12, 8, { entities: players, variant: "side" })],
       };
     },
   },

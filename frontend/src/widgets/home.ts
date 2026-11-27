@@ -4,7 +4,7 @@ import { css, html, nothing, type PropertyValues } from "lit";
 import { keyed } from "lit/directives/keyed.js";
 import { repeat } from "lit/directives/repeat.js";
 import { isAllDay, loadEvents, type CalEvent } from "../data";
-import { MDI_MAP, iconSvg, weatherIcon, weatherLabel } from "../icons";
+import { MDI_MAP, binIcon, iconSvg, weatherIcon, weatherLabel } from "../icons";
 import { alignStyles, widgetStyles } from "../styles";
 import type { Condition, Hass } from "../types";
 import { areaOf, binDays, checkCondition, dayDiff, dueWithin, duration, fmt, fmtTime, nameOf, numberOf, parseDate, relDay, stateOf, valueOf } from "../util";
@@ -18,6 +18,17 @@ const cardStyles = css`
     font-size: 60px;
     color: var(--af-accent);
     margin-top: 26px;
+    display: flex;
+    gap: 14px;
+  }
+  .line .binic {
+    width: 1.35em;
+    height: 1.35em;
+    flex: none;
+  }
+  .card .bigic .binic {
+    width: 92px;
+    height: 92px;
   }
   .card .big {
     font-size: 128px;
@@ -162,7 +173,19 @@ interface RoomConfig {
   windows?: string[];
 }
 
-/** Räume als ruhiges Raster. Optionen: rooms [{name, temperature, humidity, climate, windows}], cold, warm, columns. */
+/** Luftfeuchte bewerten: über 60 % feucht (ab 65 % lüften), unter 35 % zu trocken */
+export const humidityAdvice = (hum: number | null): { tone: "good" | "warn" | "bad" | "dry"; text: string } | null => {
+  if (hum == null) return null;
+  if (hum >= 65) return { tone: "bad", text: "lüften" };
+  if (hum >= 60) return { tone: "warn", text: "etwas feucht" };
+  if (hum < 35) return { tone: "dry", text: "zu trocken" };
+  return { tone: "good", text: "gut" };
+};
+
+/**
+ * Räume als ruhiges Raster. Optionen: rooms [{name, temperature, humidity, climate, windows}], cold, warm, columns,
+ * advice (Luftfeuchte bewerten: „lüften“, „zu trocken“ – mit Zusammenfassung oben).
+ */
 class AfRooms extends AfWidget {
   static styles = [
     widgetStyles,
@@ -204,11 +227,49 @@ class AfRooms extends AfWidget {
       .warm .v {
         color: var(--af-alert);
       }
+      .adv {
+        font-weight: 500;
+      }
+      .adv.good {
+        color: var(--af-good);
+      }
+      .adv.warn {
+        color: var(--af-warn, var(--af-alert));
+      }
+      .adv.bad {
+        color: var(--af-alert);
+      }
+      .adv.dry {
+        color: var(--af-cold);
+      }
+      .advice {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-size: calc(22px * var(--af-fs, 1));
+        color: var(--af-alert);
+      }
+      .advice.ok {
+        color: var(--af-good);
+      }
+      .advice .ic {
+        font-size: 1.2em;
+      }
     `,
   ];
 
   private rooms(): RoomConfig[] {
     return (this.options.rooms ?? []) as RoomConfig[];
+  }
+
+  /** Eine Zeile oben: alles gut – oder welche Räume gelüftet werden sollten */
+  private adviceLine() {
+    const by = (tone: string) => this.rooms().filter((r) => humidityAdvice(numberOf(this.hass, r.humidity))?.tone === tone).map((r) => r.name);
+    const wet = [...by("bad"), ...by("warn")];
+    const dry = by("dry");
+    const list = (n: string[]) => (n.length > 1 ? `${n.slice(0, -1).join(", ")} ${t("und")} ${n.at(-1)}` : n[0]);
+    const parts = [wet.length ? t("Lüften: {rooms}", { rooms: list(wet) }) : "", dry.length ? t("Zu trocken: {rooms}", { rooms: list(dry) }) : ""].filter(Boolean);
+    return html`<div class="advice ${parts.length ? "" : "ok"}">${icon(parts.length ? "window" : "check")}<span>${parts.length ? parts.join(" · ") : t("Überall gutes Raumklima")}</span></div>`;
   }
 
   protected watched() {
@@ -219,7 +280,7 @@ class AfRooms extends AfWidget {
     const cold = Number(this.options.cold ?? 16);
     const warm = Number(this.options.warm ?? 26);
     const columns = Number(this.options.columns ?? 3);
-    return html`<div class="grid" style="grid-template-columns:repeat(${columns},1fr)">
+    return html`${this.options.advice ? this.adviceLine() : nothing}<div class="grid" style="grid-template-columns:repeat(${columns},1fr)">
       ${this.rooms().map((r) => {
         const isClimate = r.temperature?.startsWith("climate.");
         const temp = numberOf(this.hass, r.temperature, isClimate ? "current_temperature" : undefined);
@@ -228,12 +289,13 @@ class AfRooms extends AfWidget {
         const climate = stateOf(this.hass, r.climate ?? (isClimate ? r.temperature : undefined));
         let note = open ? t("Fenster offen") : "";
         if (!note && climate?.attributes.hvac_action === "heating") note = t("heizt auf {temp}°", { temp: fmt(climate.attributes.temperature, 0) });
+        const adv = this.options.advice ? humidityAdvice(hum) : null;
         if (!note && hum != null) note = `${fmt(hum, 0)} %`;
         const cls = temp == null ? "" : temp < cold ? "cold" : temp > warm ? "warm" : "";
         return html`<div class="${cls}">
           <div class="n">${r.name}</div>
           <div class="v display num">${fmt(temp, 1)}°</div>
-          <div class="s num">${note || html`&nbsp;`}</div>
+          <div class="s num">${note || html`&nbsp;`}${adv && !open ? html` <b class="adv ${adv.tone}">${t(adv.text)}</b>` : nothing}</div>
         </div>`;
       })}
     </div>`;
@@ -250,6 +312,8 @@ interface StatusItem {
   icon: string;
   title: string;
   sub: string;
+  /** Eigenes Bild statt Symbol (z. B. die gezeichnete Mülltonne) */
+  pic?: unknown;
 }
 
 /**
@@ -267,6 +331,12 @@ class AfStatus extends AfTickingWidget {
         align-items: flex-start;
         padding: calc(18px * var(--af-dense, 1)) 0;
         border-top: 1px solid var(--af-line);
+      }
+      .item .binic {
+        width: 30px;
+        height: 30px;
+        flex: none;
+        margin-top: -2px;
       }
       .item .ic {
         font-size: 26px;
@@ -328,7 +398,10 @@ class AfStatus extends AfTickingWidget {
     }
 
     const due = dueWithin(hass, o.waste, Number(o.waste_days ?? 2));
-    if (due && o.waste) items.push({ icon: "bin", title: String(valueOf(hass, o.waste, "message") ?? t("Müll")), sub: t("Abholung {when}", { when: relDay(due) }) });
+    if (due && o.waste) {
+      const title = String(valueOf(hass, o.waste, "message") ?? t("Müll"));
+      items.push({ icon: "bin", pic: binIcon(title), title, sub: t("Abholung {when}", { when: relDay(due) }) });
+    }
 
     for (const x of (o.extra ?? []) as { entity: string; state?: string; text?: string; icon?: string }[]) {
       if (stateOf(hass, x.entity)?.state === (x.state ?? "on")) items.push({ icon: x.icon ?? "info", title: x.text ?? nameOf(hass, x.entity), sub: "" });
@@ -340,7 +413,7 @@ class AfStatus extends AfTickingWidget {
 
   render() {
     return html`${this.options.label === false ? nothing : html`<div class="label">${this.options.label ?? "Gerade"}</div>`}
-      ${this.items().map((i) => html`<div class="item">${icon(i.icon)}<div><div class="a">${i.title}</div>${i.sub ? html`<div class="b">${i.sub}</div>` : nothing}</div></div>`)}`;
+      ${this.items().map((i) => html`<div class="item">${i.pic ?? icon(i.icon)}<div><div class="a">${i.title}</div>${i.sub ? html`<div class="b">${i.sub}</div>` : nothing}</div></div>`)}`;
   }
 }
 
@@ -348,24 +421,74 @@ class AfStatus extends AfTickingWidget {
 class AfCalendar extends AfTickingWidget {
   static styles = [widgetStyles, alignStyles, cardStyles, css`.line { font-size: calc(21px * var(--af-fs, 1)); color: var(--af-ink-2); display:flex; gap:10px; align-items:center } .line .ic { color: var(--af-accent); font-size: 22px }`];
 
+  /** Alle Termine am Tag des nächsten Termins – der Kalenderzustand nennt nur einen (Biotonne und Restmüll am selben Tag) */
+  private sameDay?: { key: string; titles: string[] };
+  private loadingKey?: string;
+
   protected watched() {
     return [this.options.entity];
+  }
+
+  private titlesOn(start: Date, message: string): string[] {
+    const o = this.options;
+    const key = `${o.entity}|${start.getTime()}`;
+    if (this.hass && this.sameDay?.key !== key && this.loadingKey !== key) {
+      this.loadingKey = key;
+      const day = start.toLocaleDateString("sv"); // JJJJ-MM-TT in Ortszeit
+      void loadEvents(this.hass, [o.entity], Math.max(1, dayDiff(start) + 1)).then((events) => {
+        const dayOf = (e: CalEvent) => (isAllDay(e) ? e.start.slice(0, 10) : parseDate(e.start)?.toLocaleDateString("sv"));
+        this.sameDay = { key, titles: [...new Set(events.filter((e) => dayOf(e) === day).map((e) => e.summary).filter(Boolean))] };
+        this.requestUpdate();
+      });
+    }
+    const titles = this.sameDay?.key === key && this.sameDay.titles.length ? this.sameDay.titles : [message];
+    return titles.includes(message) || !message ? titles : [message, ...titles];
+  }
+
+  /** Am Abholtag ist die Tonne schon weg: nächster Abholtag mit allen Tonnen (Kalenderzustand kennt nur den laufenden Termin) */
+  private upcoming?: { key: string; start: Date; titles: string[] } | null;
+  private nextPickup(): { start: Date; titles: string[] } | null | undefined {
+    const key = `${this.options.entity}|${new Date().toLocaleDateString("sv")}`;
+    if (this.hass && this.upcoming?.key !== key && this.loadingKey !== key) {
+      this.loadingKey = key;
+      const today = new Date().toLocaleDateString("sv");
+      void loadEvents(this.hass, [this.options.entity], 31).then((events) => {
+        const dayOf = (e: CalEvent) => (isAllDay(e) ? e.start.slice(0, 10) : parseDate(e.start)?.toLocaleDateString("sv"));
+        const next = events.find((e) => (dayOf(e) ?? "") > today);
+        const day = next && dayOf(next);
+        this.upcoming = next && day
+          ? { key, start: isAllDay(next) ? new Date(`${day}T00:00:00`) : parseDate(next.start)!, titles: [...new Set(events.filter((e) => dayOf(e) === day).map((e) => e.summary).filter(Boolean))] }
+          : { key, start: new Date(NaN), titles: [] };
+        this.requestUpdate();
+      });
+    }
+    return this.upcoming?.key === key ? (this.upcoming.titles.length ? this.upcoming : null) : undefined;
   }
 
   render() {
     const o = this.options;
     const s = stateOf(this.hass, o.entity);
-    const start = parseDate(s?.attributes.start_time);
+    let start = parseDate(s?.attributes.start_time);
     if (!s || !start) return nothing;
-    if (o.days != null && (dayDiff(start) < 0 || dayDiff(start) > Number(o.days))) return nothing;
     const waste = o.waste ?? /waste|abfall|muell|müll|trash/i.test(o.entity ?? "");
-    const title = String(s.attributes.message ?? "");
+    let names: string[] | undefined;
+    if (waste && dayDiff(start) <= 0) {
+      const next = this.nextPickup();
+      if (!next) return nothing; // lädt noch oder nichts mehr in Sicht
+      start = next.start;
+      names = next.titles;
+    }
+    if (o.days != null && (dayDiff(start) < 0 || dayDiff(start) > Number(o.days))) return nothing;
+    names ??= this.titlesOn(start, String(s.attributes.message ?? ""));
+    const title = names.length > 1 ? `${names.slice(0, -1).join(", ")} ${t("und")} ${names.at(-1)}` : (names[0] ?? "");
     const when = `${relDay(start)}${s.attributes.all_day ? "" : `, ${t("{time} Uhr", { time: fmtTime(start) })}`}`;
-    if (o.variant === "line") return html`<div class="line">${icon(o.icon ?? (waste ? "bin" : "calendar"))}<span>${title} ${when}</span></div>`;
-    const evening = dayDiff(start) <= 1 ? t("heute Abend") : t("{day} Abend", { day: relDay(new Date(start.getTime() - 864e5)) });
+    // Müll ohne eigenes Icon: je fällige Tonne die gezeichnete Tonne in ihrer Farbe
+    const pic = waste && !o.icon ? names.map((n) => binIcon(n)) : icon(o.icon ?? (waste ? "bin" : "calendar"));
+    if (o.variant === "line") return html`<div class="line">${pic}<span>${title} ${when}</span></div>`;
+    const evening = dayDiff(start) === 1 ? t("heute Abend") : t("{day} Abend", { day: relDay(new Date(start.getTime() - 864e5)) });
     return html`<div class="card" style="width:100%">
       <div class="label">${o.label ?? (waste ? t("Müll") : t("Termin"))}</div>
-      <div class="bigic">${icon(o.icon ?? (waste ? "bin" : "calendar"))}</div>
+      <div class="bigic">${pic}</div>
       <div class="big display" style="font-size:72px;margin-top:28px">${title}</div>
       <div class="cond">${waste ? t("Abholung") : ""} ${when}</div>
       <div class="sub">${start.toLocaleDateString(locale(), { weekday: "long", day: "numeric", month: "long" })}</div>
@@ -533,12 +656,10 @@ class AfInfoline extends AfTickingWidget {
           transform: translateY(6px);
         }
       }
-      .bin {
-        width: 10px;
-        height: 10px;
-        border-radius: 50%;
+      .binic {
+        width: 1.35em;
+        height: 1.35em;
         flex: none;
-        box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.25);
       }
     `,
   ];
@@ -724,9 +845,7 @@ class AfInfoline extends AfTickingWidget {
             const label = names.length > 1 ? `${names.slice(0, -1).join(", ")} ${t("und")} ${names.at(-1)}` : names[0];
             return keyed(
               `${g.days}|${label}`,
-              html`<span class="rot">${icon(item.icon ?? "bin")}${g.bins.some((b) => b.color)
-                  ? g.bins.map((b) => html`<i class="bin" style="background:${b.color ?? "var(--af-ink-3)"}"></i>`)
-                  : nothing}<span>${label} ${whenLabel(g.days)}</span></span>`,
+              html`<span class="rot">${item.icon ? icon(item.icon) : nothing}${g.bins.map((b) => binIcon(b.name, b.color))}<span>${label} ${whenLabel(g.days)}</span></span>`,
             );
           }
           default:

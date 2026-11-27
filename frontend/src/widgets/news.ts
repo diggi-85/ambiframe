@@ -1,11 +1,11 @@
 // Nachrichten: großes Bild mit Schlagzeile, Liste oder Laufband – die Feeds holt der Server (ambiframe/news)
-import { anyIcon } from "../icons";
 import { lang, t } from "../i18n";
 import { css, html, nothing, type PropertyValues } from "lit";
 import { keyed } from "lit/directives/keyed.js";
 import { widgetStyles } from "../styles";
 import type { Hass } from "../types";
-import { ago, fmtTime, type TickerDetail } from "../util";
+import { ago, fmtTime, nextInRound, tickerKey, videoRatio, type TickerDetail, type TickerLine } from "../util";
+import { TickerLane, tickerLineTpl } from "../ticker-lane";
 import { AfWidget, define } from "./base";
 
 export interface NewsItem {
@@ -15,7 +15,32 @@ export interface NewsItem {
   image: string;
   source: string;
   published: string | null;
+  /** Logo der Website (apple-touch-icon oder Favicon) */
+  icon?: string;
 }
+
+/** Quellen abwechselnd statt nur nach Zeit (sonst überdeckt eine fleißige Quelle die anderen); je Quelle neueste zuerst */
+export const interleave = (items: NewsItem[]): NewsItem[] => {
+  const by = new Map<string, NewsItem[]>();
+  for (const i of items) by.set(i.source, [...(by.get(i.source) ?? []), i]);
+  const lists = [...by.values()];
+  return Array.from({ length: Math.max(0, ...lists.map((l) => l.length)) }, (_, n) => lists.map((l) => l[n]).filter(Boolean)).flat();
+};
+
+/** Logo vor dem Namen der Quelle – lädt es nicht, verschwindet es */
+const srcIcon = (i: NewsItem) =>
+  i.icon ? html`<img class="src-ico" src=${i.icon} alt="" loading="lazy" @error=${(e: Event) => ((e.target as HTMLElement).hidden = true)} />` : nothing;
+const srcIconStyle = css`
+  .src-ico {
+    height: 1.1em;
+    width: 1.1em;
+    object-fit: contain;
+    border-radius: 0.22em;
+    vertical-align: -0.2em;
+    margin-right: 0.4em;
+    background: #fff;
+  }
+`;
 
 /** Fertige Quellen – Kennungen wie in news.py (PRESETS); jede RSS-, Atom- oder RDF-Adresse geht ebenso */
 export const NEWS_PRESETS: [string, string][] = [
@@ -95,6 +120,17 @@ const preload = (url: string): Promise<void> =>
     img.src = url;
   });
 
+/** Ken-Burns-Variante je Bild, stabil über die Adresse: Schwenk links/rechts, mal hinein-, mal herauszoomen */
+export const kenBurnsVars = (url: string): string => {
+  let h = 0;
+  for (const c of url) h = (h * 31 + c.charCodeAt(0)) | 0;
+  const v = Math.abs(h);
+  const dir = v % 2 ? 1 : -1;
+  const out = (v >> 1) % 3 === 0; // jedes dritte Bild zoomt heraus statt hinein
+  const ox = [35, 50, 65][(v >> 3) % 3];
+  return `--kb:${dir};--ox:${ox}%;--s0:${out ? 1.16 : 1.04};--s1:${out ? 1.04 : 1.16}`;
+};
+
 /**
  * Nachrichten. Optionen: feeds (Liste: tagesschau, ntv, spiegel oder RSS-Adressen), variant (hero | list | ticker),
  * interval (s, Wechsel im Großbild), max (Anzahl), label, speed (Laufband, px/s).
@@ -103,10 +139,11 @@ class AfNews extends AfWidget {
   static properties = { ...AfWidget.properties, items: { state: true }, idx: { state: true }, lead: { attribute: false } };
 
   /** Laufband: Zeilen, die vor den Meldungen laufen (gemischtes Band: Laufband für Zuhause) */
-  lead: { icon?: string; text: string; tone?: "warn" | "bad"; detail?: TickerDetail }[] = [];
+  lead: TickerLine[] = [];
 
   static styles = [
     widgetStyles,
+    srcIconStyle,
     css`
       :host {
         position: relative;
@@ -123,25 +160,28 @@ class AfNews extends AfWidget {
         --af-ink-3: rgba(255, 255, 255, 0.6);
         color: var(--af-ink);
       }
+      /* Gesichter sitzen bei Pressefotos meist im oberen Drittel: Ausschnitt dort statt mittig, sonst halbe Köpfe */
       .img {
         position: absolute;
         inset: 0;
-        background: #1a1a1a center / cover no-repeat;
+        background: #1a1a1a 50% 22% / cover no-repeat;
+        transform-origin: var(--ox, 50%) 25%;
       }
       .img.cur {
-        animation: news-in 1.4s var(--af-ease-soft, ease) backwards, drift var(--t, 16s) linear both;
+        animation: news-in 1.4s var(--af-ease-soft, ease) backwards, drift var(--t, 16s) ease-in-out both;
       }
       @keyframes news-in {
         from {
           opacity: 0;
         }
       }
+      /* Ken Burns: je Bild anders (Richtung über --kb), Zoom zum oberen Bildteil hin – der Kopf bleibt im Bild */
       @keyframes drift {
         from {
-          transform: scale(1.02);
+          transform: scale(var(--s0, 1.04)) translateX(calc(var(--kb, 1) * -1.5%));
         }
         to {
-          transform: scale(1.08);
+          transform: scale(var(--s1, 1.16)) translateX(calc(var(--kb, 1) * 1.5%));
         }
       }
       .grad {
@@ -258,8 +298,8 @@ class AfNews extends AfWidget {
       .track {
         display: flex;
         white-space: nowrap;
+        flex: none;
         will-change: transform;
-        animation: marquee 120s linear infinite;
         font-size: calc(21px * var(--af-fs, 1));
         color: var(--af-ink-2);
       }
@@ -283,6 +323,24 @@ class AfNews extends AfWidget {
         color: var(--af-accent);
         margin-right: 8px;
       }
+      /* wie im Laufband für Zuhause: Musik-Cover und Logo der Warnquelle */
+      .track .home .tk-art,
+      .track .home .tk-logo {
+        display: inline-block;
+        vertical-align: -0.3em;
+        height: 1.3em;
+        margin-right: 8px;
+        border-radius: 0.2em;
+      }
+      .track .home .tk-art {
+        width: 1.3em;
+        background: var(--af-surface) center / cover no-repeat;
+      }
+      .track .home .tk-logo {
+        width: auto;
+        max-width: 2.6em;
+        object-fit: contain;
+      }
       /* Warnungen (DWD, NINA) im gemischten Band: Warnfarbe, schwere fett */
       .track .home.warn,
       .track .home.bad,
@@ -296,18 +354,15 @@ class AfNews extends AfWidget {
       .track .home.tap {
         cursor: pointer;
       }
-      @keyframes marquee {
-        to {
-          transform: translateX(-50%);
-        }
+      .track .q {
+        display: flex;
       }
       .calm {
         color: var(--af-ink-3);
         font-size: calc(18px * var(--af-fs, 1));
       }
       @media (prefers-reduced-motion: reduce) {
-        .img.cur,
-        .track {
+        .img.cur {
           animation: none;
         }
       }
@@ -324,6 +379,7 @@ class AfNews extends AfWidget {
   private items: NewsItem[] = [];
   private idx = 0;
   private prevImage = "";
+  private prevTransform = "";
   private rotateTimer?: number;
   private refreshTimer?: number;
   private feedsKey = "";
@@ -347,6 +403,7 @@ class AfNews extends AfWidget {
     super.disconnectedCallback();
     clearInterval(this.refreshTimer);
     clearTimeout(this.rotateTimer);
+    this.lane.stop();
   }
 
   protected shouldUpdate(changed: PropertyValues): boolean {
@@ -366,7 +423,7 @@ class AfNews extends AfWidget {
     if (!this.hass) return;
     const items = await loadNews(this.hass, this.feeds);
     if (!items.length && this.items.length) return; // lieber alte Meldungen als gar keine
-    this.items = items;
+    this.items = this.options.interleave ? interleave(items) : items;
     if (this.idx >= this.heroItems.length) this.idx = 0;
     if ((this.options.variant ?? "hero") === "hero") this.schedule();
   }
@@ -383,21 +440,42 @@ class AfNews extends AfWidget {
     if (list.length > 1) {
       const next = (this.idx + 1) % list.length;
       await preload(list[next].image);
+      // Zoom und Schwenk des alten Bilds mitnehmen – sonst springt es beim Wechsel auf Anfang zurück
+      const cur = this.renderRoot.querySelector<HTMLElement>(".img.cur");
+      this.prevTransform = cur ? getComputedStyle(cur).transform : "";
       this.prevImage = list[this.idx]?.image ?? "";
       this.idx = next;
     }
     this.schedule();
   }
 
-  protected updated(): void {
-    // Laufband: gleichmäßiges Tempo (~45 px/s), egal wie lang die Schlagzeilen sind
-    const track = this.renderRoot.querySelector<HTMLElement>(".track");
-    if (track) {
-      const half = track.scrollWidth / 2;
-      const speed = Number(this.options.speed ?? 45);
-      if (half > 0) track.style.animationDuration = `${Math.round(half / speed)}s`;
-    }
+  /** Laufband: fortlaufende Spur wie das Laufband für Zuhause – neue Schlagzeilen kommen hinter die laufende */
+  private seen = new Set<string>();
+  private lane = new TickerLane({
+    find: () => {
+      const band = this.renderRoot.querySelector<HTMLElement>(".tick");
+      const lane = band?.querySelector<HTMLElement>(".lane");
+      return band && lane ? { band, lane } : undefined;
+    },
+    next: () => {
+      const entries = this.tickerEntries();
+      return entries.length ? nextInRound(entries, this.seen, (e) => e.key).tpl : undefined;
+    },
+    speed: () => Number(this.options.speed ?? 45),
+    reset: () => this.seen.clear(),
+  });
+
+  private tickerEntries() {
+    return [
+      ...this.lead.map((l) => ({ key: `h|${tickerKey(l)}`, tpl: html`${tickerLineTpl(l, !!l.detail, (e) => this.openDetail(e, l.detail), "home")}<span class="sep">•</span>` })),
+      ...this.items.slice(0, Number(this.options.max ?? 12)).map((i) => ({ key: `n|${i.title}`, tpl: html`<span><b>${srcIcon(i)}${i.source}</b>${i.title}</span><span class="sep">•</span>` })),
+    ];
   }
+
+  protected updated(): void {
+    if (this.renderRoot.querySelector(".lane")) this.lane.start();
+  }
+
 
   render() {
     const variant = this.options.variant ?? "hero";
@@ -407,12 +485,9 @@ class AfNews extends AfWidget {
     if (variant === "ticker") {
       // Laufband nur, wo es flüssig läuft: nicht im Videostream und (ohne eigene Einstellung) nicht auf dem Fernseher
       if (this.ctx?.ticker === false) return nothing;
-      const list = this.items.slice(0, Number(this.options.max ?? 12));
-      const run = [
-        ...this.lead.map((l) => html`<span class="home ${l.tone ?? ""} ${l.detail ? "tap" : ""}" @click=${(e: Event) => this.openDetail(e, l.detail)}>${l.icon ? anyIcon(l.icon) : nothing}${l.text}</span><span class="sep">•</span>`),
-        ...list.map((i) => html`<span><b>${i.source}</b>${i.title}</span><span class="sep">•</span>`),
-      ];
-      return html`<div class="tick"><div class="track">${run}${run}</div></div>`;
+      // bei „weniger Bewegung“ steht die Liste still, sonst füllt TickerLane die Spur
+      if (matchMedia("(prefers-reduced-motion: reduce)").matches) return html`<div class="tick"><div class="track">${this.tickerEntries().map((e) => e.tpl)}</div></div>`;
+      return html`<div class="tick"><div class="track lane"></div></div>`;
     }
     if (variant === "list") {
       const list = this.items.slice(0, Number(this.options.max ?? 4));
@@ -423,7 +498,7 @@ class AfNews extends AfWidget {
               ${i.image ? html`<div class="thumb" style="background-image:url('${i.image}')"></div>` : nothing}
               <div>
                 <div class="rt">${i.title}</div>
-                <div class="rm">${i.source}${i.published ? ` · ${ago(i.published)}` : ""}</div>
+                <div class="rm">${srcIcon(i)}${i.source}${i.published ? ` · ${ago(i.published)}` : ""}</div>
               </div>
             </div>`,
           )}
@@ -433,13 +508,13 @@ class AfNews extends AfWidget {
     const item = list[this.idx] ?? list[0];
     const secs = Math.max(5, Number(this.options.interval ?? 14));
     return html`<div class="hero">
-      ${this.prevImage ? html`<div class="img" style="background-image:url('${this.prevImage}')"></div>` : nothing}
-      ${item.image ? keyed(item.image, html`<div class="img cur" style="background-image:url('${item.image}');--t:${secs + 2}s"></div>`) : nothing}
+      ${this.prevImage ? html`<div class="img" style="background-image:url('${this.prevImage}');${kenBurnsVars(this.prevImage)};transform:${this.prevTransform || "none"}"></div>` : nothing}
+      ${item.image ? keyed(item.image, html`<div class="img cur" style="background-image:url('${item.image}');--t:${secs + 2}s;${kenBurnsVars(item.image)}"></div>`) : nothing}
       <div class="grad"></div>
       ${keyed(
         item.title,
         html`<div class="txt">
-          <div class="meta"><b>${item.source}</b>${item.published ? ` · ${ago(item.published)}` : ""}</div>
+          <div class="meta"><b>${srcIcon(item)}${item.source}</b>${item.published ? ` · ${ago(item.published)}` : ""}</div>
           <div class="title display">${item.title}</div>
           ${item.summary ? html`<div class="sum">${item.summary}</div>` : nothing}
         </div>`,
@@ -472,6 +547,7 @@ class AfNewsVideo extends AfWidget {
 
   static styles = [
     widgetStyles,
+    srcIconStyle,
     css`
       :host {
         container-type: inline-size;
@@ -498,16 +574,20 @@ class AfNewsVideo extends AfWidget {
         aspect-ratio: 16 / 9;
         max-height: 100%;
         border-radius: var(--af-card-radius, 24px);
-        overflow: hidden;
-        background: #000 center / cover no-repeat;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        container-type: size;
       }
+      /* Originalformat der Quelle, nichts abschneiden: so groß wie möglich im Seitenverhältnis des Videos
+         (--ar aus den Metadaten, bis dahin 16:9) – die Ecken runden das Bild selbst, keine leere Kastenfläche */
       video,
       .screen img {
-        position: absolute;
-        inset: 0;
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
+        display: block;
+        width: min(100cqw, calc(100cqh * var(--ar, 1.7778)));
+        height: min(100cqh, calc(100cqw / var(--ar, 1.7778)));
+        object-fit: contain;
+        border-radius: var(--af-card-radius, 24px);
       }
       /* Bildschirmfüllend: über das Raster hinaus bis an die Ränder der Anzeige. Die Bühne ist transformiert,
          daher bezieht sich „fixed“ auf sie – nicht auf das Browserfenster. */
@@ -516,6 +596,14 @@ class AfNewsVideo extends AfWidget {
         inset: 0;
         aspect-ratio: auto;
         max-height: none;
+        border-radius: 0;
+        /* freie Ränder zeigen den Hintergrund des Stils statt der Karten dahinter */
+        background-color: var(--af-bg);
+        background-image: var(--af-bg-art, none);
+        background-size: var(--af-bg-size, auto);
+      }
+      .screen.full video,
+      .screen.full img {
         border-radius: 0;
       }
       .screen.full .edition {
@@ -577,9 +665,20 @@ class AfNewsVideo extends AfWidget {
     void this.refresh();
   }
 
+  /** Video zu Ende (oder nicht abspielbar): die Anzeige darf zur nächsten Seite – nur mit „Weiter erst nach dem Video“ */
+  private done = (): void => {
+    this.dispatchEvent(new CustomEvent("af-video-end", { bubbles: true, composed: true }));
+  };
+
   protected updated(changed: PropertyValues): void {
     super.updated(changed);
     if (changed.has("options") && changed.get("options") !== undefined) void this.refresh();
+    // Verweigert das Gerät das automatische Abspielen, käme nie ein Ende – dann gleich weiter statt zu warten
+    const video = this.renderRoot.querySelector("video");
+    if (video && this.options.until_end && video.dataset.tried !== video.src) {
+      video.dataset.tried = video.src;
+      void video.play?.()?.catch?.(() => this.done());
+    }
   }
 
   private async refresh(): Promise<void> {
@@ -597,16 +696,22 @@ class AfNewsVideo extends AfWidget {
     const edition = v?.edition ? new Date(v.edition) : null;
     const still = !!this.ctx?.still;
     const full = this.options.layout === "fullscreen";
+    const untilEnd = !!this.options.until_end;
     // stumm und in Schleife: so spielen iPad, Android und Fully ohne Antippen ab; neue Ausgabe = neue Adresse = neu laden
     const screen = v
-      ? html`<div class="screen ${full ? "full" : ""}" style=${v.poster ? `background-image:url('${v.poster}')` : ""}>
+      ? html`<div class="screen ${full ? "full" : ""}">
           ${still
             ? v.poster
               ? html`<img src=${v.poster} alt="" />`
               : nothing
             : !v.url
               ? nothing
-              : keyed(v.url, html`<video src=${v.url} poster=${v.poster || nothing} muted autoplay loop playsinline preload="auto" disablepictureinpicture></video>`)}
+              : keyed(
+                  v.url,
+                  untilEnd
+                    ? html`<video src=${v.url} poster=${v.poster || nothing} muted autoplay playsinline preload="auto" disablepictureinpicture @loadedmetadata=${videoRatio} @ended=${this.done} @error=${this.done}></video>`
+                    : html`<video src=${v.url} poster=${v.poster || nothing} muted autoplay loop playsinline preload="auto" disablepictureinpicture @loadedmetadata=${videoRatio}></video>`,
+                )}
           ${edition && !Number.isNaN(edition.getTime()) ? html`<span class="edition">${t("Ausgabe {time}", { time: fmtTime(edition) })}</span>` : nothing}
         </div>`
       : html`<div class="calm">${t("Gerade keine Ausgabe abrufbar")}</div>`;
@@ -616,7 +721,7 @@ class AfNewsVideo extends AfWidget {
       ${screen}
       ${showList
         ? html`<div class="rows">
-            ${list.map((i) => html`<div><div class="rt">${i.title}</div><div class="rm">${i.source}${i.published ? ` · ${ago(i.published)}` : ""}</div></div>`)}
+            ${list.map((i) => html`<div><div class="rt">${i.title}</div><div class="rm">${srcIcon(i)}${i.source}${i.published ? ` · ${ago(i.published)}` : ""}</div></div>`)}
           </div>`
         : nothing}
     </div>`;

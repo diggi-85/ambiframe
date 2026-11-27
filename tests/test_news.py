@@ -105,3 +105,45 @@ def test_parse_video_page_picks_the_newest_edition_not_the_first() -> None:
     assert video is not None
     assert video["edition"] == "2026-11-21T04:55"
     assert video["url"] == f"{new}.webxl.h264.mp4"
+
+
+async def test_check_reports_feed_status(hass):
+    """Probeabruf im Editor: gültiger Feed, kein Feed, Server-Fehler, keine Adresse."""
+    from unittest.mock import patch
+
+    import aiohttp
+
+    service = NewsService(hass)
+    with patch.object(NewsService, "_get", return_value=ATOM):
+        assert await service.async_check("https://example.org/feed") == {"ok": True, "name": "example.org", "count": 1, "latest": "Atom-Meldung"}
+    with patch.object(NewsService, "_get", return_value=b"<html><body>kein Feed"):
+        assert (await service.async_check("https://example.org/"))["error"] == "not_feed"
+    err = aiohttp.ClientResponseError(None, (), status=404)
+    with patch.object(NewsService, "_get", side_effect=err):
+        assert await service.async_check("https://example.org/x") == {"ok": False, "error": "http", "status": 404}
+    assert (await service.async_check("example.org/feed"))["error"] == "address"
+
+
+def test_parse_icon_prefers_large_logo():
+    from custom_components.ambiframe.news import parse_icon
+
+    page = '<link rel="icon" href="/f.png"><link rel="apple-touch-icon" sizes="180x180" href="/touch.png">'
+    assert parse_icon(page, "https://example.org/") == "https://example.org/touch.png"
+    assert parse_icon('<link href="//cdn.example.org/i.ico" rel="shortcut icon">', "https://example.org/") == "https://cdn.example.org/i.ico"
+    assert parse_icon("<html></html>", "http://example.org/") == "http://example.org/favicon.ico"
+
+
+async def test_icon_failure_not_cached_and_added_outside_lock(hass):
+    """Startseite nicht erreichbar: Favicon als Ersatz, aber nicht gemerkt – der nächste Feed-Abruf versucht es neu."""
+    from unittest.mock import patch
+
+    service = NewsService(hass)
+    items = [{"link": "https://example.org/a", "title": "x"}]
+    with patch.object(NewsService, "_fetch", return_value=None):
+        await service._add_icon(items)
+    assert items[0]["icon"] == "https://example.org/favicon.ico"
+    assert "https://example.org/" not in service._icons
+    fresh = [{"link": "https://example.org/b", "title": "y"}]
+    with patch.object(NewsService, "_fetch", return_value=b'<link rel="icon" href="/i.png">'):
+        await service._add_icon(fresh)
+    assert fresh[0]["icon"] == "https://example.org/i.png"

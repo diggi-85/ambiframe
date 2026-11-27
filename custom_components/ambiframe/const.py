@@ -53,7 +53,25 @@ PORTRAIT_ROWS: Final = 12
 EVENT_KINDS: Final = ("alarm", "live", "info", "page", "media", "effect")
 # Diese Arten zeigen Titel/Ort und brauchen deshalb einen Titel
 EVENT_KINDS_TITLED: Final = ("alarm", "live", "info")
-THEMES: Final = ("ruhig", "klar", "glass", "aurora", "editorial", "pixel", "arcade", "cockpit", "tonal", "kacheln", "klartext", "fallblatt", "millennium", "glanz", "handheld", "bauhaus", "softui", "boho", "landhaus", "natur", "galerie", "papier", "eink", "zeitung", "artdeco", "terminal", "verspielt", "leitsystem", "swiss", "rams", "lobby", "bilderbuch", "weihnachten", "rgb", "saisonal")
+THEMES: Final = ("signature", "ruhig", "klar", "glass", "daheim", "aurora", "editorial", "pixel", "arcade", "cockpit", "wohnapp", "axel", "klartext", "fallblatt", "bauhaus", "softui", "boho", "landhaus", "galerie", "papier", "eink", "artdeco", "terminal", "verspielt", "leitsystem", "swiss", "rams", "lobby", "bilderbuch", "saisonal")
+# Zusammengelegte oder entfernte Stile → nächster Verwandter (alte Einstellungen laufen weiter)
+MERGED_THEMES: Final = {
+    "gold": "ruhig",
+    "minimal": "klar",
+    "weissgold": "ruhig",
+    "pastell": "wohnapp",
+    "tonal": "wohnapp",
+    "kacheln": "daheim",
+    "zeitung": "editorial",
+    "weihnachten": "saisonal",
+    "natur": "landhaus",
+    "glanz": "glass",
+    "millennium": "glass",
+    "handheld": "pixel",
+    "rgb": "arcade",
+}
+# Unbekannter Stil (z. B. aus einer neueren oder älteren Fassung) → der Stil der Marke
+DEFAULT_THEME: Final = "signature"
 THEME_MODES: Final = ("auto", "light", "dark")
 AMBIENTS: Final = (
     "none",
@@ -87,4 +105,4 @@ AMBIENTS: Final = (
     "weather",
 )
 PALETTES: Final = ("nordisch", "vampir", "mocha", "retro", "nachtstadt", "tagesverlauf")
-TRANSITIONS: Final = ("fade", "blur", "slide", "zoom", "cube", "flip", "page")
+TRANSITIONS: Final = ("fade", "blur", "slide", "zoom", "cube", "flip", "page", "curtain", "circle", "rise", "random")

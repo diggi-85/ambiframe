@@ -53,6 +53,7 @@ export class AfAmbient extends LitElement {
     type: {},
     strength: { type: Number },
     speed: {},
+    calm: { type: Boolean },
     tint: {},
     small: { type: Boolean },
   };
@@ -60,6 +61,8 @@ export class AfAmbient extends LitElement {
   type: AmbientKind = "none";
   strength: 1 | 2 | 3 = 1;
   speed: "slow" | "normal" = "slow";
+  /** abends ruhiger: alles läuft langsamer */
+  calm = false;
   /** Glitzerfarbe; leer = Akzentfarbe des Stils */
   tint?: string;
   /** Kleine Vorschau im Editor: weniger Teilchen */
@@ -576,7 +579,7 @@ export class AfAmbient extends LitElement {
     if (t - this.last < 33) return; // ~30 Bilder pro Sekunde reichen
     const dt = this.last ? Math.min(3, (t - this.last) / 33) : 1;
     this.last = t;
-    const k = this.speed === "normal" ? 1.8 : 1;
+    const k = (this.speed === "normal" ? 1.8 : 1) * (this.calm ? 0.6 : 1);
     const c = this.canvas;
     if (!c) return;
     if (FX[this.type]) {
@@ -809,7 +812,7 @@ export class AfAmbient extends LitElement {
   }
 
   render() {
-    const k = this.speed === "normal" ? 0.55 : 1;
+    const k = (this.speed === "normal" ? 0.55 : 1) * (this.calm ? 1.6 : 1);
     const opacity = [0.6, 0.85, 1][this.strength - 1];
     const style = `--k:${k};opacity:${opacity}`;
     switch (this.type) {

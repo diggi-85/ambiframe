@@ -28,7 +28,7 @@ def test_example_config_is_valid(example_config: dict[str, Any]) -> None:
 
 def test_minimal_config_gets_defaults() -> None:
     config = validate_config(minimal_config())
-    assert config["design"]["theme"] == "ruhig"
+    assert config["design"]["theme"] == "signature"
     assert config["design"]["mode"] == "auto"
     assert config["pages"][0]["widgets"][0]["options"] == {}
     assert config["pages"][0]["show_if"] == []
@@ -50,11 +50,36 @@ def test_migrate_weissgold_to_gold_light() -> None:
     assert config["design"]["mode"] == "light"
 
 
+def test_weissgold_display_keeps_light_mode() -> None:
+    raw = minimal_config()
+    raw["displays"][0]["theme"] = "weissgold"
+    display = validate_config(raw)["displays"][0]
+    assert display["theme"] == "ruhig"
+    assert display["mode"] == "light"
+
+
+def test_removed_themes_fall_back_to_successor_or_default() -> None:
+    raw = minimal_config(design={"theme": "glanz"})
+    raw["displays"][0]["theme"] = "gibtsnicht"
+    config = validate_config(raw)
+    assert config["design"]["theme"] == "glass"
+    assert config["displays"][0]["theme"] == "signature"  # Unbekanntes → Stil der Marke
+    assert validate_config(minimal_config(design={"theme": "rgb"}))["design"]["theme"] == "arcade"
+
+
 def test_migrate_strips_digit_keys_from_editor_bug() -> None:
     raw = minimal_config()
     raw["displays"][0].update({"0": "s", "1": "e"})
     config = validate_config(raw)
     assert "0" not in config["displays"][0] and "1" not in config["displays"][0]
+
+
+def test_migrate_cleans_split_feed_entries() -> None:
+    raw = minimal_config(design={"news_band": {"enabled": True, "feeds": [{"0": "a", "1": "b", "value": "ab"}]}})
+    raw["pages"][0]["widgets"][0]["options"] = {"feeds": [{"0": "x", "value": "xy"}, "plain", {"value": "ok"}]}
+    config = validate_config(raw)
+    assert config["design"]["news_band"]["feeds"] == [{"value": "ab"}]
+    assert config["pages"][0]["widgets"][0]["options"]["feeds"] == [{"value": "xy"}, "plain", {"value": "ok"}]
 
 
 # ───────── Querverweise ─────────
@@ -435,7 +460,7 @@ def test_widget_grid_half_steps() -> None:
 
 def test_new_styles_backgrounds_and_cover_colors() -> None:
     """Neue Stile und Hintergründe, Cover-Farben global und pro Display."""
-    for theme in ("pixel", "arcade", "cockpit", "tonal", "kacheln", "klartext", "fallblatt"):
+    for theme in ("pixel", "arcade", "cockpit", "wohnapp", "daheim", "klartext", "fallblatt"):
         assert validate_config(minimal_config(design={"theme": theme}))["design"]["theme"] == theme
     for ambient in ("snow", "stars", "glitter", "hue", "aurora"):
         validate_config(minimal_config(design={"ambient": {"type": ambient}}))
@@ -522,3 +547,22 @@ def test_merged_styles_keep_working() -> None:
     assert out["design"]["theme"] == "ruhig"
     assert out["displays"][0]["theme"] == "klar"
     assert out["design"]["presets"][0]["design"]["theme"] == "klar"
+
+
+def test_page_can_hide_tickers() -> None:
+    raw = minimal_config()
+    raw["pages"][0]["tickers"] = "none"
+    assert validate_config(raw)["pages"][0]["tickers"] == "none"
+    raw["pages"][0]["tickers"] = "manchmal"
+    with pytest.raises(vol.Invalid):
+        validate_config(raw)
+
+
+def test_ticker_look_global_and_per_display() -> None:
+    raw = minimal_config(design={"ticker_look": "float"})
+    raw["displays"][0]["design"] = {"ticker_look": "line"}
+    out = validate_config(raw)
+    assert out["design"]["ticker_look"] == "float"
+    assert out["displays"][0]["design"]["ticker_look"] == "line"
+    with pytest.raises(vol.Invalid):
+        validate_config(minimal_config(design={"ticker_look": "wolke"}))

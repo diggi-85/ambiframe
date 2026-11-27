@@ -2,7 +2,7 @@
 import { locale, t } from "../i18n";
 import { css, html, nothing, type PropertyValues } from "lit";
 import { isAllDay, loadEvents, type CalEvent } from "../data";
-import { iconSvg, weatherIcon, weatherLabel } from "../icons";
+import { binIcon, iconSvg, weatherIcon, weatherLabel } from "../icons";
 import { widgetStyles } from "../styles";
 import { dayDiff, fmt, fmtTime, parseDate, stateOf } from "../util";
 import { AfTickingWidget, define } from "./base";
@@ -155,10 +155,9 @@ class AfToday extends AfTickingWidget {
         font-size: calc(22px * var(--af-fs, 1));
         padding: calc(6px * var(--af-dense, 1)) 0;
       }
-      .bin i {
-        width: 14px;
-        height: 14px;
-        border-radius: 50%;
+      .bin .binic {
+        width: 1.3em;
+        height: 1.3em;
         flex: none;
       }
       .bin .d {
@@ -289,7 +288,7 @@ class AfToday extends AfTickingWidget {
         ? groups.flatMap((g) =>
             g.bins.map(
               (b) => html`<div class="bin ${g.days <= 1 ? "soon" : ""}">
-                <i style="background:${b.color ?? "var(--af-ink-3)"}"></i><span>${b.name}</span><span class="d">${whenLabel(g.days)}</span>
+                ${binIcon(b.name, b.color)}<span>${b.name}</span><span class="d">${whenLabel(g.days)}</span>
               </div>`,
             ),
           )

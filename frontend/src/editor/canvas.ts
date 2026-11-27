@@ -245,7 +245,7 @@ export class AfCanvas extends LitElement {
       border-color: rgba(255, 255, 255, 0.6);
     }
     .box.sel {
-      border: 2px solid var(--primary-color, #d9b45f);
+      border: 2px solid var(--primary-color, #f4b14a);
       background: rgba(217, 180, 95, 0.06);
       cursor: move;
     }
@@ -294,7 +294,7 @@ export class AfCanvas extends LitElement {
       width: 16px;
       height: 16px;
       border-radius: 50%;
-      background: var(--primary-color, #d9b45f);
+      background: var(--primary-color, #f4b14a);
       border: 2px solid #fff;
       cursor: nwse-resize;
     }

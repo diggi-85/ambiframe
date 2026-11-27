@@ -11,6 +11,7 @@ import { ACTION_FORM, ALIGN_FIELDS, WIDGET_LOOK_FIELDS, PAGE_FIELDS, PAGE_TEMPLA
 import { BASE, GRID_STEP, layoutOf, type Orientation, type Pos } from "../display/grid";
 import { anyIcon, iconSvg } from "../icons";
 import type { AmbiframeConfig, Hass, PageConfig, WidgetConfig } from "../types";
+import { missingEntities, pickFile, replaceEntity, saveFile } from "../share";
 import { define } from "../widgets/base";
 import { WIDGETS } from "../widgets/registry";
 
@@ -51,6 +52,7 @@ export class AfPageEditor extends LitElement {
     multi: { state: true },
     clip: { state: true },
     pageImport: { state: true },
+    remap: { state: true },
     menu: { state: true },
     layout: { state: true },
   };
@@ -71,6 +73,8 @@ export class AfPageEditor extends LitElement {
   private clip: WidgetConfig[] | null = null;
   /** Seiten-Import: eingefügter Text (null = zu) */
   private pageImport: string | null = null;
+  /** Nach dem Import: Entitäten, die es hier nicht gibt */
+  private remap: { page: string; missing: string[] } | null = null;
   private menu: "" | "page" | "widget" = "";
   /** Anordnung quer oder hoch bearbeiten */
   private layout: Orientation = "landscape";
@@ -271,6 +275,30 @@ export class AfPageEditor extends LitElement {
     }
   }
 
+  private async importFile(): Promise<void> {
+    this.menu = "";
+    const text = await pickFile();
+    if (text === null) return;
+    try {
+      const raw = load(text) as any;
+      this.importPage(raw?.ambiframe_page ?? raw);
+    } catch (err) {
+      this.message = { kind: "error", text: t("Import fehlgeschlagen: {error}", { error: String((err as Error)?.message ?? err) }) };
+    }
+  }
+
+  /** Fremde Entität auf der Seite durch eine eigene ersetzen */
+  private remapEntity(from: string, to: string): void {
+    const r = this.remap;
+    if (!r || !to.trim()) return;
+    this.mutate((d) => {
+      const i = d.pages.findIndex((p) => p.id === r.page);
+      if (i >= 0) d.pages[i] = replaceEntity(d.pages[i], from, to.trim());
+    });
+    const missing = r.missing.filter((x) => x !== from);
+    this.remap = missing.length ? { ...r, missing } : null;
+  }
+
   /** Seite aus Vorlage oder Import anlegen (neue ID, in die Wiedergabe des aktuellen Displays) */
   private importPage(src: Partial<PageConfig>, name?: string): void {
     if (!Array.isArray(src.widgets)) {
@@ -296,6 +324,8 @@ export class AfPageEditor extends LitElement {
     this.widgetId = null;
     this.menu = "";
     this.pageImport = null;
+    const missing = missingEntities(page, this.hass);
+    this.remap = missing.length ? { page: id, missing } : null;
     this.message = { kind: "ok", text: t("Seite „{name}“ angelegt – Seiten-IDs in Aktionen ggf. anpassen.", { name: title }) };
   }
 
@@ -439,15 +469,42 @@ export class AfPageEditor extends LitElement {
     const p = this.page;
     // Ohne Rückfrage: manche Browser (HA-App, eingebettete Fenster) unterdrücken confirm() – Rückgängig holt sie zurück
     if (!p) return;
+    // Ohne Seite kann kein Display etwas zeigen – die letzte bleibt
+    if ((this.config?.pages.length ?? 0) <= 1) {
+      this.message = { kind: "error", text: t("Die letzte Seite lässt sich nicht löschen – lege vorher eine andere an.") };
+      return;
+    }
+    let gone: string[] = [];
+    let refilled: string[] = [];
     this.mutate((d) => {
       d.pages = d.pages.filter((x) => x.id !== p.id);
+      // Ein Moment, der nur diese Seite zeigt, hat ohne sie keinen Sinn – mit löschen, sonst lässt sich nicht speichern
+      const dropped = d.events.filter((e) => e.kind === "page" && e.page === p.id);
+      gone = dropped.map((e) => e.name || e.title || e.id);
+      d.events = d.events.filter((e) => !dropped.includes(e));
+      for (const e of d.events) if (e.page === p.id) delete e.page;
       for (const disp of d.displays) {
         disp.playlist = disp.playlist.filter((x) => x.page !== p.id);
+        // War es die einzige Seite des Displays: die erste übrige einsetzen, sonst ließe sich nicht speichern
+        if (!disp.playlist.length) {
+          disp.playlist = [{ page: d.pages[0].id }];
+          refilled.push(disp.name);
+        }
         if (disp.night?.page === p.id) delete disp.night.page;
+        if (Array.isArray(disp.events)) disp.events = disp.events.filter((id) => !dropped.some((e) => e.id === id));
       }
+      for (const pg of d.pages)
+        for (const w of pg.widgets)
+          for (const k of ["tap_action", "hold_action"] as const) if (w[k]?.action === "page" && w[k]?.page === p.id) delete w[k];
     });
     this.widgetId = null;
-    this.message = { kind: "ok", text: t("Seite „{name}“ gelöscht – mit ↶ zurückholen.", { name: p.name }) };
+    const text = gone.length
+      ? t("Seite „{name}“ und der Moment „{events}“, der sie zeigt, gelöscht – mit ↶ zurückholen.", { name: p.name, events: gone.join("“, „") })
+      : t("Seite „{name}“ gelöscht – mit ↶ zurückholen.", { name: p.name });
+    this.message = {
+      kind: "ok",
+      text: refilled.length ? `${text} ${t("{list} zeigt jetzt „{page}“, weil dort sonst keine Seite mehr liefe.", { list: refilled.join(", "), page: this.config?.pages[0]?.name ?? "" })}` : text,
+    };
   }
 
   /** Wohin ein neues Widget käme: erste freie Stelle in Standardgröße (auch für die Vorschau beim Darüberfahren) */
@@ -597,10 +654,33 @@ export class AfPageEditor extends LitElement {
                     : nothing}
                   <div class="sep"></div>
                   <button @click=${() => ((this.pageImport = ""), (this.menu = ""))}>${t("Seite importieren …")}</button>
+                  <button @click=${() => void this.importFile()}>${t("Seite aus Datei …")}</button>
                 </div>`
               : nothing}
           </span>
         </div>
+        ${this.remap
+          ? html`<div class="import-box remap">
+              <span>${t("Diese Entitäten gibt es bei dir nicht – eigene wählen:")}</span>
+              ${this.remap.missing.map((id) => {
+                const domain = id.split(".")[0];
+                const list = `af-ent-${domain}`;
+                return html`<label
+                  ><code>${id}</code>
+                  <input
+                    list=${list}
+                    placeholder=${`${domain}.…`}
+                    @change=${(e: Event) => this.remapEntity(id, (e.target as HTMLInputElement).value)}
+                  />
+                </label>`;
+              })}
+              ${[...new Set(this.remap.missing.map((id) => id.split(".")[0]))].map(
+                (domain) =>
+                  html`<datalist id=${`af-ent-${domain}`}>${Object.keys(this.hass?.states ?? {}).filter((x) => x.startsWith(`${domain}.`)).map((x) => html`<option value=${x}></option>`)}</datalist>`,
+              )}
+              <span><button class="small" @click=${() => (this.remap = null)}>${t("Später")}</button></span>
+            </div>`
+          : nothing}
         ${this.pageImport !== null
           ? html`<div class="import-box">
               <textarea
@@ -801,6 +881,7 @@ export class AfPageEditor extends LitElement {
                   <span>
                     ${this.advanced
                       ? html`<button class="small" @click=${() => void this.exportPage()} title=${t("Als YAML kopieren")}>${t("Exportieren")}</button>
+                          <button class="small" @click=${() => saveFile(`ambiframe-${this.page!.id}.yaml`, dump({ ambiframe_page: this.page }, { lineWidth: 120 }))} title=${t("Als Datei speichern")}>${t("Datei")}</button>
                           <button class="small" @click=${this.savePageTemplate} title=${t("Als eigene Seitenvorlage speichern")}>${t("Vorlage")}</button>`
                       : nothing}
                     ${this.targetDisplay && !this.targetDisplay.playlist.some((e) => e.page === this.page!.id)
@@ -842,21 +923,21 @@ export class AfPageEditor extends LitElement {
     .tab.on,
     .primary,
     .theme.on {
-      background: var(--primary-color, #c9a063);
-      border-color: var(--primary-color, #c9a063);
-      color: var(--text-primary-color, #1f1810);
+      background: var(--primary-color, #f4b14a);
+      border-color: var(--primary-color, #f4b14a);
+      color: var(--text-primary-color, #0f1012);
     }
     button:hover:not(:disabled) {
       border-color: color-mix(in srgb, var(--primary-text-color) 24%, transparent);
     }
     button:focus-visible {
-      outline: 2px solid var(--primary-color, #c9a063);
+      outline: 2px solid var(--primary-color, #f4b14a);
       outline-offset: 2px;
     }
-    /* Ausgewählte Seite: ruhige Fläche und der Messing-Punkt wie der Doppelpunkt der Uhr */
+    /* Ausgewählte Seite: ruhige Fläche und der Bernstein-Punkt wie im Logo */
     .entry.on {
       background: color-mix(in srgb, var(--primary-text-color) 8%, var(--card-background-color, #1c1c1c));
-      border-color: color-mix(in srgb, var(--primary-color, #c9a063) 60%, transparent);
+      border-color: color-mix(in srgb, var(--primary-color, #f4b14a) 60%, transparent);
     }
     .entry.on .name::before {
       content: "";
@@ -865,7 +946,7 @@ export class AfPageEditor extends LitElement {
       height: 6px;
       margin-right: 8px;
       border-radius: 50%;
-      background: var(--primary-color, #c9a063);
+      background: var(--primary-color, #f4b14a);
       vertical-align: middle;
     }
     .icon {
@@ -1090,6 +1171,14 @@ export class AfPageEditor extends LitElement {
       gap: 8px;
       margin: 8px 0;
     }
+    .remap label {
+      display: grid;
+      gap: 4px;
+      font-size: 13px;
+    }
+    .remap code {
+      opacity: 0.75;
+    }
     .actions-row {
       display: flex;
       flex-wrap: wrap;
@@ -1124,8 +1213,8 @@ export class AfPageEditor extends LitElement {
       gap: 4px;
     }
     .seg button.on {
-      background: var(--primary-color, #c9a063);
-      color: var(--text-primary-color, #1f1810);
+      background: var(--primary-color, #f4b14a);
+      color: var(--text-primary-color, #0f1012);
       border-color: transparent;
     }
     [hidden] {

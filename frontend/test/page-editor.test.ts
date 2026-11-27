@@ -180,6 +180,33 @@ describe("Seiteneditor", () => {
     expect(notes.at(-1)).toMatch(/zurückholen|bring it back/);
     vi.unstubAllGlobals();
   });
+
+  it("räumt beim Löschen Momente und Antipp-Sprünge zur Seite mit auf – sonst scheitert das Speichern", async () => {
+    const cfg = config();
+    cfg.pages.push({ ...cfg.pages[0], id: "b", name: "B", widgets: [widget("w", 0, 0, 2, 1, { tap_action: { action: "page", page: "a" } } as Partial<WidgetConfig>)] });
+    cfg.events = [{ id: "tuer", kind: "page", page: "a" }, { id: "klingel", kind: "doorbell", page: "a" }] as unknown as AmbiframeConfig["events"];
+    (cfg.displays[0] as { events: unknown }).events = ["tuer", "klingel"];
+    const { el, notes } = await mount(cfg);
+    el.removePage();
+    await el.updateComplete;
+    expect(el.config.events.map((e: { id: string }) => e.id)).toEqual(["klingel"]);
+    expect(el.config.events[0].page).toBeUndefined();
+    expect(el.config.displays[0].events).toEqual(["klingel"]);
+    expect(el.config.pages[0].widgets[0].tap_action).toBeUndefined();
+    expect(notes.at(-1)).toMatch(/tuer/);
+    // Küche hatte nur diese Seite: bekommt die übrige, damit sich speichern lässt
+    expect(el.config.displays[0].playlist).toEqual([{ page: "b" }]);
+  });
+});
+
+describe("Letzte Seite", () => {
+  it("lässt sich nicht löschen", async () => {
+    const { el, notes } = await mount();
+    el.removePage();
+    await el.updateComplete;
+    expect(el.config.pages).toHaveLength(1);
+    expect(notes.at(-1)).toMatch(/letzte Seite|last page/);
+  });
 });
 
 describe("Widget-Katalog", () => {

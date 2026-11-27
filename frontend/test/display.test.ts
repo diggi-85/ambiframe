@@ -29,7 +29,7 @@ vi.mock("../src/sound", () => ({
   stopSound: vi.fn(),
 }));
 
-import "../src/display/display";
+import { pipCameras } from "../src/display/display";
 import { leaveToDashboard } from "../src/display/leave";
 import type { AmbiframeConfig, DisplayConfig, EventConfig, Hass, HassEntity, HomeTickerItem } from "../src/types";
 
@@ -207,6 +207,19 @@ describe("Mini-Karte „Läuft gerade“", () => {
     expect(el.nowPlaying()).toBeDefined();
     vi.advanceTimersByTime(11e3);
     expect(el.nowPlaying()).toBeUndefined();
+  });
+
+  it("zeigt mit „zusätzlich Vollbild“ beim Liedwechsel kurz das Cover groß, sonst nur die Mini-Ansicht", async () => {
+    vi.useFakeTimers();
+    const song = (title: string) => ent("media_player.test", "playing", { media_title: title, media_artist: "Band" });
+    for (const [extra, want] of [[{ mini_full: true }, "fullscreen"], [{}, undefined]] as const) {
+      const el = await mount(config({}, [media(extra)]), hassWith(song("Eins")));
+      el.hass = hassWith(song("Zwei"));
+      await el.updateComplete;
+      await vi.advanceTimersByTimeAsync(2000);
+      expect(el.media?.style).toBe(want);
+      el.remove();
+    }
   });
 
   it("beachtet Bedingungen", async () => {
@@ -387,7 +400,9 @@ describe("Einblendungen wegwischen", () => {
     await swipe(el, el.shadowRoot!.querySelector(".pip")!, 40);
     expect(el.shadowRoot!.querySelector(".pip")).toBeTruthy(); // zu kurz: springt zurück
     await swipe(el, el.shadowRoot!.querySelector(".pip")!, -150);
-    expect(el.shadowRoot!.querySelector(".pip")).toBeNull();
+    expect(el.shadowRoot!.querySelector(".pip:not(.leaving)")).toBeNull();
+    // gleitet hinaus statt zu verschwinden
+    expect(el.shadowRoot!.querySelector(".pip.leaving")).toBeTruthy();
   });
 
   it("lässt senkrechtes Wischen in Ruhe", async () => {
@@ -406,13 +421,45 @@ describe("Kamera später wieder zeigen", () => {
     await el.updateComplete;
     (el.shadowRoot!.querySelector('[data-snooze="30"]') as HTMLElement).click();
     await el.updateComplete;
-    expect(el.shadowRoot!.querySelector(".pip")).toBeNull();
+    expect(el.shadowRoot!.querySelector(".pip:not(.leaving)")).toBeNull();
     played.length = 0;
     // Bewegung kommt wieder: in den nächsten 30 min weder Bild noch Ton
     el.hass = hassWith(ent("binary_sensor.tuer", "on"));
     await el.updateComplete;
-    expect(el.shadowRoot!.querySelector(".pip")).toBeNull();
+    expect(el.shadowRoot!.querySelector(".pip:not(.leaving)")).toBeNull();
     expect(played).toEqual([]);
+  });
+});
+
+describe("Zwei und drei Kameras", () => {
+  const cam = (id: string, title: string) => ({ id, kind: "live", entity: `binary_sensor.${id}`, to: "on", title, camera: `camera.${id}`, enabled: true }) as EventConfig;
+  const [a, b, c] = [cam("tuer", "Haustür"), cam("einfahrt", "Einfahrt"), cam("garage", "Garage")];
+
+  it("pipCameras: zweite kommt dazu, dieselbe ändert nichts, bei einer dritten macht die älteste Platz", () => {
+    expect(pipCameras({ ev: a }, b)).toEqual({ ev: a, also: b });
+    expect(pipCameras({ ev: a, also: b }, b)).toEqual({ ev: a, also: b });
+    expect(pipCameras({ ev: a, also: b }, c)).toEqual({ ev: b, also: c });
+  });
+
+  it("zeigt die beiden neuesten Kameras und blendet beim Ausblenden beide aus", async () => {
+    const off = ["tuer", "einfahrt", "garage"].map((id) => ent(`binary_sensor.${id}`, "off"));
+    const el = await mount(config({}, [a, b, c]), hassWith(...off));
+    for (const id of ["tuer", "einfahrt", "garage"]) {
+      el.testEvent(id);
+      await el.updateComplete;
+    }
+    const titles = el.shadowRoot!.querySelector(".pip .r span")!.textContent;
+    expect(titles).toBe("Einfahrt · Garage");
+    (el.shadowRoot!.querySelector('[data-snooze="30"]') as HTMLElement).click();
+    await el.updateComplete;
+    // beide ausgeblendet: echte Bewegung an Einfahrt und Garage zeigt in den nächsten 30 min nichts
+    el.hass = hassWith(off[0], ent("binary_sensor.einfahrt", "on"), ent("binary_sensor.garage", "on"));
+    await el.updateComplete;
+    expect(el.shadowRoot!.querySelector(".pip:not(.leaving)")).toBeNull();
+    // Gegenprobe: die nicht ausgeblendete Haustür kommt
+    el.hass = hassWith(ent("binary_sensor.tuer", "on"), ent("binary_sensor.einfahrt", "on"), ent("binary_sensor.garage", "on"));
+    await el.updateComplete;
+    expect(el.shadowRoot!.querySelector(".pip:not(.leaving) .r span")!.textContent).toBe("Haustür");
   });
 });
 
@@ -472,7 +519,16 @@ describe("Textgröße „aus der Ferne“", () => {
   it("schaltet wachsende Balken mit „Zahlen und Balken bewegen: aus“ ab", async () => {
     const c = config();
     c.design = { ...c.design, count_up: false } as AmbiframeConfig["design"];
-    expect((await mount(c)).style.getPropertyValue("--af-grow")).toBe("none");
+    const el = await mount(c);
+    for (const v of ["--af-bar-anim", "--af-curve-anim", "--af-ring-anim"]) expect(el.style.getPropertyValue(v)).toBe("none");
+  });
+
+  it("setzt Federn oder Einblenden nach Wahl, ruhig bleibt beim Standard", async () => {
+    const c = config();
+    c.design = { ...c.design, chart_motion: "fade" } as AmbiframeConfig["design"];
+    expect((await mount(c)).style.getPropertyValue("--af-bar-anim")).toContain("af-fade");
+    c.design = { ...c.design, chart_motion: "soft" } as AmbiframeConfig["design"];
+    expect((await mount(c)).style.getPropertyValue("--af-bar-anim")).toBe("");
   });
 });
 
@@ -530,6 +586,7 @@ describe("Laufband für Zuhause: Zeilen wählen und mischen", () => {
     const news = mixed.shadowRoot!.querySelector("af-news.newsband") as El;
     expect(news.lead.map((l: { text: string }) => l.text).join()).toContain("Fenster Bad");
     await news.updateComplete;
+    await new Promise((r) => requestAnimationFrame(r)); // die Spur füllt sich im nächsten Bild
     expect(news.shadowRoot!.querySelector(".track .home")!.textContent).toContain("Fenster Bad"); // auch bevor Meldungen geladen sind
     // ohne Mischen: zwei Bänder, das für Zuhause eine Zeile höher
     const two = await mount(cfg([{ entity: "binary_sensor.fenster" }], { enabled: true }), hassWith(fenster));
@@ -626,7 +683,7 @@ describe("Laufband für Zuhause: stehen lassen, gruppieren, Einzelheiten", () =>
     expect(el.controlOpen).toBeFalsy(); // der Tipp hat nicht das Dashboard geöffnet
     el.onTap({ composedPath: () => [], stopPropagation: () => undefined } as unknown as Event);
     await el.updateComplete;
-    expect(el.shadowRoot!.querySelector(".tdetail")).toBeNull();
+    expect(el.shadowRoot!.querySelector(":not(.leaving) > .tdetail")).toBeNull();
   });
 
   it("lässt sich abschalten: global und pro Zeile", async () => {
@@ -641,6 +698,7 @@ describe("Laufband für Zuhause: stehen lassen, gruppieren, Einzelheiten", () =>
     const el = await mount(cfg([{ entity: "binary_sensor.bad", text: "Bad offen" }], {}, { enabled: true, mix: true }), hassWith(fenster("bad", "Bad")));
     const news = el.shadowRoot!.querySelector("af-news.newsband") as El;
     await news.updateComplete;
+    await new Promise((r) => requestAnimationFrame(r)); // die Spur füllt sich im nächsten Bild
     (news.shadowRoot!.querySelector(".track .home.tap") as HTMLElement).click();
     await el.updateComplete;
     expect(el.shadowRoot!.querySelector(".tdetail")!.textContent).toContain("Bad offen");
@@ -704,7 +762,7 @@ describe("Laufband für Zuhause: Tempo und Laufen", () => {
   const sized = (el: El, band: number, track: number) => {
     const b = el.shadowRoot!.querySelector(".hticker") as HTMLElement;
     Object.defineProperty(b, "clientWidth", { configurable: true, get: () => band });
-    Object.defineProperty(b.querySelector(".track")!, "scrollWidth", { configurable: true, get: () => track });
+    Object.defineProperty(b.querySelector(".measure")!, "scrollWidth", { configurable: true, get: () => track });
   };
 
   it("läuft nur, wenn der Text nicht ins Band passt – und dann mit dem eingestellten Tempo", async () => {
@@ -715,10 +773,23 @@ describe("Laufband für Zuhause: Tempo und Laufen", () => {
     await el.updateComplete;
     const band = el.shadowRoot!.querySelector(".hticker") as HTMLElement;
     expect(band.classList.contains("run")).toBe(true);
-    sized(el, 1000, 4800); // jetzt doppelt gesetzt: halbe Breite zählt
-    el.requestUpdate();
-    await el.updateComplete;
-    expect((band.querySelector(".track") as HTMLElement).style.animationDuration).toBe("120s"); // 2400 px ÷ 20 px/s
+    // die laufende Spur füllt tickerFrame selbst – Lit setzt dort keine Zeilen
+    expect(band.querySelector(".lane")!.children.length).toBe(0);
+  });
+
+  it("hängt neue Meldungen direkt hinter die laufende an, statt die Runde neu zu mischen", async () => {
+    const { nextTickerLine } = await import("../src/util");
+    const seen = new Set<string>();
+    const a = { text: "Trockner läuft" }, b = { text: "Fenster offen" }, c = { text: "Tesla lädt 41 %" };
+    expect(nextTickerLine([a, b], seen)).toBe(a);
+    const neu = { text: "Haustür offen" };
+    expect(nextTickerLine([neu, a, b], seen)).toBe(neu); // neu kommt vor dem Rest der Runde
+    expect(nextTickerLine([neu, a, b], seen)).toBe(b);
+    expect(nextTickerLine([neu, a, b], seen)).toBe(neu); // Runde vorbei: von vorn
+    seen.clear();
+    nextTickerLine([c], seen);
+    expect(nextTickerLine([{ text: "Tesla lädt 42 %" }, b], seen)).toBe(b); // andere Zahl = dieselbe Zeile
+    expect(nextTickerLine([{ text: "Fenster 1" }, { text: "Fenster 2" }], new Set(["|Fenster 1"])).text).toBe("Fenster 2");
   });
 
   it("steht still, wenn alles hineinpasst – auch bei vielen Zeilen", async () => {
@@ -728,5 +799,185 @@ describe("Laufband für Zuhause: Tempo und Laufen", () => {
     await el.updateComplete;
     await el.updateComplete;
     expect(el.shadowRoot!.querySelector(".hticker")!.classList.contains("run")).toBe(false);
+  });
+});
+
+describe("Laufbänder pro Seite ausblenden", () => {
+  const cfg = (tickers?: string, mix = false) => {
+    const c = config();
+    c.pages[0] = { ...c.pages[0], ...(tickers ? { tickers } : {}) } as AmbiframeConfig["pages"][0];
+    c.design = { ...c.design, home_ticker: [{ entity: "binary_sensor.fenster", text: "Fenster offen" }], news_band: { enabled: true, mix } } as AmbiframeConfig["design"];
+    return c;
+  };
+  const hass = () => hassWith(ent("binary_sensor.fenster", "on"));
+  const bands = async (c: AmbiframeConfig) => {
+    const el = await mount(c, hass());
+    return { home: !!el.shadowRoot!.querySelector(".hticker"), news: !!el.shadowRoot!.querySelector("af-news.newsband") };
+  };
+
+  it("blendet je nach Seite das Nachrichten-Laufband, das für Zuhause oder beide aus", async () => {
+    expect(await bands(cfg())).toEqual({ home: true, news: true });
+    expect(await bands(cfg("no_news"))).toEqual({ home: true, news: false });
+    expect(await bands(cfg("no_home"))).toEqual({ home: false, news: true });
+    expect(await bands(cfg("none"))).toEqual({ home: false, news: false });
+  });
+
+  it("zeigt gemischt die Zeilen von Zuhause allein, wenn die Seite nur die Nachrichten ausblendet", async () => {
+    expect(await bands(cfg("no_news", true))).toEqual({ home: true, news: false });
+  });
+});
+
+describe("Video-Seite: weiter erst nach dem Video", () => {
+  const cfg = (untilEnd: boolean) => {
+    const c = config();
+    c.pages = [
+      { id: "video", name: "Video", duration: 30, background: { type: "none" }, palette: "normal", show_if: [], widgets: [{ id: "v", type: "newsvideo", x: 0, y: 0, w: 12, h: 8, options: { until_end: untilEnd } }] },
+      { id: "zwei", name: "Zwei", duration: 30, background: { type: "none" }, palette: "normal", show_if: [], widgets: [] },
+    ] as unknown as AmbiframeConfig["pages"];
+    c.displays[0].playlist = [{ page: "video" }, { page: "zwei" }];
+    return c;
+  };
+  const ended = (el: El) => el.shadowRoot!.querySelector("af-page")!.shadowRoot!.querySelector("af-newsvideo")!.dispatchEvent(new CustomEvent("af-video-end", { bubbles: true, composed: true }));
+
+  it("bleibt über die Dauer hinaus auf der Seite und schaltet beim Ende des Videos weiter", async () => {
+    vi.useFakeTimers();
+    const el = await mount(cfg(true));
+    el.showPage("video");
+    await el.updateComplete;
+    vi.advanceTimersByTime(60e3); // Dauer der Seite: 30 s – sie bleibt trotzdem
+    await el.updateComplete;
+    expect(el.currentPageId).toBe("video");
+    ended(el);
+    await el.updateComplete;
+    expect(el.currentPageId).toBe("zwei");
+  });
+
+  it("schaltet ohne die Option nach der festen Dauer weiter und ignoriert das Ende des Videos", async () => {
+    vi.useFakeTimers();
+    const el = await mount(cfg(false));
+    el.showPage("video");
+    await el.updateComplete;
+    ended(el);
+    await el.updateComplete;
+    expect(el.currentPageId).toBe("video");
+    vi.advanceTimersByTime(31e3);
+    await el.updateComplete;
+    expect(el.currentPageId).toBe("zwei");
+  });
+
+  it("wartet höchstens 5 Minuten auf ein Video", async () => {
+    vi.useFakeTimers();
+    const el = await mount(cfg(true));
+    el.showPage("video");
+    await el.updateComplete;
+    vi.advanceTimersByTime(5 * 60e3 + 1000);
+    await el.updateComplete;
+    expect(el.currentPageId).toBe("zwei");
+  });
+});
+
+describe("Hochkant-Fotos", () => {
+  it("erkennt Hochkant und zeigt Paar bzw. ganzes Foto", async () => {
+    const { tallPhoto } = await import("../src/data");
+    expect(tallPhoto({ w: 3000, h: 4000 })).toBe(true);
+    expect(tallPhoto({ w: 4000, h: 3000 })).toBe(false);
+    expect(tallPhoto({ w: 1000, h: 1050 })).toBe(false);
+    await import("../src/display/page");
+    const el = document.createElement("af-page") as El;
+    el.hass = { states: {} } as unknown as Hass;
+    el.grid = { w: 1280, h: 800, padX: 56, padY: 48, gap: 16, cols: 12, rows: 8 };
+    el.orientation = "landscape";
+    el.ctx = { tiles: false, gap: 16, config: { design: {} } };
+    el.page = { id: "p", name: "P", duration: 30, background: { type: "photo" }, palette: "normal", widgets: [] };
+    el.photo = { url: "a.jpg", credit: "", pair: "b.jpg" };
+    document.body.appendChild(el);
+    await el.updateComplete;
+    const duo = el.shadowRoot!.querySelectorAll(".photo.duo i");
+    expect(duo.length).toBe(2);
+    expect((duo[1] as HTMLElement).getAttribute("style")).toContain("b.jpg");
+    el.photo = { url: "a.jpg", credit: "", fit: true };
+    await el.updateComplete;
+    expect(el.shadowRoot!.querySelector(".photo.fit")?.getAttribute("style")).toContain('--img:url("a.jpg")');
+    el.remove();
+  });
+});
+
+describe("Bewegung pro Kachel", () => {
+  it("eine Kachel still, eine mit eigener Dauer – der Rest wie die Seite", async () => {
+    await import("../src/display/page");
+    const el = document.createElement("af-page") as El;
+    el.hass = { states: {} } as unknown as Hass;
+    el.grid = { w: 1280, h: 800, padX: 56, padY: 48, gap: 16, cols: 12, rows: 8 };
+    el.orientation = "landscape";
+    el.ctx = { tiles: false, config: { design: {} } };
+    const w = (id: string, x: number, look?: object) => ({ id, type: "text", x, y: 0, w: 4, h: 2, options: { text: id }, look });
+    el.page = { id: "p", name: "P", duration: 30, background: { type: "none" }, palette: "normal", widgets: [w("still", 0, { motion: "off" }), w("tor", 4, { motion_duration: 2.2 }), w("rest", 8)] };
+    document.body.append(el);
+    await el.updateComplete;
+    const cell = (id: string) => el.shadowRoot!.querySelector(`[data-widget="${id}"]`) as HTMLElement;
+    const ctx = (id: string) => (cell(id).firstElementChild as unknown as { ctx: { motion: { style: string; duration: number } } }).ctx;
+    expect(cell("still").getAttribute("style")).toContain("--af-card-anim:none");
+    expect(ctx("still").motion.style).toBe("off");
+    expect(cell("tor").getAttribute("style")).toContain("--af-tempo:2");
+    expect(ctx("tor").motion.duration).toBe(2.2);
+    expect(cell("rest").getAttribute("style")).not.toContain("--af-tempo");
+    expect(ctx("rest").motion.duration).toBe(1.1);
+    el.remove();
+  });
+});
+
+describe("Akku-Kamera schonen", () => {
+  it("alle Displays zeigen das eine Standbild von HA – kein eigener Abruf; Vollbild behält das Kamera-Element", async () => {
+    const ev = { id: "tuer", kind: "live", entity: "binary_sensor.tuer", to: "on", title: "Haustür", camera: "camera.tuer", enabled: true } as EventConfig;
+    const hass = hassWith(ent("binary_sensor.tuer", "off"), ent("camera.tuer", "idle", { entity_picture: "/api/camera_proxy/camera.tuer?token=x" }));
+    const calls: string[] = [];
+    (hass as unknown as { callWS: (m: { type: string }) => Promise<unknown> }).callWS = async (m) => {
+      calls.push(m.type);
+      return m.type === "ambiframe/doorlog" ? [{ event: "tuer", at: new Date().toISOString(), url: "/api/ambiframe/snapshot/1-tuer.jpg?authSig=s" }] : [];
+    };
+    const el = await mount(config({}, [ev]), hass);
+    vi.useFakeTimers();
+    el.hass = hassWith(ent("binary_sensor.tuer", "on"), ent("camera.tuer", "idle", { entity_picture: "/api/camera_proxy/camera.tuer?token=x" }));
+    (el.hass as unknown as { callWS: unknown }).callWS = (hass as unknown as { callWS: unknown }).callWS;
+    await el.updateComplete;
+    const cam = () => el.shadowRoot!.querySelector("af-camera-view") as unknown as { poster?: string };
+    expect(cam().poster).toBe(""); // noch kein Bild: Platzhalter statt camera_proxy
+    await vi.advanceTimersByTimeAsync(1600);
+    await el.updateComplete;
+    expect(calls).toContain("ambiframe/doorlog");
+    expect(cam().poster).toContain("/api/ambiframe/snapshot/");
+    const before = cam();
+    (el.shadowRoot!.querySelector(".pip") as HTMLElement).dispatchEvent(new PointerEvent("pointerup", { bubbles: true, composed: true }));
+    (el as unknown as { fullPip: () => void }).fullPip();
+    await el.updateComplete;
+    expect(el.shadowRoot!.querySelector(".camfull")).not.toBeNull();
+    expect(cam()).toBe(before); // derselbe Stream, nicht neu verbunden
+    vi.useRealTimers();
+  });
+});
+
+describe("Zwei Kameras melden gleichzeitig", () => {
+  it("springt nicht hin und her – beide Streams stehen nebeneinander", async () => {
+    const cam = (id: string) => ({ id, kind: "live", entity: `binary_sensor.${id}`, to: "on", title: id, camera: `camera.${id}`, enabled: true }) as EventConfig;
+    const el = await mount(config({}, [cam("vorne"), cam("hinten")]));
+    el.testEvent("vorne");
+    el.testEvent("hinten");
+    el.testEvent("vorne");
+    el.testEvent("hinten");
+    await el.updateComplete;
+    const views = [...el.shadowRoot!.querySelectorAll(".pip af-camera-view")] as unknown as { entity: string }[];
+    expect(views.map((v) => v.entity)).toEqual(["camera.vorne", "camera.hinten"]);
+    expect(el.shadowRoot!.querySelector(".pip.two")).toBeTruthy();
+  });
+
+  it("öffnet beide bildschirmfüllend, wenn „Zwei Kameras gleichzeitig: Vollbild“ an ist", async () => {
+    const cam = (id: string) => ({ id, kind: "live", entity: `binary_sensor.${id}`, to: "on", title: id, camera: `camera.${id}`, both_full: true, enabled: true }) as EventConfig;
+    const el = await mount(config({}, [cam("vorne"), cam("hinten")]));
+    el.testEvent("vorne");
+    await el.updateComplete;
+    expect(el.shadowRoot!.querySelector(".camfull")).toBeNull();
+    el.testEvent("hinten");
+    await el.updateComplete;
+    expect(el.shadowRoot!.querySelectorAll(".camfull.two af-camera-view")).toHaveLength(2);
   });
 });

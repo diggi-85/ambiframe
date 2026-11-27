@@ -27,6 +27,8 @@ from .const import (
     PORTRAIT_COLUMNS,
     PORTRAIT_ROWS,
     THEME_MODES,
+    DEFAULT_THEME,
+    MERGED_THEMES,
     THEMES,
     TRANSITIONS,
 )
@@ -38,6 +40,23 @@ _SECONDS = vol.All(vol.Coerce(int), vol.Range(min=1, max=86400))
 _SECONDS_OR_ZERO = vol.All(vol.Coerce(int), vol.Range(min=0, max=86400))
 
 _FONT = vol.All(cv.string, vol.Match(r"^[a-z0-9\-]+$"))
+
+# Bewegung von Zahlen, Balken, Kurven und Karten (Design und pro Seite)
+# Form der Laufbänder (fehlt = passend zum Stil)
+TICKER_LOOKS = ["bar", "float", "line"]
+
+MOTION = vol.Schema(
+    {
+        vol.Optional("style"): vol.In(["soft", "spring", "fade", "off"]),
+        vol.Optional("duration"): vol.All(vol.Coerce(float), vol.Range(min=0.2, max=5)),
+        vol.Optional("strength"): vol.In(["subtle", "normal", "strong"]),
+        vol.Optional("stagger"): vol.In(["off", "soft", "strong"]),
+        vol.Optional("highlight"): vol.In(["off", "glow", "arrow", "both"]),
+        vol.Optional("count"): vol.In(["big", "all", "none"]),
+        vol.Optional("when"): vol.In(["page", "always"]),
+    },
+    extra=vol.ALLOW_EXTRA,
+)
 
 TRANSITION = vol.Schema(
     {
@@ -118,6 +137,9 @@ LOOK = vol.Schema(
         vol.Optional("size"): vol.All(vol.Coerce(int), vol.Range(min=25, max=400)),
         vol.Optional("opacity"): _PERCENT,
         vol.Optional("padding"): vol.All(vol.Coerce(int), vol.Range(min=0, max=200)),
+        # Bewegung nur dieser Kachel: still oder eigene Dauer in s
+        vol.Optional("motion"): vol.In(["off"]),
+        vol.Optional("motion_duration"): vol.All(vol.Coerce(float), vol.Range(min=0.2, max=5)),
         # Kachel: eigene Kartenfarbe und -deckkraft, Radius, Rahmen, Glas, Schatten, Überschrift
         vol.Optional("bg"): cv.string,
         vol.Optional("bg_opacity"): _PERCENT,
@@ -191,7 +213,7 @@ PAGE = vol.Schema(
         vol.Optional("duration", default=30): vol.All(vol.Coerce(int), vol.Range(min=3, max=86400)),
         vol.Optional("background", default=dict): vol.Schema(
             {
-                vol.Optional("type", default="none"): vol.In(["none", "photo", "color", "camera"]),
+                vol.Optional("type", default="none"): vol.In(["none", "photo", "color", "camera", "music"]),
                 vol.Optional("color"): cv.string,
                 # Kamera als Hintergrund: HA-Kamera oder Webcam-Link, Standbild alle refresh s (0 = live)
                 vol.Optional("entity"): cv.entity_id,
@@ -215,7 +237,10 @@ PAGE = vol.Schema(
             extra=vol.ALLOW_EXTRA,
         ),
         vol.Optional("palette", default="normal"): vol.In(["normal", "night"]),
+        # Laufbänder auf dieser Seite ausblenden (fehlt = wie eingestellt)
+        vol.Optional("tickers"): vol.In(["no_news", "no_home", "none"]),
         vol.Optional("transition"): TRANSITION,
+        vol.Optional("motion"): MOTION,
         vol.Optional("show_if", default=list): [CONDITION],
         vol.Optional("css"): cv.string,
         vol.Optional("widgets", default=list): [WIDGET],
@@ -269,6 +294,17 @@ EVENT = vol.Schema(
         vol.Optional("mini_cover"): cv.boolean,
         vol.Optional("mini_progress"): cv.boolean,
         vol.Optional("mini_background"): vol.In(["none"]),
+        vol.Optional("mini_layout"): vol.In(["card", "bar", "cover", "pill"]),
+        vol.Optional("mini_full"): cv.boolean,
+        # Kamera: Bild-im-Bild (Ecke, Größe, Form, Ausblenden-Knöpfe), Antippen → Vollbild, Vollbild-Dauer (0 = bis geschlossen)
+        vol.Optional("pip_position"): vol.In(["bottom-right", "bottom-left", "top-right", "top-left"]),
+        vol.Optional("pip_size"): vol.In(["small", "large"]),
+        vol.Optional("pip_layout"): vol.In(["card", "video"]),
+        vol.Optional("pip_snooze"): cv.boolean,
+        vol.Optional("pip_tap"): vol.In(["full", "close"]),
+        vol.Optional("open_full"): cv.boolean,
+        vol.Optional("both_full"): cv.boolean,
+        vol.Optional("full_duration"): _SECONDS_OR_ZERO,
         # Ruhezeit: stumm (mute) oder gar nicht zeigen (skip)
         vol.Optional("quiet"): vol.Schema({vol.Optional("after"): _TIME, vol.Optional("before"): _TIME}),
         vol.Optional("quiet_action"): vol.In(["mute", "skip"]),
@@ -319,6 +355,10 @@ DISPLAY_DESIGN = vol.Schema(
         vol.Optional("cover_colors"): cv.boolean,
         vol.Optional("cover_players"): [cv.entity_id],
         vol.Optional("palette"): vol.In(PALETTES),
+        # Bewegung abweichend auf diesem Display (Studio → Aussehen → Bewegung)
+        vol.Optional("chart_motion"): vol.In(["soft", "spring", "fade", "off"]),
+        vol.Optional("motion"): MOTION,
+        vol.Optional("ticker_look"): vol.In(TICKER_LOOKS),
     }
 )
 # Töne pro Display: stumm, Lautstärke (skaliert die des Ereignisses), Ruhezeit „HH:MM“–„HH:MM“
@@ -433,13 +473,16 @@ CONFIG = vol.Schema(
         ),
         vol.Optional("design", default=dict): vol.Schema(
             {
-                vol.Optional("theme", default="ruhig"): vol.In(THEMES),
+                vol.Optional("theme", default=DEFAULT_THEME): vol.In(THEMES),
                 vol.Optional("mode", default="auto"): vol.In(THEME_MODES),
                 vol.Optional("accent"): cv.string,
                 vol.Optional("evening", default="sun"): vol.In(["sun", "off"]),
                 vol.Optional("fonts"): vol.Schema({vol.Optional("display"): _FONT, vol.Optional("text"): _FONT}),
+                vol.Optional("ticker_look"): vol.In(TICKER_LOOKS),
+                vol.Optional("ticker_detail"): cv.boolean,
                 vol.Optional("ambient"): _AMBIENT,
                 vol.Optional("transition"): TRANSITION,
+                vol.Optional("motion"): MOTION,
                 vol.Optional("colors"): vol.Schema({vol.Optional("dark"): _COLORS, vol.Optional("light"): _COLORS}),
                 vol.Optional("radius"): vol.All(vol.Coerce(int), vol.Range(min=0, max=120)),
                 # Karten aller Widgets: wie der Stil, gefüllt, Glas, nur Umriss oder ohne Fläche; Abstand der Kacheln
@@ -547,22 +590,28 @@ def _migrate(raw: Any) -> Any:
     if isinstance(design, dict) and design.get("theme") == "weissgold":
         design["theme"] = "ruhig"
         design.setdefault("mode", "light")
-    # Zusammengelegte Stile (0.12): Gold → Ruhig, Minimal → Klar – überall, wo ein Stil stehen kann
-    merged = {"gold": "ruhig", "minimal": "klar"}
+    # Zusammengelegte oder entfernte Stile → Nachfolger, ganz Unbekanntes → Standard – überall, wo ein Stil stehen kann
     holders = [design, *(raw.get("displays") or []), *[p.get("design") for p in ((design or {}).get("presets") or []) if isinstance(p, dict)]]
     for holder in holders:
-        if isinstance(holder, dict) and holder.get("theme") in merged:
-            holder["theme"] = merged[holder["theme"]]
+        if not isinstance(holder, dict) or not isinstance(holder.get("theme"), str):
+            continue
+        if holder["theme"] == "weissgold":  # war „Gold“ in hell – überall, nicht nur global
+            holder.setdefault("mode", "light")
+        theme = MERGED_THEMES.get(holder["theme"], holder["theme"])
+        holder["theme"] = theme if theme in THEMES else DEFAULT_THEME
     # Reste eines Editor-Fehlers (bis 0.2.0): einzelne Buchstaben eines Entitätsnamens als Schlüssel "0", "1", …
     for key in ("displays", "pages", "events"):
         for item in raw.get(key) or []:
             if isinstance(item, dict):
                 for junk in [k for k in item if isinstance(k, str) and k.isdigit()]:
                     del item[junk]
-    for display in raw.get("displays") or []:
-        if isinstance(display, dict) and display.get("theme") == "weissgold":
-            display["theme"] = "ruhig"
-            display.setdefault("mode", "light")
+    # Dasselbe bei Nachrichten-Quellen (bis 0.18): alte Text-Einträge wurden im Editor zu {"0": "t", …, "value": …}
+    feed_lists = [((design or {}).get("news_band") or {}).get("feeds")]
+    feed_lists += [(w.get("options") or {}).get("feeds") for p in raw.get("pages") or [] if isinstance(p, dict) for w in p.get("widgets") or [] if isinstance(w, dict)]
+    for feeds in feed_lists:
+        for index, feed in enumerate(feeds if isinstance(feeds, list) else []):
+            if isinstance(feed, dict) and any(isinstance(k, str) and k.isdigit() for k in feed):
+                feeds[index] = {k: v for k, v in feed.items() if not (isinstance(k, str) and k.isdigit())}
     # Bis 0.6: nur Bing an/aus („bing“, „bing_mix“) – seit 0.7 eine Platzhalter-Quelle zur Wahl
     photo_sets = [raw.get("photos")] + [d.get("photos") for d in raw.get("displays") or [] if isinstance(d, dict)]
     for index, photos in enumerate(photo_sets):

@@ -40,6 +40,8 @@ export const PATHS: Record<string, string> = {
   dots: '<path d="M6 12h.01M12 12h.01M18 12h.01"/>',
   grid: '<rect x="4" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5"/>',
   back: '<path d="M15 6l-6 6 6 6"/>',
+  undo: '<path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/>',
+  redo: '<path d="m15 14 5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/>',
   forward: '<path d="M9 6l6 6-6 6"/>',
   shutter: '<rect x="4" y="3.5" width="16" height="17" rx="1.5"/><path d="M4 7.5h16M4 11h16M4 14.5h16M4 18h16"/>',
   shutter_open: '<rect x="4" y="3.5" width="16" height="17" rx="1.5"/><path d="M4 7h16"/>',
@@ -55,7 +57,8 @@ export const PATHS: Record<string, string> = {
   tablet: '<rect x="4.5" y="3" width="15" height="18" rx="2"/><path d="M11 18h2"/>',
   watch: '<rect x="7" y="6.5" width="10" height="11" rx="2.6"/><path d="M9 6.5l.6-3.5h4.8l.6 3.5M9 17.5l.6 3.5h4.8l.6-3.5"/>',
   battery: '<rect x="3" y="7.5" width="16" height="9" rx="2"/><path d="M21 10.5v3"/><path d="M6 10.5v3" stroke-width="2.2"/>',
-  car: '<path d="M4 15.5V12l1.8-4.2A2 2 0 0 1 7.6 6.5h8.8a2 2 0 0 1 1.8 1.3L20 12v3.5"/><path d="M3 15.5h18v2.3a.7.7 0 0 1-.7.7H18.6M5.4 18.5H3.7a.7.7 0 0 1-.7-.7v-2.3"/><circle cx="7.5" cy="18" r="1.8"/><circle cx="16.5" cy="18" r="1.8"/><path d="M4.6 11.8h14.8"/>',
+  // Elektro-Limousine im Profil (Fließheck, flache Haube) – schlichter als die Frontansicht
+  car: '<path d="M3.7 16.5H2.7a.7.7 0 0 1-.7-.7v-2c0-.7.4-1.2 1-1.4l2.6-.8C7.4 9.6 9.4 8.2 12 8.2h1.6c1.4 0 2.6.6 3.5 1.6l1.6 1.9 2.2.5c.9.2 1.5.9 1.5 1.8v1.8a.7.7 0 0 1-.7.7h-1.6"/><path d="M7.5 16.5h8"/><circle cx="5.6" cy="16.5" r="1.9"/><circle cx="17.4" cy="16.5" r="1.9"/><path d="M6.2 11.5h12.3"/>',
   robot: '<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="2.6"/><path d="M6.6 8.6a6.8 6.8 0 0 1 10.8 0"/>',
   person: '<circle cx="12" cy="8" r="3.6"/><path d="M5 20c.8-3.6 3.6-5.6 7-5.6s6.2 2 7 5.6"/>',
   home: '<path d="M4 11l8-6.5 8 6.5M6 9.5V20h12V9.5"/><path d="M10 20v-5h4v5"/>',
@@ -86,6 +89,13 @@ export const iconSvg = (name: string | undefined, cls = ""): SVGTemplateResult =
   svg`<svg class="ic ${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
     stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${unsafeSVG(PATHS[name ?? ""] ?? PATHS.info)}</svg>`;
 
+/** Ambiframe-Zeichen (kräftige Mini-Fassung aus docs/brand): Rahmen in Textfarbe, Lichtpunkt in Markenbernstein. */
+export const brandMark = (size = 20): SVGTemplateResult =>
+  svg`<svg class="brand-mark" viewBox="0 0 128 128" width=${size} height=${size} style="flex:none" aria-hidden="true">
+    <path d="M110 61.81V80A18 18 0 0 1 92 98H36A18 18 0 0 1 18 80V48A18 18 0 0 1 36 30H78.19" fill="none"
+      stroke="currentColor" stroke-width="11" stroke-linecap="round"/>
+    <circle cx="104" cy="36" r="15" fill="#F4B14A"/></svg>`;
+
 const CONDITIONS: Record<string, [string, string]> = {
   sunny: ["sun", "Sonnig"],
   "clear-night": ["moon", "Klar"],
@@ -110,6 +120,9 @@ export const weatherLabel = (c?: string): string => (CONDITIONS[c ?? ""] ? t(CON
 /** mdi:-Icons der Konfiguration auf eigene Linien-Icons abbilden, sonst HA-Icon verwenden. */
 export const MDI_MAP: Record<string, string> = {
   "mdi:washing-machine": "washer",
+  "mdi:power-plug": "plug",
+  "mdi:fan": "wind",
+  "mdi:thermostat": "thermo",
   "mdi:tumble-dryer": "dryer",
   "mdi:bell": "bell",
   "mdi:timer-outline": "timer",
@@ -202,4 +215,52 @@ export const anyIcon = (name: string | undefined, cls = ""): SVGTemplateResult |
     return html`<ha-icon class="ic ${cls}" icon=${name} style="--mdc-icon-size:1em;width:1em;height:1em;display:inline-flex"></ha-icon>`;
   }
   return iconSvg(undefined, cls);
+};
+
+/* ───────── Mülltonnen: deutsche Tonne in ihrer Farbe, Gelber Sack als Sack ───────── */
+
+export const BIN_COLORS: Record<string, string> = {
+  bio: "#7a5532",
+  braun: "#7a5532",
+  gelb: "#f0c419",
+  wertstoff: "#f0c419",
+  verpackung: "#f0c419",
+  papier: "#2f6fb8",
+  blau: "#2f6fb8",
+  glas: "#3f8f4e",
+  grün: "#3f8f4e",
+  rest: "#4a4e54",
+  grau: "#4a4e54",
+  schwarz: "#2e3135",
+};
+
+/** Farbe einer Tonne: eigene Farbe, sonst aus dem Namen („Biotonne“ → braun), sonst Restmüll-Grau */
+export const binColor = (name = "", color?: string): string =>
+  color ?? BIN_COLORS[Object.keys(BIN_COLORS).find((k) => name.toLowerCase().includes(k)) ?? "rest"];
+
+/** Gezeichnete Mülltonne (Deckel, Griff, Räder) – „Gelber Sack“ o. ä. wird ein zugebundener Sack */
+export const binIcon = (name = "", color?: string): SVGTemplateResult => {
+  const c = binColor(name, color);
+  if (/sack|beutel/i.test(name))
+    return svg`<svg class="binic" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M8.4 8.2C5.6 10.6 4.6 15.4 5.6 19.2c.5 1.8 2.6 2.6 6.4 2.6s5.9-.8 6.4-2.6c1-3.8 0-8.6-2.8-11z" fill=${c} fill-opacity=".9"/>
+      <path d="M8.4 8.2C5.6 10.6 4.6 15.4 5.6 19.2c.5 1.8 2.6 2.6 6.4 2.6s5.9-.8 6.4-2.6c1-3.8 0-8.6-2.8-11z" fill="none" stroke="#000" stroke-opacity=".28" stroke-width=".8"/>
+      <path d="M9.2 12.5c.6 2.6.4 5.2-.4 7.5M14.4 11.8c-.3 2.8.1 5.6 1 8" fill="none" stroke="#000" stroke-opacity=".16" stroke-width=".8" stroke-linecap="round"/>
+      <path d="M7.6 10.8c-.9 1.6-1.2 3.6-1 5.4" fill="none" stroke="#fff" stroke-opacity=".45" stroke-width="1" stroke-linecap="round"/>
+      <path d="M8.4 8.2h7.2L13 6.6h-2z" fill=${c}/>
+      <path d="M8.4 8.2h7.2" stroke="#000" stroke-opacity=".3" stroke-width=".8"/>
+      <path d="M12 6.6 9.4 3.4M12 6.6l2.8-3" fill="none" stroke=${c} stroke-width="1.6" stroke-linecap="round"/>
+      <circle cx="12" cy="6.4" r="1.1" fill=${c}/><circle cx="12" cy="6.4" r="1.1" fill="#000" fill-opacity=".25"/>
+    </svg>`;
+  return svg`<svg class="binic" viewBox="0 0 24 24" aria-hidden="true">
+    <rect x="6" y="2.2" width="12" height="1.6" rx=".8" fill="#2a2c30"/>
+    <path d="M5.4 6.6h13.2l-1.3 13.2a1.2 1.2 0 0 1-1.2 1.1H7.9a1.2 1.2 0 0 1-1.2-1.1z" fill=${c}/>
+    <path d="M6.2 6.6h2.2l.9 14.3H7.9a1.2 1.2 0 0 1-1.2-1.1z" fill="#fff" fill-opacity=".18"/>
+    <path d="M10 9.4v8.6M14 9.4v8.6" stroke="#000" stroke-opacity=".2" stroke-width="1.1" stroke-linecap="round"/>
+    <rect x="3.8" y="3.6" width="16.4" height="3.4" rx="1.1" fill=${c}/>
+    <rect x="3.8" y="3.6" width="16.4" height="3.4" rx="1.1" fill="#000" fill-opacity=".22"/>
+    <rect x="4.6" y="4.2" width="14.8" height=".8" rx=".4" fill="#fff" fill-opacity=".22"/>
+    <circle cx="8" cy="21" r="2" fill="#26282b"/><circle cx="8" cy="21" r=".7" fill="#6b6f75"/>
+    <circle cx="16" cy="21" r="2" fill="#26282b"/><circle cx="16" cy="21" r=".7" fill="#6b6f75"/>
+  </svg>`;
 };

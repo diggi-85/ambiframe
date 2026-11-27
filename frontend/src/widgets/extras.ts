@@ -9,6 +9,7 @@ import { ago, fmt, fmtTime, stateOf } from "../util";
 import { AfTickingWidget, AfWidget, define } from "./base";
 
 const startOfDay = (d = new Date()) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+const addDays = (d: Date, n: number) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
 const WEEKDAY = (d: Date) => d.toLocaleDateString(locale(), { weekday: "short" }).replace(".", "");
 
 /* ───────────────────────── Haustier ───────────────────────── */
@@ -206,9 +207,9 @@ class AfPet extends AfTickingWidget {
             <div class="label">${o.label ?? t("Letzte Tage")}</div>
             <div class="bars">
               ${days.map(
-                (d) => html`<div class="bar ${isToday(d.day) ? "today" : ""}">
+                (d, j) => html`<div class="bar ${isToday(d.day) ? "today" : ""}">
                   <b class="num">${d.count}</b>
-                  <i style="height:${Math.max(4, (d.count / max) * 150)}px"></i>
+                  <i class="grow-y" style="height:${Math.max(4, (d.count / max) * 150)}px;--af-j:${(j / days.length).toFixed(3)}"></i>
                   <span>${WEEKDAY(d.day)}</span>
                 </div>`,
               )}
@@ -221,6 +222,49 @@ class AfPet extends AfTickingWidget {
 }
 
 /* ───────────────────────── Tagesbilanz ───────────────────────── */
+
+/** Faktor auf kWh: Wh-Zähler durch 1000, MWh mal 1000, sonst kWh */
+export const kwhFactor = (unit?: unknown): number => (unit === "Wh" ? 1e-3 : unit === "MWh" ? 1e3 : 1);
+
+/**
+ * Statistik-Zeilen in Fächer: Tag = 24 Stunden nach der Uhrzeit (Sommerzeit: die doppelte Stunde wird addiert, die
+ * fehlende bleibt leer), Woche = 7 Tage nach dem Datum. Werte in kWh.
+ */
+export const slotValues = (rows: { start: number; change?: number }[], day: Date, week: boolean, factor = 1): (number | null)[] => {
+  const out: (number | null)[] = Array(week ? 7 : 24).fill(null);
+  for (const x of rows) {
+    if (x.change == null) continue;
+    const at = new Date(x.start);
+    const i = week ? Math.round((startOfDay(at).getTime() - day.getTime()) / 864e5) : startOfDay(at).getTime() === day.getTime() ? at.getHours() : -1;
+    if (i >= 0 && i < out.length) out[i] = (out[i] ?? 0) + Math.max(0, x.change) * factor;
+  }
+  return out;
+};
+
+/** Ø je Tag aus Tagesänderungen; erst ab 3 Tagen mit Werten aussagekräftig */
+export const dayAverage = (days: (number | null)[]): number | null => {
+  const v = days.filter((x): x is number => x != null && Number.isFinite(x));
+  return v.length >= 3 ? v.reduce((a, b) => a + b, 0) / v.length : null;
+};
+
+/** Abweichung vom Ø: „▲ 12 % über Ø“; null bei zu wenig Daten */
+export const vsAverage = (value: number, avg: number | null): { dir: "up" | "down" | "same"; pct: number } | null => {
+  if (avg == null || avg < 0.05) return null;
+  const pct = Math.round(((value - avg) / avg) * 100);
+  return { dir: Math.abs(pct) < 5 ? "same" : pct > 0 ? "up" : "down", pct: Math.abs(pct) };
+};
+
+/** Stundenverlauf in Sätzen: Spitzenstunde und Grundlast (nachts 0–5 Uhr, kleinste Stunde in W) */
+export const profileFacts = (use: (number | null)[]) => {
+  let peak = -1;
+  use.forEach((v, h) => v != null && (peak < 0 || v > (use[peak] ?? 0)) && (peak = h));
+  const night = use.slice(0, 6).filter((v): v is number => v != null);
+  return {
+    peak: peak >= 0 && (use[peak] ?? 0) > 0 ? { hour: peak, kwh: use[peak] as number } : null,
+    base: night.length >= 3 ? Math.min(...night) * 1000 : null,
+    total: use.reduce<number>((a, v) => a + (v ?? 0), 0),
+  };
+};
 
 interface BalanceRow {
   name: string;
@@ -245,14 +289,22 @@ interface BalanceGroup {
 
 /**
  * Tagesbilanz aus der Langzeit-Statistik. Optionen: groups [{label, rows: [{name, icon, entity, type, unit, decimals,
- * price, cost, hide_zero}]}], switch_hour (bis dahin der Vortag, danach heute; Standard 18), label.
+ * price, cost, hide_zero}]}], switch_hour (bis dahin der Vortag, danach heute; Standard 18), label,
+ * period (week = Wochenrückblick: letzte Woche, sonntags ab switch_hour die laufende; Vergleich mit Ø 4 Wochen, Tagesbalken),
+ * profile {entity, solar} (Stundenverlauf: wann wie viel Strom, PV darübergelegt), compare (false = ohne Vergleich mit Ø 7 Tage).
  */
 class AfBalance extends AfTickingWidget {
-  static properties = { ...AfWidget.properties, values: { state: true } };
+  static properties = { ...AfWidget.properties, values: { state: true }, hours: { state: true } };
 
   static styles = [
     widgetStyles,
     css`
+      /* Spalte über die ganze Kachel: der Stundenverlauf nimmt den Rest der Höhe */
+      .bal {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+      }
       .groups {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
@@ -305,20 +357,171 @@ class AfBalance extends AfTickingWidget {
         font-size: calc(18px * var(--af-fs, 1));
         margin-top: 14px;
       }
+      .vs {
+        display: block;
+        font-family: var(--af-sans);
+        font-size: calc(15px * var(--af-fs, 1));
+        color: var(--af-ink-3);
+        margin-top: 2px;
+      }
+      .vs.up {
+        color: var(--af-warn, var(--af-alert));
+      }
+      .vs.down {
+        color: var(--af-good);
+      }
+      .share {
+        margin-top: 18px;
+        font-size: calc(16px * var(--af-fs, 1));
+        color: var(--af-ink-2);
+      }
+      .sbar {
+        height: 6px;
+        border-radius: 3px;
+        background: var(--af-line);
+        overflow: hidden;
+        margin-bottom: 8px;
+      }
+      .sbar i {
+        display: block;
+        height: 100%;
+        border-radius: 3px;
+        background: var(--af-good);
+      }
+      /* Stundenverlauf füllt den Rest der Kachel */
+      .profile {
+        flex: 1;
+        min-height: 150px;
+        display: flex;
+        flex-direction: column;
+        margin-top: 22px;
+        background: var(--af-card, var(--af-surface));
+        border: var(--af-card-border, 1px solid var(--af-line));
+        border-radius: var(--af-card-radius, 32px);
+        backdrop-filter: var(--af-card-filter, none);
+        -webkit-backdrop-filter: var(--af-card-filter, none);
+        box-shadow: var(--af-card-shadow, none);
+        padding: 22px 30px 16px;
+      }
+      .phead {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 20px;
+        flex-wrap: wrap;
+      }
+      .facts {
+        display: flex;
+        gap: 26px;
+        flex-wrap: wrap;
+        font-size: calc(17px * var(--af-fs, 1));
+        color: var(--af-ink-2);
+      }
+      .facts b {
+        font-weight: 500;
+        color: var(--af-ink-3);
+        margin-right: 4px;
+      }
+      .leg {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        color: var(--af-ink-3);
+      }
+      .k {
+        width: 10px;
+        height: 10px;
+        border-radius: 3px;
+        margin-left: 8px;
+      }
+      .k.use,
+      .h .use {
+        background: var(--af-bar-fill, var(--af-accent));
+      }
+      .k.sol,
+      .h .sol {
+        background: var(--af-good);
+      }
+      .hours {
+        flex: 1;
+        display: grid;
+        grid-template-columns: repeat(24, 1fr);
+        gap: 5px;
+        margin-top: 24px;
+        min-height: 0;
+      }
+      .h {
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+      }
+      .stack {
+        flex: 1;
+        position: relative;
+        min-height: 0;
+      }
+      .stack i {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        border-radius: 4px 4px 2px 2px;
+        transform-origin: bottom;
+      }
+      .h .use {
+        opacity: 0.55;
+      }
+      /* PV als schmaler Balken davor – man sieht, wann sie den Verbrauch deckt */
+      .h .sol {
+        left: 22%;
+        right: 22%;
+        opacity: 0.9;
+        z-index: 1;
+      }
+      /* die Spitze in der Akzentfarbe – auch wenn der Stil die Balken neutral füllt */
+      .h.peak .use {
+        opacity: 1;
+        background: var(--af-accent);
+      }
+      .h.later .use {
+        opacity: 0.15;
+      }
+      .h span {
+        text-align: left;
+        font-size: calc(13px * var(--af-fs, 1));
+        color: var(--af-ink-3);
+        height: 1.4em;
+        margin-top: 4px;
+      }
     `,
   ];
 
-  private values: Record<string, { value: number | null; cost: number | null }> = {};
+  private values: Record<string, { value: number | null; cost: number | null; avg: number | null }> = {};
+  private hours: { use: (number | null)[]; solar: (number | null)[] } | null = null;
   private key = "";
 
-  /** Vortag bis switch_hour, danach der laufende Tag */
+  /** period: week = Wochenrückblick (Mo–So) statt eines Tages */
+  private get week(): boolean {
+    return this.options.period === "week";
+  }
+
+  /** Tag: Vortag bis switch_hour, danach der laufende Tag. Woche: letzte Woche – nur sonntags ab switch_hour die laufende */
   private get offset(): number {
-    return new Date().getHours() < Number(this.options.switch_hour ?? 18) ? -1 : 0;
+    const late = new Date().getHours() >= Number(this.options.switch_hour ?? 18);
+    if (this.week) return new Date().getDay() === 0 && late ? 0 : -1;
+    return late ? 0 : -1;
+  }
+
+  /** Beginn des gezeigten Zeitraums (Mitternacht; bei Woche der Montag) */
+  private get start(): Date {
+    const d = startOfDay();
+    if (!this.week) return addDays(d, this.offset);
+    return addDays(d, -((d.getDay() + 6) % 7) + this.offset * 7);
   }
 
   protected willUpdate(): void {
     // Neu laden: anderer Tag, Umschaltung um 18 Uhr oder alle 15 Minuten
-    const key = `${startOfDay().getTime()}|${this.offset}|${Math.floor(Date.now() / 900e3)}|${JSON.stringify(this.options.groups ?? [])}`;
+    const key = `${startOfDay().getTime()}|${this.offset}|${this.week}|${Math.floor(Date.now() / 900e3)}|${JSON.stringify(this.options.groups ?? [])}`;
     if (this.hass && key !== this.key) {
       this.key = key;
       void this.load();
@@ -330,7 +533,7 @@ class AfBalance extends AfTickingWidget {
       const r = await this.hass!.callWS<Record<string, number | null>>({
         type: "recorder/statistic_during_period",
         statistic_id: id,
-        calendar: { period: "day", offset: this.offset },
+        calendar: { period: this.week ? "week" : "day", offset: this.offset },
         types: [type],
       });
       const v = r[type];
@@ -340,16 +543,129 @@ class AfBalance extends AfTickingWidget {
     }
   }
 
+  /** Änderungen der 7 Tage (bzw. 4 Wochen) vor dem gezeigten Zeitraum (für den Vergleich) – eine Abfrage für alle Zeilen */
+  private async averages(ids: string[]): Promise<Record<string, number | null>> {
+    if (!ids.length || this.options.compare === false) return {};
+    try {
+      const day = this.start;
+      const r = await this.hass!.callWS<Record<string, { start: number; change?: number }[]>>({
+        type: "recorder/statistics_during_period",
+        statistic_ids: ids,
+        period: this.week ? "week" : "day",
+        start_time: addDays(day, this.week ? -28 : -7).toISOString(),
+        end_time: day.toISOString(),
+        types: ["change"],
+      });
+      return Object.fromEntries(ids.map((id) => [id, dayAverage((r[id] ?? []).filter((x) => x.start < day.getTime()).map((x) => x.change ?? null))]));
+    } catch {
+      return {};
+    }
+  }
+
+  /** Stundenwerte des gezeigten Tags (bei Woche: Tageswerte): Verbrauch und PV */
+  private async profile(): Promise<void> {
+    const p = this.options.profile as { entity?: string; solar?: string } | undefined;
+    const req = ++this.profileReq;
+    if (!p?.entity) return void (this.hours = null);
+    try {
+      const day = this.start;
+      const slots = this.week ? 7 : 24;
+      const ids = [p.entity, p.solar].filter(Boolean) as string[];
+      const r = await this.hass!.callWS<Record<string, { start: number; change?: number }[]>>({
+        type: "recorder/statistics_during_period",
+        statistic_ids: ids,
+        period: this.week ? "day" : "hour",
+        start_time: day.toISOString(),
+        end_time: addDays(day, this.week ? 7 : 1).toISOString(),
+        types: ["change"],
+      });
+      if (req !== this.profileReq) return; // inzwischen ein anderer Tag angefragt (z. B. Umschaltung um 18 Uhr)
+      const byHour = (id?: string) => (id ? slotValues(r[id] ?? [], day, this.week, kwhFactor(stateOf(this.hass, id)?.attributes.unit_of_measurement)) : Array(slots).fill(null));
+      this.hours = { use: byHour(p.entity), solar: byHour(p.solar) };
+    } catch {
+      if (req === this.profileReq) this.hours = null;
+    }
+  }
+
+  private profileReq = 0;
+  private loadReq = 0;
+
   private async load(): Promise<void> {
+    const req = ++this.loadReq;
     const rows = ((this.options.groups ?? []) as BalanceGroup[]).flatMap((g) => g.rows ?? []);
+    void this.profile();
+    const avg = await this.averages([...new Set(rows.filter((r) => (r.type ?? "change") === "change").map((r) => r.entity))]);
     const entries = await Promise.all(
       rows.map(async (r) => {
         const value = await this.stat(r.entity, r.type ?? "change");
         const cost = r.cost ? await this.stat(r.cost, "change") : value != null && r.price != null ? value * r.price : null;
-        return [`${r.entity}|${r.cost ?? ""}`, { value, cost }] as const;
+        return [`${r.entity}|${r.cost ?? ""}`, { value, cost, avg: avg[r.entity] ?? null }] as const;
       }),
     );
-    this.values = Object.fromEntries(entries);
+    if (req === this.loadReq) this.values = Object.fromEntries(entries); // ältere Antwort überschreibt keine neuere
+  }
+
+  /** Vergleich mit dem Ø der 7 Tage davor – nur für ganze Tage (gestern), ein halber Tag wäre immer „weniger“ */
+  private compare(value: number, avg: number | null) {
+    if (this.offset === 0) return nothing;
+    const c = vsAverage(value, avg);
+    if (!c) return nothing;
+    const text = c.dir === "same" ? t("wie im Ø") : c.dir === "up" ? t("▲ {n} % über Ø", { n: c.pct }) : t("▼ {n} % unter Ø", { n: c.pct });
+    return html`<span class="vs ${c.dir}">${text}</span>`;
+  }
+
+  /** PV-Anteil: wie viel vom Verbrauch hat die Solaranlage gedeckt? (Zeile mit Sonnen-Icon + Zeile mit gleicher Einheit) */
+  private solarShare(rows: BalanceRow[]) {
+    const solar = rows.find((r) => /solar|sun/.test(r.icon ?? ""));
+    const grid = rows.find((r) => r !== solar && (r.type ?? "change") === "change" && this.unitOf(r) === (solar ? this.unitOf(solar) : ""));
+    if (!solar || !grid) return nothing;
+    const pv = this.values[`${solar.entity}|${solar.cost ?? ""}`]?.value ?? 0;
+    const use = this.values[`${grid.entity}|${grid.cost ?? ""}`]?.value ?? 0;
+    if (pv <= 0.01 || use + pv <= 0) return nothing;
+    const share = Math.round((pv / (use + pv)) * 100);
+    return html`<div class="share">
+      <div class="sbar"><i style="width:${share}%"></i></div>
+      <span>${t("{name} deckte {n} % vom Verbrauch", { name: solar.name, n: share })}</span>
+    </div>`;
+  }
+
+  /** Wann wie viel Strom: 24 Stundenbalken, PV als zweite Farbe darüber, Spitze und Grundlast in Worten */
+  private renderProfile() {
+    const hv = this.hours;
+    if (!hv || !hv.use.some((v) => v != null)) return nothing;
+    const week = this.week;
+    const f = profileFacts(hv.use);
+    const max = Math.max(0.01, ...hv.use.map((v) => v ?? 0), ...hv.solar.map((v) => v ?? 0));
+    const now = this.offset < 0 ? 99 : week ? (new Date().getDay() + 6) % 7 : new Date().getHours();
+    const dayName = (i: number, style: "long" | "short") => addDays(this.start, i).toLocaleDateString(locale(), { weekday: style });
+    const days = hv.use.filter((v): v is number => v != null);
+    const hasSolar = hv.solar.some((v) => (v ?? 0) > 0.005);
+    return html`<div class="profile">
+      <div class="phead">
+        <div class="label">${week ? t("Welcher Tag wie viel Strom") : t("Wann wie viel Strom")}</div>
+        <div class="facts">
+          ${f.peak
+            ? html`<span><b>${t("Spitze")}</b> ${week ? dayName(f.peak.hour, "long") : t("{from}–{to} Uhr", { from: f.peak.hour, to: f.peak.hour + 1 })} · ${fmt(f.peak.kwh, week ? 1 : 2)} kWh</span>`
+            : nothing}
+          ${week && days.length ? html`<span><b>${t("Ø pro Tag")}</b> ${fmt(days.reduce((a, b) => a + b, 0) / days.length, 1)} kWh</span>` : nothing}
+          ${!week && f.base != null ? html`<span><b>${t("Grundlast nachts")}</b> ≈ ${fmt(f.base, 0)} W</span>` : nothing}
+          ${hasSolar ? html`<span class="leg"><i class="k use"></i>${t("Netz")}<i class="k sol"></i>${t("PV")}</span>` : nothing}
+        </div>
+      </div>
+      <div class="hours" style="grid-template-columns:repeat(${hv.use.length},1fr)">
+        ${hv.use.map((v, h) => {
+          const sol = hv.solar[h] ?? 0;
+          const j = (h / hv.use.length).toFixed(3);
+          return html`<div class="h ${h === f.peak?.hour ? "peak" : ""} ${h > now || (!week && h === now) ? "later" : ""}">
+            <div class="stack">
+              ${sol > 0.005 ? html`<i class="sol grow-y" style="height:${(sol / max) * 100}%;--af-j:${j}"></i>` : nothing}
+              <i class="use grow-y" style="height:${Math.max(v ? 2 : 0, ((v ?? 0) / max) * 100)}%;--af-j:${j}"></i>
+            </div>
+            <span>${week ? dayName(h, "short") : h % 3 === 0 ? h : ""}</span>
+          </div>`;
+        })}
+      </div>
+    </div>`;
   }
 
   private unitOf(r: BalanceRow): string {
@@ -358,8 +674,15 @@ class AfBalance extends AfTickingWidget {
 
   render() {
     const o = this.options;
-    const day = new Date(Date.now() + this.offset * 864e5);
-    const when = this.offset < 0 ? t("Gestern, {date}", { date: day.toLocaleDateString(locale(), { weekday: "long", day: "numeric", month: "long" }) }) : t("Heute bis jetzt");
+    const day = this.start;
+    const fmtDay = (d: Date, o2: Intl.DateTimeFormatOptions) => d.toLocaleDateString(locale(), o2);
+    const when = this.week
+      ? this.offset < 0
+        ? t("Letzte Woche, {from} – {to}", { from: fmtDay(day, { day: "numeric", month: "numeric" }), to: fmtDay(addDays(day, 6), { day: "numeric", month: "long" }) })
+        : t("Diese Woche bis jetzt")
+      : this.offset < 0
+        ? t("Gestern, {date}", { date: fmtDay(day, { weekday: "long", day: "numeric", month: "long" }) })
+        : t("Heute bis jetzt");
     const groups = ((o.groups ?? []) as BalanceGroup[])
       .map((g) => ({
         ...g,
@@ -369,7 +692,7 @@ class AfBalance extends AfTickingWidget {
         }),
       }))
       .filter((g) => g.rows.length);
-    return html`<div class="label">${o.label ?? t("Energie-Bilanz")} · ${when}</div>
+    return html`<div class="bal"><div class="label">${o.label ?? t("Energie-Bilanz")} · ${when}</div>
       ${groups.length
         ? html`<div class="groups">
             ${groups.map(
@@ -386,14 +709,16 @@ class AfBalance extends AfTickingWidget {
                     <span class="val display num"
                       >${fmt(value, dec)}<small>${unit}</small>${v.cost != null && v.cost > 0.004
                         ? html`<span class="cost">${fmt(v.cost, 2)} €</span>`
-                        : nothing}</span
+                        : nothing}${this.compare(value, v.avg)}</span
                     >
                   </div>`;
                 })}
+                ${this.solarShare(g.rows)}
               </div>`,
             )}
           </div>`
-        : html`<div class="calm">${t("Noch keine Werte für diesen Tag.")}</div>`}`;
+        : html`<div class="calm">${t("Noch keine Werte für diesen Tag.")}</div>`}
+      ${this.renderProfile()}</div>`;
   }
 }
 

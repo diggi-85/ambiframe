@@ -4,7 +4,7 @@ import { LitElement, css, html, nothing, type TemplateResult } from "lit";
 import { unsafeSVG } from "lit/directives/unsafe-svg.js";
 import qrcode from "qrcode-generator";
 import { t, type Lang } from "../i18n";
-import { iconSvg } from "../icons";
+import { brandMark, iconSvg } from "../icons";
 import { SOUNDS, playSound } from "../sound";
 import { THEMES } from "../styles";
 import { placeholderOf } from "../data";
@@ -272,7 +272,7 @@ export class AfWizard extends LitElement {
     const last = this.step === steps.length - 1;
     return html`<div class="card" role="dialog" aria-modal="true">
       <header>
-        <div class="title">${iconSvg("sparkle", "ic")}${this.mode === "first" ? t("Willkommen bei Ambiframe") : t("Neues Display")}</div>
+        <div class="title">${this.mode === "first" ? brandMark(22) : iconSvg("sparkle", "ic")}${this.mode === "first" ? t("Willkommen bei Ambiframe") : t("Neues Display")}</div>
         <div class="dots">${steps.map((_, i) => html`<i class=${i === this.step ? "on" : i < this.step ? "done" : ""}></i>`)}</div>
       </header>
       <main>${this.renderStep(step)}</main>

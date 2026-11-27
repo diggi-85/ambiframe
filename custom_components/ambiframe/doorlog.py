@@ -27,6 +27,7 @@ from homeassistant.helpers.storage import Store
 from homeassistant.util import dt as dt_util
 
 from .const import DOMAIN, SIGNAL_CONFIG_UPDATED
+from .fully import triggered
 
 if TYPE_CHECKING:
     from .store import AmbiframeStore
@@ -46,14 +47,6 @@ def triggers(ev: dict[str, Any]) -> list[str]:
 
 def camera_moments(config: dict[str, Any]) -> list[dict[str, Any]]:
     return [e for e in config.get("events", []) if e.get("kind") in ("alarm", "live") and e.get("camera") and e.get("enabled", True)]
-
-
-def fires(ev: dict[str, Any], old: str | None, new: str) -> bool:
-    """Springt der Moment bei diesem Wechsel an? (to „*“ = jede Änderung, from optional)"""
-    if old == new:
-        return False
-    to, frm = ev.get("to", "on"), ev.get("from")
-    return (to == "*" or new == str(to)) and (frm is None or old == str(frm))
 
 
 class DoorLog:
@@ -94,7 +87,8 @@ class DoorLog:
         if new is None:
             return
         for ev in camera_moments(self.store.config):
-            if new.entity_id in triggers(ev) and fires(ev, old.state if old else None, new.state):
+            # dieselbe Regel wie auf dem Display – kein Eintrag beim Neustart, bei „nicht verfügbar“ oder fremden event_types
+            if new.entity_id in triggers(ev) and triggered(ev, old, new):
                 if time.monotonic() - self._last.get(ev["id"], -MIN_SECONDS) < MIN_SECONDS:
                     continue
                 self._last[ev["id"]] = time.monotonic()

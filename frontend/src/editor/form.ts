@@ -5,6 +5,7 @@ import { LitElement, css, html, nothing, type TemplateResult } from "lit";
 import { anyIcon } from "../icons";
 import type { Hass } from "../types";
 import { define } from "../widgets/base";
+import "./feed-check";
 
 export type Field = {
   key: string;
@@ -14,7 +15,7 @@ export type Field = {
   /** Nur im Editor-Modus „Erweitert“; fehlt = anhand des Schlüssels (ADVANCED_KEYS) */
   advanced?: boolean;
 } & (
-  | { type: "text" | "textarea" | "icon" | "color"; placeholder?: string; suggestions?: [string, string][] }
+  | { type: "text" | "textarea" | "icon" | "color"; placeholder?: string; suggestions?: [string, string][]; /** Rückmeldung unter dem Feld */ check?: "feed" }
   | { type: "number"; min?: number; max?: number; step?: number; placeholder?: string }
   | { type: "boolean"; default?: boolean }
   | { type: "select"; options: [string | number | boolean | undefined, string][] | ((value: Record<string, any>) => [string | undefined, string][]) }
@@ -294,8 +295,11 @@ export class AfForm extends LitElement {
       next.splice(i + d, 0, x);
       onChange(next);
     };
+    // Ältere Konfigurationen speichern Einträge als reinen Text (z. B. Quellen: "tagesschau") – als { value } bearbeiten,
+    // sonst zerlegt setPath den Text beim ersten Tippen in Buchstaben ("0": "t", "1": "a" …)
+    const asItem = (item: any) => (typeof item === "string" ? { value: item } : (item ?? {}));
     return html`<div class="list">
-      ${items.map(
+      ${items.map(asItem).map(
         (item, i) => html`<div class="item">
           <div class="item-head">
             <span>${t(f.itemLabel?.(item, i) ?? `#${i + 1}`)}</span>
@@ -309,7 +313,7 @@ export class AfForm extends LitElement {
             .hass=${this.hass}
             .advanced=${this.advanced}
             .fields=${f.fields}
-            .value=${item ?? {}}
+            .value=${item}
             @value-changed=${(e: CustomEvent) => onChange(items.map((x, j) => (j === i ? e.detail.value : x)))}
           ></af-form>
         </div>`,
@@ -379,7 +383,7 @@ export class AfForm extends LitElement {
         break;
       case "color":
         control = html`<div class="with-icon">
-          <input type="color" .value=${/^#[0-9a-f]{6}$/i.test(v ?? "") ? v : "#d9b45f"} @input=${(e: Event) => this.set(f.key, (e.target as HTMLInputElement).value)} />
+          <input type="color" .value=${/^#[0-9a-f]{6}$/i.test(v ?? "") ? v : "#f4b14a"} @input=${(e: Event) => this.set(f.key, (e.target as HTMLInputElement).value)} />
           <input .value=${v ?? ""} placeholder=${t("Standard")} @change=${(e: Event) => this.set(f.key, (e.target as HTMLInputElement).value || undefined)} />
         </div>`;
         break;
@@ -474,6 +478,7 @@ export class AfForm extends LitElement {
       ${f.label ? html`<label class="lbl">${t(f.label)}</label>` : nothing}
       <div class="ctl">${control}</div>
       ${f.help ? html`<div class="help">${t(f.help)}</div>` : nothing}
+      ${f.type === "text" && f.check === "feed" ? html`<af-feed-check .hass=${this.hass} .feed=${v ?? ""}></af-feed-check>` : nothing}
     </div>`;
   }
 

@@ -89,6 +89,10 @@ async def test_admin_only_commands(
         await client.send_json_auto_id({"type": cmd})
         msg = await client.receive_json()
         assert not msg["success"] and msg["error"]["code"] == "unauthorized", cmd
+    # ruft beliebige Adressen ab – nie für Tablets ohne Admin
+    await client.send_json_auto_id({"type": "ambiframe/news_check", "feed": "http://router.local/"})
+    msg = await client.receive_json()
+    assert not msg["success"] and msg["error"]["code"] == "unauthorized"
 
 
 async def test_news_only_fetches_known_feeds(hass: HomeAssistant, setup_ambiframe: MockConfigEntry, hass_ws_client: Any) -> None:
@@ -349,10 +353,6 @@ async def test_doorlog_records_snapshot_once_per_minute(hass: HomeAssistant, set
     """„Wer war an der Tür?“: Klingel springt an → Standbild + Eintrag; gleich danach noch einmal → kein zweites Bild."""
     from homeassistant.components.camera import Image
 
-    from custom_components.ambiframe.doorlog import fires
-
-    assert fires({"to": "on"}, "off", "on") and not fires({"to": "on"}, "on", "on") and fires({"to": "*"}, "a", "b")
-    assert not fires({"to": "on", "from": "off"}, "unavailable", "on")
     config = minimal_config()
     config["events"] = [{"id": "klingel", "kind": "alarm", "entity": "binary_sensor.klingel", "to": "on", "title": "Es klingelt", "where": "Haustür", "camera": "camera.tuer", "enabled": True}]
     client = await hass_ws_client(hass)
@@ -372,6 +372,26 @@ async def test_doorlog_records_snapshot_once_per_minute(hass: HomeAssistant, set
     assert len(entries) == 1 and entries[0]["title"] == "Es klingelt" and entries[0]["where"] == "Haustür"
     assert "authSig=" in entries[0]["url"]  # ohne Anmeldung kein Bild
     assert (tmp_path / entries[0]["file"]).read_bytes() == b"\xff\xd8jpeg"
+
+
+async def test_doorlog_ignores_restart_and_unavailable(hass: HomeAssistant, setup_ambiframe: MockConfigEntry, hass_ws_client: Any, tmp_path: Any) -> None:
+    """Auslöser „jede Änderung“: erster Zustand nach dem Start und Rückkehr aus „nicht verfügbar“ sind kein Klingeln."""
+    from homeassistant.components.camera import Image
+
+    config = minimal_config()
+    config["events"] = [{"id": "knopf", "kind": "live", "entity": "sensor.klingelknopf", "to": "*", "title": "Klingel", "camera": "camera.tuer", "enabled": True}]
+    client = await hass_ws_client(hass)
+    await client.send_json_auto_id({"type": "ambiframe/config/save", "config": config})
+    assert (await client.receive_json())["success"]
+    hass.data["ambiframe"].doorlog.dir = tmp_path
+    with patch("custom_components.ambiframe.doorlog.camera.async_get_image", return_value=Image("image/jpeg", b"\xff\xd8")) as grab:
+        for state in ("idle", "unavailable", "idle"):  # Start, WLAN weg, wieder da
+            hass.states.async_set("sensor.klingelknopf", state)
+            await hass.async_block_till_done()
+        assert grab.call_count == 0
+        hass.states.async_set("sensor.klingelknopf", "pressed")
+        await hass.async_block_till_done()
+    assert grab.call_count == 1
 
 
 async def test_snapshot_view_rejects_foreign_names(hass: HomeAssistant, setup_ambiframe: MockConfigEntry, hass_client: Any) -> None:

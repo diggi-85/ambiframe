@@ -7,6 +7,7 @@ import "../src/widgets/places";
 import "../src/widgets/energy";
 import "../src/widgets/life";
 import "../src/widgets/news";
+import "../src/widgets/home";
 import { airKindOf, airLevel, countdownText, moonPhase, readDepartures, sunTimes, targetDate, tileOf, timerLeft } from "../src/widgets/plus";
 import type { Hass, HassEntity } from "../src/types";
 
@@ -701,5 +702,54 @@ describe("Video-Nachrichten bildschirmfüllend", () => {
     expect(el.shadowRoot!.querySelector(".screen")!.classList.contains("full")).toBe(true);
     expect(el.shadowRoot!.querySelector(".rows")).toBeNull();
     expect(el.shadowRoot!.querySelector(".label")).toBeNull();
+  });
+});
+
+describe("Video-Nachrichten: weiter erst nach dem Video", () => {
+  it("spielt ohne Schleife und meldet das Ende – auch wenn das Video nicht lädt", async () => {
+    const hass = hassOf([]) as unknown as Record<string, unknown>;
+    hass.callWS = vi.fn(async (msg: { type: string }) => (msg.type === "ambiframe/news_video" ? { video: { title: "t", url: "https://cdn.example/a.mp4" } } : { items: [] }));
+    const el = await mount("af-newsvideo", hass as unknown as Hass, { until_end: true, headlines: false });
+    await new Promise((r) => setTimeout(r, 0));
+    await el.updateComplete;
+    const video = el.shadowRoot!.querySelector("video")!;
+    expect(video.hasAttribute("loop")).toBe(false);
+    const ends: Event[] = [];
+    el.addEventListener("af-video-end", (e) => ends.push(e));
+    video.dispatchEvent(new Event("ended"));
+    video.dispatchEvent(new Event("error"));
+    expect(ends).toHaveLength(2);
+  });
+});
+
+describe("Müll-Kalender", () => {
+  it("nennt alle Tonnen am selben Tag, nicht nur den Termin aus dem Kalenderzustand", async () => {
+    const d = new Date(Date.now() + 864e5);
+    const day = d.toLocaleDateString("sv");
+    const next = new Date(d.getTime() + 864e5).toLocaleDateString("sv");
+    const hass = hassOf([ent("calendar.abfall", "off", { message: "Biotonne", all_day: true, start_time: `${day} 00:00:00` })]);
+    (hass as unknown as Record<string, unknown>).callWS = vi.fn(async () => ({
+      response: { "calendar.abfall": { events: [{ start: day, end: next, summary: "Biotonne" }, { start: day, end: next, summary: "Graue Tonne" }, { start: next, end: next, summary: "Papier" }] } },
+    }));
+    const el = await mount("af-calendar", hass, { entity: "calendar.abfall", variant: "line" });
+    await new Promise((r) => setTimeout(r, 0));
+    await el.updateComplete;
+    expect(text(el)).toContain("Biotonne und Graue Tonne");
+    expect(text(el)).not.toContain("Papier");
+  });
+
+  it("zeigt am Abholtag schon die nächste Abholung mit allen Tonnen, ohne „heute Abend“", async () => {
+    const today = new Date().toLocaleDateString("sv");
+    const d2 = new Date(Date.now() + 3 * 864e5).toLocaleDateString("sv");
+    const hass = hassOf([ent("calendar.abfall", "on", { message: "Biotonne", all_day: true, start_time: `${today} 00:00:00` })]);
+    (hass as unknown as Record<string, unknown>).callWS = vi.fn(async () => ({
+      response: { "calendar.abfall": { events: [{ start: today, end: d2, summary: "Biotonne" }, { start: d2, end: d2, summary: "Graue Tonne" }, { start: d2, end: d2, summary: "Papier" }] } },
+    }));
+    const el = await mount("af-calendar", hass, { entity: "calendar.abfall" });
+    await new Promise((r) => setTimeout(r, 0));
+    await el.updateComplete;
+    expect(text(el)).toContain("Graue Tonne und Papier");
+    expect(text(el)).not.toContain("Biotonne");
+    expect(text(el)).not.toContain("heute Abend");
   });
 });
